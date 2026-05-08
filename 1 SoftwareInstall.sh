@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+# Keep installers non-interactive. Commands may still ask for sudo credentials when needed.
+export DEBIAN_FRONTEND=noninteractive
+export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_ANALYTICS=1
+export NONINTERACTIVE=1
+
 ERRORS=()
 
 log() {
@@ -87,7 +93,7 @@ apt_install_if_missing() {
     return 0
   fi
 
-  run_or_warn "apt install ${package}" sudo apt-get install -y "$package"
+  run_or_warn "apt install ${package}" sudo apt-get install -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$package"
 }
 
 install_1password_apt_repo() {
@@ -207,8 +213,8 @@ ensure_homebrew() {
     return 0
   fi
 
-  log "Installing Homebrew."
-  if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+  log "Installing Homebrew non-interactively."
+  if ! NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
     warn "Homebrew installer failed."
     return 1
   fi
@@ -338,23 +344,6 @@ install_macos_packages() {
   fi
 }
 
-setup_1password_account() {
-  log "Checking 1Password CLI account setup."
-
-  if ! has_command op; then
-    warn "1Password CLI not found; run 'op account add' after installing it."
-    return 0
-  fi
-
-  if op whoami >/dev/null 2>&1; then
-    log "Already signed in to 1Password CLI."
-    return 0
-  fi
-
-  log "1Password CLI not signed in. Running 'op account add' (can be skipped)."
-  op account add || warn "1Password sign-in skipped or failed; run 'op account add' manually before running 2 Keys.sh."
-}
-
 print_summary() {
   if [ "${#ERRORS[@]}" -eq 0 ]; then
     log "Software installation completed with no warnings."
@@ -406,7 +395,6 @@ main() {
       ;;
   esac
 
-  setup_1password_account
   print_summary
   return 0
 }

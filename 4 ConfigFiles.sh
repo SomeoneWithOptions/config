@@ -136,7 +136,9 @@ rm -f "$FISH_CONFIG_TMP"
 copy_required "$SCRIPT_DIR/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/theme.fish"
 copy_required "$SCRIPT_DIR/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
 copy_required "$SCRIPT_DIR/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
-copy_required_if_missing "$SCRIPT_DIR/fish/fish_history" "$HOME/.local/share/fish/fish_history"
+if [[ -f "$SCRIPT_DIR/fish/fish_history" ]]; then
+    copy_required_if_missing "$SCRIPT_DIR/fish/fish_history" "$HOME/.local/share/fish/fish_history"
+fi
 
 FISH_PATH=$(command -v fish || true)
 if [[ -n "${FISH_PATH:-}" ]]; then
@@ -150,8 +152,13 @@ if [[ -n "${FISH_PATH:-}" ]]; then
 
     LOGIN_SHELL=$(current_login_shell || true)
     if [[ "$LOGIN_SHELL" != "$FISH_PATH" ]]; then
-        if ! chsh -s "$FISH_PATH"; then
-            printf 'Failed to change the default shell to fish. You may need to rerun `chsh -s %s` manually.\n' "$FISH_PATH" >&2
+        # Use sudo so the only allowed prompt is sudo authentication, not chsh's own password prompt.
+        if command -v sudo >/dev/null 2>&1; then
+            if ! sudo chsh -s "$FISH_PATH" "$USER"; then
+                printf 'Failed to change the default shell to fish. You may need to rerun `sudo chsh -s %s %s` manually.\n' "$FISH_PATH" "$USER" >&2
+            fi
+        else
+            printf 'sudo not found; skipping default shell change. Run `chsh -s %s` manually if desired.\n' "$FISH_PATH" >&2
         fi
     fi
 fi

@@ -117,6 +117,12 @@ add_ssh_key_if_missing() {
     return
   fi
 
+  if ! ssh-keygen -y -P "" -f "$key_path" >/dev/null 2>&1; then
+    printf 'SSH key %s appears to require a passphrase; skipping ssh-add to keep this script unattended.\n' "$key_path" >&2
+    printf 'Add it manually later with: ssh-add %s\n' "$key_path" >&2
+    return
+  fi
+
   ensure_ssh_agent_running
   "${SSH_ADD_CMD[@]}" "$key_path"
 }
@@ -125,22 +131,22 @@ PLATFORM="$(detect_platform)"
 SSH_ADD_CMD=(ssh-add)
 
 if ! command -v op >/dev/null 2>&1; then
-  printf 'The 1Password CLI (op) must be installed before running this script.\n' >&2
-  exit 1
+  printf '1Password CLI (op) is not installed; skipping SSH key setup.\n' >&2
+  exit 0
 fi
 
 if ! op whoami >/dev/null 2>&1; then
-  printf 'You need to sign in to the 1Password CLI before running this script.\n' >&2
-  printf 'Run "op account add" or "op signin" and try again.\n' >&2
-  exit 1
+  printf '1Password CLI is not signed in; skipping SSH key setup to keep this script unattended.\n' >&2
+  printf 'Sign in with "op account add" or "op signin", then rerun this script.\n' >&2
+  exit 0
 fi
 
 case "$PLATFORM" in
   arch)
     if command -v sudo >/dev/null 2>&1; then
-      sudo pacman -S --needed openssh
+      sudo pacman -S --needed --noconfirm openssh
     else
-      pacman -S --needed openssh
+      pacman -S --needed --noconfirm openssh
     fi
     ;;
   macos)

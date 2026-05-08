@@ -8,9 +8,10 @@ set -eu
 # Useful overrides:
 #   CONFIG_ARCHIVE_URL=https://github.com/SomeoneWithOptions/config/archive/refs/heads/main.tar.gz
 #   CONFIG_REF=main
-#   CONFIG_DIR=/path/to/existing/clone  # explicitly use a local clone instead
-#   BOOTSTRAP_SUDO=0                    # do not pre-authenticate/keep sudo warm
-#   BOOTSTRAP_KEYS=0                    # skip 1Password/SSH key step
+#   BOOTSTRAP_ALLOW_CONFIG_DIR=1 CONFIG_DIR=/path/to/existing/clone
+#                                      # explicitly use a local clone instead
+#   BOOTSTRAP_SUDO=0                   # do not pre-authenticate/keep sudo warm
+#   BOOTSTRAP_KEYS=0                   # skip 1Password/SSH key step
 
 REPO_OWNER="${REPO_OWNER:-SomeoneWithOptions}"
 REPO_NAME="${REPO_NAME:-config}"
@@ -36,7 +37,7 @@ is_config_repo() {
 }
 
 prepare_config_dir() {
-  if [ -n "${CONFIG_DIR:-}" ]; then
+  if [ "${BOOTSTRAP_ALLOW_CONFIG_DIR:-0}" = "1" ] && [ -n "${CONFIG_DIR:-}" ]; then
     if is_config_repo "$CONFIG_DIR"; then
       printf '%s\n' "$CONFIG_DIR"
       return 0

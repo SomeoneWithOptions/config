@@ -118,13 +118,34 @@ install_1password_apt_repo() {
     || warn "Install 1Password debsig key failed."
 }
 
+install_github_cli_apt_repo() {
+  log "Ensuring GitHub CLI apt repository is configured."
+
+  run_or_warn "create GitHub CLI apt keyring directory" sudo mkdir -p -m 755 /etc/apt/keyrings
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+    || warn "Install GitHub CLI apt key failed."
+  run_or_warn "set GitHub CLI apt key permissions" sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+  run_or_warn "create GitHub CLI apt sources directory" sudo mkdir -p -m 755 /etc/apt/sources.list.d
+
+  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' "$(dpkg --print-architecture)" \
+    | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
+    || warn "Configure GitHub CLI apt source failed."
+}
+
 install_ubuntu_packages() {
   log "Updating apt repositories."
   run_or_warn "apt update" sudo apt-get update
 
+  apt_install_if_missing curl
+  apt_install_if_missing ca-certificates
+  install_github_cli_apt_repo
+  log "Updating apt repositories after GitHub CLI repo setup."
+  run_or_warn "apt update after adding GitHub CLI repository" sudo apt-get update
+
   log "Ensuring core packages are installed with apt."
   local package
-  for package in git tmux fish alacritty vim curl gnupg lsb-release nodejs npm; do
+  for package in git gh tmux fish alacritty vim curl gnupg lsb-release nodejs npm; do
     apt_install_if_missing "$package"
   done
 
@@ -191,7 +212,7 @@ install_arch_packages() {
 
   log "Ensuring core packages are installed with pacman."
   local package
-  for package in git tmux fish alacritty vim curl gnupg openssh nodejs npm; do
+  for package in git github-cli tmux fish alacritty vim curl gnupg openssh nodejs npm; do
     pacman_install_if_missing "$package"
   done
 
@@ -311,7 +332,7 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git tmux fish vim 1password-cli rtk node@24; do
+  for package in git gh tmux fish vim 1password-cli rtk node@24; do
     brew_install_formula_if_missing "$package"
   done
 

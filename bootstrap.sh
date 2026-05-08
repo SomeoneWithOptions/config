@@ -1,16 +1,16 @@
 #!/usr/bin/env sh
 set -eu
 
-# Bootstrap this laptop config repo from either:
-#   1. an existing clone: ./bootstrap.sh
-#   2. a URL pipe: curl -fsSL <raw bootstrap.sh url> | sh
+# Bootstrap this laptop config repo from a fresh archive extracted under /tmp.
+# This intentionally avoids using any existing /code or local clone, which may
+# not exist on a new laptop or may be stale on an already configured laptop.
 #
 # Useful overrides:
 #   CONFIG_ARCHIVE_URL=https://github.com/SomeoneWithOptions/config/archive/refs/heads/main.tar.gz
 #   CONFIG_REF=main
-#   CONFIG_DIR=/path/to/existing/clone
-#   BOOTSTRAP_SUDO=0        # do not pre-authenticate/keep sudo warm
-#   BOOTSTRAP_KEYS=0        # skip 1Password/SSH key step
+#   CONFIG_DIR=/path/to/existing/clone  # explicitly use a local clone instead
+#   BOOTSTRAP_SUDO=0                    # do not pre-authenticate/keep sudo warm
+#   BOOTSTRAP_KEYS=0                    # skip 1Password/SSH key step
 
 REPO_OWNER="${REPO_OWNER:-SomeoneWithOptions}"
 REPO_NAME="${REPO_NAME:-config}"
@@ -25,19 +25,6 @@ log() {
 
 have() {
   command -v "$1" >/dev/null 2>&1
-}
-
-script_dir() {
-  # Works when executed as a file. When piped to sh, $0 is usually sh and this
-  # intentionally falls back to download mode unless CONFIG_DIR is supplied.
-  case "$0" in
-    */*)
-      cd "$(dirname "$0")" 2>/dev/null && pwd
-      ;;
-    *)
-      pwd
-      ;;
-  esac
 }
 
 is_config_repo() {
@@ -56,18 +43,6 @@ prepare_config_dir() {
     fi
     log "CONFIG_DIR is not this config repo: $CONFIG_DIR" >&2
     return 1
-  fi
-
-  local_dir="$(script_dir)"
-  if is_config_repo "$local_dir"; then
-    printf '%s\n' "$local_dir"
-    return 0
-  fi
-
-  pwd_dir="$(pwd)"
-  if is_config_repo "$pwd_dir"; then
-    printf '%s\n' "$pwd_dir"
-    return 0
   fi
 
   if ! have curl; then

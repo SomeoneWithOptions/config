@@ -115,12 +115,13 @@ FISH_CONFIG_TMP=$(mktemp)
 cp "$FISH_CONFIG_SOURCE" "$FISH_CONFIG_TMP"
 if [[ "$OS_NAME" == "Darwin" ]] && command -v brew >/dev/null 2>&1; then
     BREW_PATH=$(command -v brew)
-    BREW_EVAL=$(printf 'eval "$(%s shellenv)"' "$BREW_PATH")
-    if ! grep -qxF "$BREW_EVAL" "$FISH_CONFIG_TMP"; then
-        printf '%s\n' "$BREW_EVAL" >> "$FISH_CONFIG_TMP"
-    fi
+    printf '\n' >> "$FISH_CONFIG_TMP"
     cat >> "$FISH_CONFIG_TMP" <<EOF
-set -l node24_prefix ($BREW_PATH --prefix node@24 2>/dev/null)
+if test -x "$BREW_PATH"
+    "$BREW_PATH" shellenv | source
+end
+
+set -l node24_prefix ("$BREW_PATH" --prefix node@24 2>/dev/null)
 if test -n "\$node24_prefix"
     fish_add_path --move --path "\$node24_prefix/bin"
 end

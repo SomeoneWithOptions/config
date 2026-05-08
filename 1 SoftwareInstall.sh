@@ -133,19 +133,35 @@ install_github_cli_apt_repo() {
     || warn "Configure GitHub CLI apt source failed."
 }
 
+install_gcloud_apt_repo() {
+  log "Ensuring Google Cloud CLI apt repository is configured."
+
+  run_or_warn "create Google Cloud CLI apt keyring directory" sudo mkdir -p -m 755 /usr/share/keyrings
+  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+    | sudo gpg --dearmor --batch --yes -o /usr/share/keyrings/cloud.google.gpg \
+    || warn "Install Google Cloud CLI apt key failed."
+  run_or_warn "set Google Cloud CLI apt key permissions" sudo chmod go+r /usr/share/keyrings/cloud.google.gpg
+
+  printf '%s\n' 'deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main' \
+    | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null \
+    || warn "Configure Google Cloud CLI apt source failed."
+}
+
 install_ubuntu_packages() {
   log "Updating apt repositories."
   run_or_warn "apt update" sudo apt-get update
 
   apt_install_if_missing curl
   apt_install_if_missing ca-certificates
+  apt_install_if_missing gnupg
   install_github_cli_apt_repo
-  log "Updating apt repositories after GitHub CLI repo setup."
-  run_or_warn "apt update after adding GitHub CLI repository" sudo apt-get update
+  install_gcloud_apt_repo
+  log "Updating apt repositories after CLI repo setup."
+  run_or_warn "apt update after adding CLI repositories" sudo apt-get update
 
   log "Ensuring core packages are installed with apt."
   local package
-  for package in git gh tmux fish alacritty vim curl gnupg lsb-release nodejs npm; do
+  for package in git gh tmux fish alacritty vim curl gnupg lsb-release nodejs npm google-cloud-cli; do
     apt_install_if_missing "$package"
   done
 
@@ -182,6 +198,21 @@ pacman_install_if_missing() {
   run_or_warn "pacman install ${package}" sudo pacman -S --needed --noconfirm "$package"
 }
 
+install_arch_gcloud() {
+  if has_command gcloud; then
+    log "Google Cloud CLI is already installed."
+    return 0
+  fi
+
+  if pacman -Si google-cloud-cli >/dev/null 2>&1; then
+    pacman_install_if_missing google-cloud-cli
+  elif has_command yay; then
+    run_or_warn "yay install google-cloud-cli" yay -S --needed --noconfirm google-cloud-cli
+  else
+    warn "Cannot install Google Cloud CLI: package unavailable and yay not found."
+  fi
+}
+
 install_arch_1password() {
   if pacman_package_installed 1password || pacman_package_installed 1password-beta; then
     log "1Password is already installed."
@@ -215,6 +246,8 @@ install_arch_packages() {
   for package in git github-cli tmux fish alacritty vim curl gnupg openssh nodejs npm; do
     pacman_install_if_missing "$package"
   done
+
+  install_arch_gcloud
 
   install_rtk_official
   verify_rtk
@@ -322,6 +355,25 @@ configure_homebrew_node24() {
   fi
 }
 
+install_windows_gcloud() {
+  if has_command gcloud || has_command gcloud.cmd; then
+    log "Google Cloud CLI is already installed."
+    return 0
+  fi
+
+  if has_command winget.exe; then
+    run_or_warn "winget install Google Cloud CLI" winget.exe install --id Google.CloudSDK --exact --silent --accept-package-agreements --accept-source-agreements
+  elif has_command powershell.exe; then
+    run_or_warn "Google Cloud CLI Windows installer" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \$installer = Join-Path \$env:TEMP 'GoogleCloudSDKInstaller.exe'; Invoke-WebRequest -Uri 'https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe' -OutFile \$installer; Start-Process -FilePath \$installer -ArgumentList '/S' -Wait"
+  else
+    warn "Cannot install Google Cloud CLI on Windows: winget.exe and powershell.exe not found."
+  fi
+}
+
+install_windows_packages() {
+  install_windows_gcloud
+}
+
 install_macos_packages() {
   ensure_homebrew || return 0
 
@@ -332,7 +384,7 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git gh tmux fish vim 1password-cli rtk node@24; do
+  for package in git gh tmux fish vim 1password-cli rtk node@24 google-cloud-sdk; do
     brew_install_formula_if_missing "$package"
   done
 
@@ -388,6 +440,9 @@ main() {
   case "$uname_s" in
     Darwin)
       install_macos_packages
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      install_windows_packages
       ;;
     Linux)
       if [ -f /etc/os-release ]; then

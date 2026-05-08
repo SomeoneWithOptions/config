@@ -21,7 +21,7 @@ BOOTSTRAP_SUDO="${BOOTSTRAP_SUDO:-1}"
 BOOTSTRAP_KEYS="${BOOTSTRAP_KEYS:-1}"
 
 log() {
-  printf '[bootstrap] %s\n' "$*"
+  printf '[bootstrap] %s\n' "$*" >&2
 }
 
 have() {

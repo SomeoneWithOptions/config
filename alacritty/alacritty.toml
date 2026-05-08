@@ -1,0 +1,19 @@
+[font]
+  size = 18.0
+  normal = { family = "Azeret Mono", style = "Regular" }
+
+[window]
+  decorations = "Buttonless"
+  startup_mode = "Windowed"
+  dimensions = { columns = 120, lines = 38 }
+  padding = { x = 15, y = 15 }
+  position = { x = 100, y = 200 }
+
+[keyboard]
+bindings = [
+  { key = "Up", mods = "Shift", action = "ScrollPageUp" },
+  { key = "Down", mods = "Shift", action = "ScrollPageDown" },
+]
+
+[colors.primary]
+  background = "#282c34"

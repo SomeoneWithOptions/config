@@ -1,0 +1,37 @@
+# Terraform local state
+.terraform/
+.terraform
+terraform.tfstate
+terraform.tfstate.*
+terraform.tfstate.backup
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# Private keys / credentials
+[k]eys/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Environment and local secret files
+.env
+.env.*
+*.tfvars
+client_secret*.json
+
+# Shell/local history
+fish/fish_history
+*_history
+.zsh_history
+.bash_history
+
+# Local pi state
+pi/agent/auth.json
+pi/agent/sessions/
+pi/agent/bin/
+
+# Local repo hygiene notes
+PUBLIC_REPO_SANITIZATION_PLAN.md

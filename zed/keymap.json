@@ -1,0 +1,15 @@
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-b": "workspace::ToggleRightDock"
+    }
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-j": "terminal_panel::ToggleFocus",
+      "ctrl-b": "workspace::ToggleRightDock"
+    }
+  }
+]

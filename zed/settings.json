@@ -1,0 +1,55 @@
+{
+  "edit_predictions": {
+    "provider": "zed"
+  },
+  "languages": {
+    "JSONC": {
+      "show_edit_predictions": true
+    }
+  },
+  "colorize_brackets": false,
+  "buffer_font_weight": 450.0,
+  "project_panel": {
+    "dock": "right"
+  },
+  "theme": "One Dark",
+  "vim_mode": true,
+  "tab_size": 4,
+  "ui_font_size": 16,
+  "buffer_font_size": 16.0,
+  "autosave": {
+    "after_delay": {
+      "milliseconds": 500
+    }
+  },
+  "relative_line_numbers": "enabled",
+  "ui_font_family": "Azeret Mono",
+  "buffer_font_family": "Azeret Mono",
+  "ensure_final_newline_on_save": false,
+  "format_on_save": "on",
+  "tab_bar": {
+    "show": false
+  },
+  "git": {
+    "inline_blame": {
+      "enabled": false
+    }
+  },
+  "buffer_font_features": {
+    "calt": false,
+    "liga": false,
+    "frac": false
+  },
+  "ui_font_features": {
+    "calt": false,
+    "liga": false,
+    "frac": false
+  },
+  "terminal": {
+    "font_features": {
+      "liga": false,
+      "clig": false,
+      "calt": false
+    }
+  }
+}

@@ -63,8 +63,8 @@ case "$OS" in
     copy_fonts "$VARIABLE_DIR" "$INSTALL_DIR"
     ;;
   *)
-    echo "Unsupported operating system: $OS"
-    exit 1
+    echo "Unsupported operating system for font installation: $OS; skipping."
+    exit 0
     ;;
 esac
 

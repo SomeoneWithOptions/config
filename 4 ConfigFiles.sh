@@ -97,6 +97,7 @@ copy_required "$SCRIPT_DIR/pi/agent/extensions/ask-user.ts" "$HOME/.pi/agent/ext
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/o-front" "$HOME/.pi/agent/skills/o-front"
+copy_dir_required "$SCRIPT_DIR/pi/agent/skills/grill-me" "$HOME/.pi/agent/skills/grill-me"
 
 # Fish Configuration
 mkdir -p "$HOME/.config/fish"

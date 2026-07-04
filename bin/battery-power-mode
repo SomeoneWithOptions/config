@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+AC=/sys/class/power_supply/AC/online
+[ -r "$AC" ] || exit 0
+if [ "$(cat "$AC")" = "0" ]; then
+  powerprofilesctl set power-saver 2>/dev/null || true
+else
+  powerprofilesctl set balanced 2>/dev/null || true
+fi

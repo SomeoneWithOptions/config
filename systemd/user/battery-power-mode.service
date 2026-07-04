@@ -1,0 +1,6 @@
+[Unit]
+Description=Set power profile based on AC/battery state
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/battery-power-mode

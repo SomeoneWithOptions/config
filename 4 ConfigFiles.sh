@@ -37,6 +37,14 @@ copy_required_if_missing() {
     fi
 }
 
+copy_executable_required() {
+    local source_path="$1"
+    local dest_path="$2"
+
+    copy_required "$source_path" "$dest_path"
+    chmod +x "$dest_path"
+}
+
 copy_dir_required() {
     local source_path="$1"
     local dest_path="$2"
@@ -88,6 +96,30 @@ current_login_shell() {
     printf '%s\n' "${SHELL:-}"
 }
 
+is_arch_like() {
+    if [[ ! -f /etc/os-release ]]; then
+        return 1
+    fi
+
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" == *"arch"* ]]
+}
+
+user_systemctl() {
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user "$@" || true
+    fi
+}
+
+restart_if_present() {
+    local command_name="$1"
+
+    if command -v "$command_name" >/dev/null 2>&1; then
+        "$command_name" || true
+    fi
+}
+
 # Pi Configuration
 mkdir -p "$HOME/.pi/agent/extensions"
 mkdir -p "$HOME/.pi/agent/skills"
@@ -96,10 +128,26 @@ copy_required "$SCRIPT_DIR/pi/agent/extensions/rtk-bash-rewrite.ts" "$HOME/.pi/a
 copy_required "$SCRIPT_DIR/pi/agent/extensions/ask-user.ts" "$HOME/.pi/agent/extensions/ask-user.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/exit-command.ts" "$HOME/.pi/agent/extensions/exit-command.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/web-research.ts" "$HOME/.pi/agent/extensions/web-research.ts"
+copy_required "$SCRIPT_DIR/pi/agent/extensions/omarchy-system-theme.ts" "$HOME/.pi/agent/extensions/omarchy-system-theme.ts"
+copy_required "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/o-front" "$HOME/.pi/agent/skills/o-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/grill-me" "$HOME/.pi/agent/skills/grill-me"
+
+# Local Helper Scripts
+mkdir -p "$HOME/.local/bin"
+for helper in \
+    alt-edit-shortcut \
+    battery-power-mode \
+    copy-file-to-clipboard \
+    lid-monitor-mode \
+    lid-monitor-mode-watch \
+    matrix-launch-screensaver \
+    matrix-screensaver \
+    omarchy-screenshot-file-clipboard; do
+    copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
+done
 
 # Fish Configuration
 mkdir -p "$HOME/.config/fish"
@@ -167,6 +215,12 @@ if [[ -n "${FISH_PATH:-}" ]]; then
     fi
 fi
 
+# Fontconfig / GTK / Mise Configuration
+copy_required "$SCRIPT_DIR/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"
+copy_required "$SCRIPT_DIR/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
+copy_required "$SCRIPT_DIR/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
+copy_required "$SCRIPT_DIR/mise/config.toml" "$HOME/.config/mise/config.toml"
+
 # Alacritty Configuration
 mkdir -p "$HOME/.config/alacritty"
 copy_required "$SCRIPT_DIR/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
@@ -202,34 +256,88 @@ touch "$VIMRC"
 append_line_once "set number" "$VIMRC"
 append_line_once "set relativenumber" "$VIMRC"
 
+# Neovim Configuration
+copy_dir_required "$SCRIPT_DIR/nvim" "$HOME/.config/nvim"
+
 # Hyprland Configuration
 if [[ "$OS_NAME" == "Linux" ]]; then
     mkdir -p "$HOME/.config/hypr"
-    copy_required "$SCRIPT_DIR/hypr/looknfeel.conf" "$HOME/.config/hypr/looknfeel.conf"
+    for hypr_file in \
+        autostart.conf \
+        bindings.conf \
+        hypridle.conf \
+        hyprland.conf \
+        hyprlock.conf \
+        hyprsunset.conf \
+        input.conf \
+        looknfeel.conf \
+        monitors.conf \
+        xdph.conf; do
+        copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
+    done
+
+    if command -v hyprctl >/dev/null 2>&1; then
+        hyprctl reload >/dev/null 2>&1 || true
+        hyprctl configerrors || true
+    fi
 fi
 
 # Arch/Omarchy Specific Configuration
-if [[ -f /etc/os-release ]]; then
-    # shellcheck disable=SC1091
-    . /etc/os-release
-    if [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" == *"arch"* ]]; then
-         copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
-
-         # Waybar: Show battery percentage
-         # Patch the existing file to preserve other Omarchy defaults instead of overwriting
-         WAYBAR_CONFIG="$HOME/.config/waybar/config.jsonc"
-         if [[ -f "$WAYBAR_CONFIG" ]]; then
-             before_hash=$(cksum < "$WAYBAR_CONFIG")
-             sed -i 's/"format-discharging": "{icon}"/"format-discharging": "{capacity}% {icon}"/' "$WAYBAR_CONFIG"
-             sed -i 's/"format-charging": "{icon}"/"format-charging": "{capacity}% {icon}"/' "$WAYBAR_CONFIG"
-             sed -i 's/"format-plugged": ""/"format-plugged": "{capacity}% "/' "$WAYBAR_CONFIG"
-             sed -i 's/"format-full": "󰂅"/"format-full": "{capacity}% 󰂅"/' "$WAYBAR_CONFIG"
-             after_hash=$(cksum < "$WAYBAR_CONFIG")
-
-             # Restart waybar only when config changed.
-             if [[ "$before_hash" != "$after_hash" ]] && command -v omarchy-restart-waybar >/dev/null; then
-                 omarchy-restart-waybar || true
-             fi
-         fi
+if is_arch_like; then
+    # XDG defaults
+    copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
+    copy_required "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
+    if command -v xdg-settings >/dev/null 2>&1 && command -v zen-browser >/dev/null 2>&1; then
+        xdg-settings set default-web-browser zen.desktop || true
     fi
+
+    # Waybar exact snapshot
+    mkdir -p "$HOME/.config/waybar/scripts"
+    copy_required "$SCRIPT_DIR/waybar/config.jsonc" "$HOME/.config/waybar/config.jsonc"
+    copy_required "$SCRIPT_DIR/waybar/style.css" "$HOME/.config/waybar/style.css"
+    copy_executable_required "$SCRIPT_DIR/waybar/scripts/battery-power-profile.sh" "$HOME/.config/waybar/scripts/battery-power-profile.sh"
+    restart_if_present omarchy-restart-waybar
+
+    # Walker exact snapshot
+    mkdir -p "$HOME/.config/walker/themes"
+    copy_required "$SCRIPT_DIR/walker/config.toml" "$HOME/.config/walker/config.toml"
+    copy_dir_required "$SCRIPT_DIR/walker/themes/spotlight" "$HOME/.config/walker/themes/spotlight"
+    restart_if_present omarchy-restart-walker
+
+    # Omarchy theme, branding, background, and hooks
+    mkdir -p "$HOME/.config/omarchy/branding"
+    mkdir -p "$HOME/.config/omarchy/backgrounds"
+    mkdir -p "$HOME/.config/omarchy/hooks/post-update.d"
+    mkdir -p "$HOME/.config/omarchy/hooks/theme-set.d"
+    copy_required "$SCRIPT_DIR/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
+    copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
+    copy_required "$SCRIPT_DIR/chess.jpg" "$HOME/.config/omarchy/backgrounds/chess.jpg"
+    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-go-with-mise" "$HOME/.config/omarchy/hooks/post-update.d/update-go-with-mise"
+    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/theme-set.d/only-chess-wallpaper" "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper"
+
+    if command -v omarchy-theme-current >/dev/null 2>&1; then
+        CURRENT_THEME=$(omarchy-theme-current 2>/dev/null || true)
+        if [[ "$CURRENT_THEME" != "Catppuccin" && "$CURRENT_THEME" != "catppuccin" ]]; then
+            if command -v omarchy >/dev/null 2>&1; then
+                omarchy theme set Catppuccin || true
+            elif command -v omarchy-theme-set >/dev/null 2>&1; then
+                omarchy-theme-set catppuccin || true
+            fi
+        fi
+    fi
+
+    mkdir -p "$HOME/.config/omarchy/current/theme"
+    copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
+    "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper" catppuccin || true
+    restart_if_present omarchy-restart-mako
+
+    # Custom user systemd units/timers
+    mkdir -p "$HOME/.config/systemd/user"
+    copy_required "$SCRIPT_DIR/systemd/user/battery-power-mode.service" "$HOME/.config/systemd/user/battery-power-mode.service"
+    copy_required "$SCRIPT_DIR/systemd/user/battery-power-mode.timer" "$HOME/.config/systemd/user/battery-power-mode.timer"
+    copy_required "$SCRIPT_DIR/systemd/user/mise-go-upgrade.service" "$HOME/.config/systemd/user/mise-go-upgrade.service"
+    copy_required "$SCRIPT_DIR/systemd/user/mise-go-upgrade.timer" "$HOME/.config/systemd/user/mise-go-upgrade.timer"
+    user_systemctl daemon-reload
+    user_systemctl enable --now battery-power-mode.timer
+    user_systemctl enable --now mise-go-upgrade.timer
 fi

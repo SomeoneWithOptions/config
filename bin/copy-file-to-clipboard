@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Offer a file on the Wayland clipboard like GNOME Files/Nautilus.
+
+The helper stays alive as the clipboard owner, like wl-copy does. It exits when
+another app replaces the clipboard.
+"""
+from __future__ import annotations
+
+import mimetypes
+import os
+import signal
+import sys
+from pathlib import Path
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+
+INLINE_IMAGE_MAX_BYTES = int(os.environ.get("FILE_CLIPBOARD_INLINE_IMAGE_MAX", 50 * 1024 * 1024))
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def bytes_provider(mime_type: str, data: bytes) -> Gdk.ContentProvider:
+    return Gdk.ContentProvider.new_for_bytes(mime_type, GLib.Bytes.new(data))
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        fail(f"Usage: {Path(sys.argv[0]).name} FILE")
+
+    path = Path(sys.argv[1]).expanduser().resolve()
+    if not path.is_file():
+        fail(f"Not a file: {path}")
+
+    Gtk.init()
+
+    gfile = Gio.File.new_for_path(str(path))
+    uri = gfile.get_uri()
+    path_text = str(path).encode("utf-8")
+    uri_list = f"{uri}\r\n".encode("utf-8")
+    gnome_copied_files = f"copy\n{uri}\n".encode("utf-8")
+
+    providers: list[Gdk.ContentProvider] = [
+        # GNOME Files/Nautilus file-copy format.
+        bytes_provider("x-special/gnome-copied-files", gnome_copied_files),
+        # Cross-toolkit file URI format.
+        bytes_provider("text/uri-list", uri_list),
+        # Terminals and plain text fields paste the path.
+        bytes_provider("text/plain;charset=utf-8", path_text),
+        bytes_provider("text/plain", path_text),
+    ]
+
+    # GTK/GNOME native file-list provider. On Wayland this also advertises the
+    # portal file-transfer MIME types used by sandboxed apps.
+    try:
+        file_list = Gdk.FileList.new_from_array([gfile])
+        value = GObject.Value(Gdk.FileList.__gtype__)
+        value.set_boxed(file_list)
+        providers.append(Gdk.ContentProvider.new_for_value(value))
+    except Exception:
+        pass
+
+    # For screenshots, also offer the actual image bytes. Apps that paste images
+    # directly can use this, while terminals still choose text/plain.
+    mime_type, _ = mimetypes.guess_type(path.name)
+    if mime_type and mime_type.startswith("image/") and path.stat().st_size <= INLINE_IMAGE_MAX_BYTES:
+        providers.append(bytes_provider(mime_type, path.read_bytes()))
+
+    display = Gdk.Display.get_default()
+    if display is None:
+        fail("No GDK display available")
+
+    clipboard = display.get_clipboard()
+    content = Gdk.ContentProvider.new_union(providers)
+    clipboard.set_content(content)
+
+    loop = GLib.MainLoop()
+
+    def quit_loop(*_args: object) -> None:
+        if loop.is_running():
+            loop.quit()
+
+    signal.signal(signal.SIGTERM, quit_loop)
+    signal.signal(signal.SIGINT, quit_loop)
+
+    def exit_after_clipboard_replaced() -> bool:
+        if not clipboard.is_local():
+            quit_loop()
+            return False
+        return True
+
+    GLib.timeout_add_seconds(1, exit_after_clipboard_replaced)
+    loop.run()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

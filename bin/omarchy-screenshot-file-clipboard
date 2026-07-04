@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Take an Omarchy screenshot, then put the saved PNG on the clipboard as a file
+# object, matching the practical behavior of copying an image from GNOME Files.
+
+mode="${1:-smart}"
+case "$mode" in
+  smart|region|windows|fullscreen)
+    shift || true
+    ;;
+  *)
+    mode="smart"
+    ;;
+esac
+
+filepath="$(omarchy-capture-screenshot "$mode" save "$@" | tail -n 1)"
+[[ -n "$filepath" && -f "$filepath" ]] || exit 0
+
+clipboard_helper="$HOME/.local/bin/copy-file-to-clipboard"
+if [[ -x "$clipboard_helper" ]]; then
+  setsid -f "$clipboard_helper" "$filepath" >/dev/null 2>&1
+else
+  # Minimal fallback: GNOME file-copy format only.
+  uri="$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().as_uri())' "$filepath")"
+  printf 'copy\n%s\n' "$uri" | wl-copy --type x-special/gnome-copied-files
+fi
+
+printf '%s\n' "$filepath"
+notify-send "Screenshot copied" "Paste to attach it, or paste in a terminal for its path." -t 3000 -i "$filepath"

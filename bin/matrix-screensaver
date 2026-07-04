@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Matrix-style screensaver for Omarchy/Hyprland.
+# Uses cmatrix when installed; falls back to TTE's matrix effect.
+
+screensaver_in_focus() {
+  hyprctl activewindow -j | jq -e '.class == "org.omarchy.screensaver"' >/dev/null 2>&1
+}
+
+exit_screensaver() {
+  hyprctl keyword cursor:invisible false &>/dev/null || true
+  pkill -x cmatrix 2>/dev/null
+  pkill -x tte 2>/dev/null
+  pkill -f org.omarchy.screensaver 2>/dev/null
+  exit 0
+}
+
+trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
+
+printf '\033]11;rgb:00/00/00\007'
+hyprctl keyword cursor:invisible true &>/dev/null
+
+tty_name=$(tty 2>/dev/null)
+
+# Hyprland applies the fullscreen window rule just after the terminal starts.
+# If cmatrix starts too early, it captures the small initial terminal size and
+# only paints the top-left area. Wait until the terminal looks fullscreen.
+for _ in {1..30}; do
+  read -r rows cols < <(stty size 2>/dev/null || echo "0 0")
+  if (( rows >= 35 && cols >= 100 )); then
+    break
+  fi
+  sleep 0.1
+done
+clear
+
+if command -v cmatrix &>/dev/null; then
+  cmatrix -abC green &
+else
+  tte -i ~/.config/omarchy/branding/screensaver.txt \
+    --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas \
+    --anchor-canvas c --anchor-text c --no-eol --no-restore-cursor matrix &
+fi
+
+while true; do
+  if read -n1 -t 1 || ! screensaver_in_focus; then
+    exit_screensaver
+  fi
+
+  if [[ -n "$tty_name" ]] && ! pgrep -t "${tty_name#/dev/}" -x cmatrix >/dev/null 2>&1 && ! pgrep -t "${tty_name#/dev/}" -x tte >/dev/null 2>&1; then
+    exit_screensaver
+  fi
+done

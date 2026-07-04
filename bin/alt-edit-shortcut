@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-}"
+
+window_class="$(hyprctl activewindow -j 2>/dev/null | jq -r '.class // ""' 2>/dev/null || true)"
+
+case "$window_class" in
+  Alacritty|org.alacritty.Alacritty|org.omarchy.*|foot|footclient|kitty|com.mitchellh.ghostty|com.mitchellh.ghostty.*)
+    terminal=1
+    ;;
+  *)
+    terminal=0
+    ;;
+esac
+
+case "$action:$terminal" in
+  copy:1)
+    hyprctl dispatch sendshortcut "CTRL SHIFT,C,activewindow"
+    ;;
+  paste:1)
+    hyprctl dispatch sendshortcut "CTRL SHIFT,V,activewindow"
+    ;;
+  copy:0)
+    hyprctl dispatch sendshortcut "CTRL,C,activewindow"
+    ;;
+  paste:0)
+    hyprctl dispatch sendshortcut "CTRL,V,activewindow"
+    ;;
+  *)
+    echo "Usage: alt-edit-shortcut copy|paste" >&2
+    exit 64
+    ;;
+esac

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Watch Hyprland monitor hotplug events and re-apply the existing lid monitor
+# policy. This intentionally calls `lid-monitor-mode startup`, which only
+# changes monitor layout when the laptop lid is CLOSED. Open-lid hotplug/wake
+# behavior stays controlled by monitors.conf and Hyprland defaults.
+
+SCRIPT="${HOME}/.local/bin/lid-monitor-mode"
+DEBOUNCE_SECONDS="${LID_MONITOR_MODE_DEBOUNCE_SECONDS:-1}"
+RECONNECT_SECONDS="${LID_MONITOR_MODE_RECONNECT_SECONDS:-2}"
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/lid-monitor-mode-watch.lock"
+
+socket_path() {
+  local runtime sig socket
+
+  runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  sig="${HYPRLAND_INSTANCE_SIGNATURE:-}"
+
+  if [ -n "$sig" ] && [ -S "${runtime}/hypr/${sig}/.socket2.sock" ]; then
+    printf '%s\n' "${runtime}/hypr/${sig}/.socket2.sock"
+    return 0
+  fi
+
+  socket="$(find "${runtime}/hypr" -mindepth 2 -maxdepth 2 -name .socket2.sock -print -quit 2>/dev/null || true)"
+  [ -n "$socket" ] || return 1
+  printf '%s\n' "$socket"
+}
+
+schedule_sync() {
+  (
+    flock -n 9 || exit 0
+    sleep "$DEBOUNCE_SECONDS"
+    "$SCRIPT" startup || true
+  ) 9>"$LOCK" &
+}
+
+# Apply once when the watcher starts in case it starts after a hotplug event.
+"$SCRIPT" startup || true
+
+while true; do
+  socket="$(socket_path || true)"
+  if [ -z "${socket:-}" ]; then
+    sleep "$RECONNECT_SECONDS"
+    continue
+  fi
+
+  socat -U - "UNIX-CONNECT:${socket}" 2>/dev/null | while IFS= read -r event; do
+    case "$event" in
+      monitoradded\>\>*|monitoraddedv2\>\>*|monitorremoved\>\>*|monitorremovedv2\>\>*)
+        schedule_sync
+        ;;
+    esac
+  done || true
+
+  sleep "$RECONNECT_SECONDS"
+done

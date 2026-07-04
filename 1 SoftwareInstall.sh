@@ -39,12 +39,13 @@ install_pi() {
     return 0
   fi
 
-  if ! has_command npm; then
-    warn "npm not found; cannot install pi."
+  if ! has_command curl; then
+    warn "curl not found; cannot install pi."
     return 0
   fi
 
-  run_or_warn "npm install pi" npm install -g @mariozechner/pi-coding-agent
+  log "Installing pi using the official installer."
+  curl -fsSL https://pi.dev/install.sh | sh || warn "Pi official installer failed."
 }
 
 install_rtk_official() {

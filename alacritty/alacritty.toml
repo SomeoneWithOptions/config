@@ -1,8 +1,9 @@
 [font]
-  size = 18.0
-  normal = { family = "Azeret Mono", style = "Regular" }
+  size = 13.0
+  normal = { family = "Azeret Mono" }
 
 [window]
+  opacity = 1.0
   decorations = "Buttonless"
   startup_mode = "Windowed"
   dimensions = { columns = 120, lines = 38 }

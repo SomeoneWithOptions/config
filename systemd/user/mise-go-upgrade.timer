@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Go update check via mise
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+Unit=mise-go-upgrade.service
+
+[Install]
+WantedBy=timers.target

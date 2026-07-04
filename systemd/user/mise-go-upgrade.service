@@ -1,0 +1,8 @@
+[Unit]
+Description=Update Go installed by mise
+Documentation=https://mise.jdx.dev/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mise upgrade -y go
+ExecStartPost=/usr/bin/mise prune -y go

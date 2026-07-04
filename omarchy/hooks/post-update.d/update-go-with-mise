@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Keep Go current after `omarchy update`.
+# Go is managed by mise in ~/.config/mise/config.toml.
+
+set -euo pipefail
+
+if ! command -v mise >/dev/null 2>&1; then
+  echo "mise not found; skipping Go update"
+  exit 0
+fi
+
+echo "Updating Go via mise..."
+
+# With go = "latest", this installs the newest available Go.
+# If Go is ever pinned to a major/minor range, mise will upgrade within that range.
+mise upgrade go --yes
+
+# Refresh shims if mise uses them on this system.
+mise reshim go >/dev/null 2>&1 || true
+
+echo "Go update complete: $(mise exec -- go version 2>/dev/null || go version 2>/dev/null || true)"

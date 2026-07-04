@@ -198,6 +198,83 @@ pacman_install_if_missing() {
   run_or_warn "pacman install ${package}" sudo pacman -S --needed --noconfirm "$package"
 }
 
+arch_install_if_missing() {
+  local package="$1"
+
+  if pacman_package_installed "$package"; then
+    log "${package} is already installed."
+    return 0
+  fi
+
+  if pacman -Si "$package" >/dev/null 2>&1; then
+    pacman_install_if_missing "$package"
+  elif has_command yay; then
+    run_or_warn "yay install ${package}" yay -S --needed --noconfirm "$package"
+  else
+    warn "Cannot install ${package}: package unavailable and yay not found."
+  fi
+}
+
+arch_remove_if_installed() {
+  local package="$1"
+
+  if ! pacman_package_installed "$package"; then
+    log "${package} is not installed; skipping removal."
+    return 0
+  fi
+
+  run_or_warn "pacman remove ${package}" sudo pacman -Rns --noconfirm "$package"
+}
+
+remove_stock_omarchy_apps() {
+  log "Removing stock Omarchy apps not wanted on this laptop config."
+
+  local package
+  for package in signal-desktop obsidian xournalpp typora aether cliamp kdenlive spotify pinta; do
+    arch_remove_if_installed "$package"
+  done
+}
+
+install_arch_zen_browser() {
+  if has_command omarchy; then
+    run_or_warn "omarchy install browser zen" omarchy install browser zen
+    return 0
+  fi
+
+  if has_command omarchy-install-browser; then
+    run_or_warn "omarchy install browser zen" omarchy-install-browser zen
+    return 0
+  fi
+
+  arch_install_if_missing zen-browser-bin
+}
+
+install_arch_laptop_packages() {
+  log "Ensuring laptop-specific packages are installed with pacman/yay."
+
+  local package
+  for package in \
+    terraform \
+    aws-cli-v2 \
+    bind \
+    fwupd \
+    cmatrix \
+    vlc \
+    libfprint-git \
+    fprintd \
+    usbutils \
+    libcamera \
+    libcamera-ipa \
+    libcamera-tools \
+    pipewire-libcamera \
+    gst-plugin-libcamera \
+    v4l2loopback-dkms; do
+    arch_install_if_missing "$package"
+  done
+
+  install_arch_zen_browser
+}
+
 install_arch_gcloud() {
   if has_command gcloud; then
     log "Google Cloud CLI is already installed."
@@ -246,6 +323,9 @@ install_arch_packages() {
   for package in git github-cli tmux fish alacritty vim curl gnupg openssh nodejs npm; do
     pacman_install_if_missing "$package"
   done
+
+  remove_stock_omarchy_apps
+  install_arch_laptop_packages
 
   install_arch_gcloud
 

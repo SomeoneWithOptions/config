@@ -45,7 +45,6 @@ variable "allowed_ports" {
     22,
     80,
     443,
-    5678
   ]
 }
 

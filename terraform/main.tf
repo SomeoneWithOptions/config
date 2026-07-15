@@ -93,7 +93,7 @@ data "aws_ami" "ubuntu_latest_arm" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.0.1https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp"
+  version = "6.0.1"
 
   name = "app-vpc"
 
@@ -189,11 +189,11 @@ module "ec2_instance" {
      #!/bin/bash
      set -eux
      printf 'Port %s\n' '${random_integer.ssh_port.result}' >/etc/ssh/sshd_config.d/99-terraform-port.conf
+     install -d -m 0755 /run/sshd
      sshd -t
-     systemctl disable --now ssh.socket || true
-     systemctl mask ssh.socket
-     systemctl enable ssh.service
-     systemctl restart ssh.service
+     systemctl daemon-reload
+     systemctl restart ssh.socket
+     ss -H -ltn 'sport = :${random_integer.ssh_port.result}' | grep -q .
      apt-get update
      apt-get install -y ca-certificates curl gnupg lsb-release
      install -m 0755 -d /etc/apt/keyrings

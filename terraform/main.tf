@@ -38,11 +38,15 @@ resource "random_shuffle" "selected_azs" {
   result_count = 2
 }
 
+resource "random_integer" "ssh_port" {
+  min = 1024
+  max = 65535
+}
+
 variable "allowed_ports" {
-  description = "Public TCP ports to expose. SSH is restricted by allowed_ssh_cidrs."
+  description = "Public TCP ports to expose in addition to the randomized SSH port."
   type        = list(number)
   default = [
-    22,
     80,
     443,
   ]
@@ -60,10 +64,6 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-locals {
-  ssh_ports     = contains(var.allowed_ports, 22) ? toset([22]) : toset([])
-  non_ssh_ports = toset([for port in var.allowed_ports : port if port != 22])
-}
 
 data "aws_ami" "ubuntu_latest_arm" {
   most_recent = true
@@ -93,7 +93,7 @@ data "aws_ami" "ubuntu_latest_arm" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.0.1"
+  version = "6.0.1https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp"
 
   name = "app-vpc"
 
@@ -116,19 +116,16 @@ resource "aws_security_group" "allowed_ports" {
   description = "Allowed ingress ports"
   vpc_id      = module.vpc.vpc_id
 
-  dynamic "ingress" {
-    for_each = local.ssh_ports
-    content {
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = var.allowed_ssh_cidrs
-      description = "SSH access"
-    }
+  ingress {
+    from_port   = random_integer.ssh_port.result
+    to_port     = random_integer.ssh_port.result
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidrs
+    description = "SSH access"
   }
 
   dynamic "ingress" {
-    for_each = local.non_ssh_ports
+    for_each = toset([for port in var.allowed_ports : port if port != 22])
     content {
       from_port        = ingress.value
       to_port          = ingress.value
@@ -186,10 +183,17 @@ module "ec2_instance" {
   ]
 
   associate_public_ip_address = true
+  user_data_replace_on_change = true
 
   user_data = <<-EOF
      #!/bin/bash
      set -eux
+     printf 'Port %s\n' '${random_integer.ssh_port.result}' >/etc/ssh/sshd_config.d/99-terraform-port.conf
+     sshd -t
+     systemctl disable --now ssh.socket || true
+     systemctl mask ssh.socket
+     systemctl enable ssh.service
+     systemctl restart ssh.service
      apt-get update
      apt-get install -y ca-certificates curl gnupg lsb-release
      install -m 0755 -d /etc/apt/keyrings
@@ -213,4 +217,8 @@ module "ec2_instance" {
 
 output "instance_public_ip" {
   value = module.ec2_instance.public_ip
+}
+
+output "ssh_command" {
+  value = "ssh -p ${random_integer.ssh_port.result} ubuntu@${module.ec2_instance.public_ip}"
 }

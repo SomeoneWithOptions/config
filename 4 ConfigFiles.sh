@@ -188,6 +188,7 @@ rm -f "$FISH_CONFIG_TMP"
 copy_required "$SCRIPT_DIR/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/theme.fish"
 copy_required "$SCRIPT_DIR/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
 copy_required "$SCRIPT_DIR/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
+copy_required "$SCRIPT_DIR/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
 if [[ -f "$SCRIPT_DIR/fish/fish_history" ]]; then
     copy_required_if_missing "$SCRIPT_DIR/fish/fish_history" "$HOME/.local/share/fish/fish_history"
 fi

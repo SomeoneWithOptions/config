@@ -1,107 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Toggle laptop/external display layout for Hyprland lid events.
-# close: if an external monitor is connected, make it the only active display.
-# open: restore the laptop panel and put externals beside it automatically.
-
-INTERNAL="eDP-1"
-INTERNAL_MODE="1920x1200@60"
-INTERNAL_SCALE="1.25"
-DEFAULT_EXTERNAL_SCALE="1"
-BENQ_MA320U_DESC="BNQ BenQ MA320U ET27S01282SL0"
-BENQ_MA320U_SCALE="1.5"
-STARTUP_WAIT_ATTEMPTS=20
-STARTUP_WAIT_SECONDS="0.5"
-
-state="${1:-toggle}"
-
-external_monitors() {
-  hyprctl monitors all | awk '
-    /^Monitor / { name=$2; disabled="" }
-    /^\tdisabled:/ {
-      disabled=$2
-      if (name !~ /^eDP-/ && disabled == "false") print name
-    }
-  '
-}
-
-external_description() {
-  local monitor="$1"
-
-  hyprctl monitors all | awk -v target="$monitor" '
-    /^Monitor / { in_target = ($2 == target) }
-    in_target && /^\tdescription:/ {
-      sub(/^\tdescription:[[:space:]]*/, "")
-      print
-      exit
-    }
-  '
-}
-
-external_scale() {
-  local monitor="$1" description
-
-  description="$(external_description "$monitor" || true)"
-  case "$description" in
-    "$BENQ_MA320U_DESC") printf '%s\n' "$BENQ_MA320U_SCALE" ;;
-    *) printf '%s\n' "$DEFAULT_EXTERNAL_SCALE" ;;
-  esac
-}
-
-has_external() {
-  [ -n "$(external_monitors)" ]
-}
+# Apply Omarchy's internal-display toggle to the laptop's current lid state.
+STARTUP_WAIT_ATTEMPTS="${LID_MONITOR_MODE_WAIT_ATTEMPTS:-20}"
+STARTUP_WAIT_SECONDS="${LID_MONITOR_MODE_WAIT_SECONDS:-0.5}"
+state="${1:-startup}"
 
 close_lid() {
-  if ! has_external; then
-    # No external display: keep the laptop panel usable.
-    hyprctl keyword monitor "${INTERNAL},${INTERNAL_MODE},0x0,${INTERNAL_SCALE}"
-    return 0
+  if omarchy-hw-external-monitors; then
+    omarchy-hyprland-monitor-internal off
   fi
-
-  # Avoid Hyprland's "layout is setup incorrectly" warning by not creating a
-  # temporary overlap: first disable the laptop panel, then move the external
-  # monitor to the origin.
-  first=1
-  batch="keyword monitor ${INTERNAL},disable"
-  while read -r monitor; do
-    [ -z "$monitor" ] && continue
-    scale="$(external_scale "$monitor")"
-    if [ "$first" = 1 ]; then
-      batch+=" ; keyword monitor ${monitor},preferred,0x0,${scale}"
-      first=0
-    else
-      batch+=" ; keyword monitor ${monitor},preferred,auto,${scale}"
-    fi
-  done < <(external_monitors)
-
-  hyprctl --batch "$batch"
 }
 
 open_lid() {
-  # Avoid a temporary overlap when the laptop opens: move the external monitor
-  # to the right of the laptop panel, then re-enable the laptop panel.
-  # eDP-1's logical width is 1920 / 1.25 = 1536.
-  batch=""
-  first=1
-  while read -r monitor; do
-    [ -z "$monitor" ] && continue
-    scale="$(external_scale "$monitor")"
-    if [ "$first" = 1 ]; then
-      batch+="keyword monitor ${monitor},preferred,1536x0,${scale}"
-      first=0
-    else
-      batch+=" ; keyword monitor ${monitor},preferred,auto,${scale}"
-    fi
-  done < <(external_monitors)
-
-  if [ -n "$batch" ]; then
-    batch+=" ; keyword monitor ${INTERNAL},${INTERNAL_MODE},0x0,${INTERNAL_SCALE}"
-    hyprctl --batch "$batch"
-  else
-    hyprctl keyword monitor "${INTERNAL},${INTERNAL_MODE},0x0,${INTERNAL_SCALE}"
-  fi
+  omarchy-hyprland-monitor-internal on
 }
 
 lid_state_from_proc() {
@@ -111,10 +23,9 @@ lid_state_from_proc() {
     [ -e "$state_file" ] || continue
     lid_state="$(awk '{print $NF}' "$state_file" 2>/dev/null || true)"
     case "$lid_state" in
-      open|closed) echo "$lid_state"; return 0 ;;
+      open|closed) printf '%s\n' "$lid_state"; return 0 ;;
     esac
   done
-
   return 1
 }
 
@@ -139,30 +50,22 @@ def eviocgsw(length):
 
 for namefile in glob.glob("/sys/class/input/input*/name"):
     try:
-        name = open(namefile, encoding="utf-8").read().strip()
-    except OSError:
-        continue
-
-    if name != "Lid Switch":
-        continue
-
-    input_dir = os.path.dirname(namefile)
-    for event_dir in glob.glob(os.path.join(input_dir, "event*")):
-        try:
-            uevent = open(os.path.join(event_dir, "uevent"), encoding="utf-8").read()
-            devname = next(
-                line.split("=", 1)[1]
-                for line in uevent.splitlines()
-                if line.startswith("DEVNAME=")
-            )
-            fd = os.open(os.path.join("/dev", devname), os.O_RDONLY | os.O_NONBLOCK)
-            buf = array.array("B", [0] * 8)
-            fcntl.ioctl(fd, eviocgsw(len(buf)), buf, True)
-            os.close(fd)
-            print("closed" if (buf[0] & 1) else "open")
-            sys.exit(0)
-        except Exception:
+        if open(namefile, encoding="utf-8").read().strip() != "Lid Switch":
             continue
+
+        for event_dir in glob.glob(os.path.join(os.path.dirname(namefile), "event*")):
+            uevent = open(os.path.join(event_dir, "uevent"), encoding="utf-8").read()
+            devname = next(line.split("=", 1)[1] for line in uevent.splitlines() if line.startswith("DEVNAME="))
+            fd = os.open(os.path.join("/dev", devname), os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                switches = array.array("B", [0] * 8)
+                fcntl.ioctl(fd, eviocgsw(len(switches)), switches, True)
+            finally:
+                os.close(fd)
+            print("closed" if switches[0] & 1 else "open")
+            sys.exit(0)
+    except (OSError, StopIteration):
+        continue
 
 sys.exit(1)
 PY
@@ -172,46 +75,28 @@ lid_state() {
   lid_state_from_proc || lid_state_from_evdev
 }
 
-wait_for_hyprctl() {
-  local i
-
-  for ((i = 1; i <= STARTUP_WAIT_ATTEMPTS; i++)); do
-    if hyprctl monitors all >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep "$STARTUP_WAIT_SECONDS"
-  done
-
-  return 1
-}
-
 startup_lid() {
   local current i
 
-  wait_for_hyprctl || true
-  current="$(lid_state || true)"
+  for ((i = 1; i <= STARTUP_WAIT_ATTEMPTS; i++)); do
+    hyprctl monitors all >/dev/null 2>&1 && break
+    sleep "$STARTUP_WAIT_SECONDS"
+  done
 
+  current="$(lid_state || true)"
   case "$current" in
     closed)
-      # Docks/USB-C displays can appear shortly after Hyprland starts.
+      # USB-C displays can appear shortly after Hyprland starts.
       for ((i = 1; i <= STARTUP_WAIT_ATTEMPTS; i++)); do
-        if has_external; then
+        if omarchy-hw-external-monitors; then
           close_lid
-          return 0
+          return
         fi
         sleep "$STARTUP_WAIT_SECONDS"
       done
-      close_lid
       ;;
-    open)
-      # Startup fix is only for already-closed boots. Normal open layout comes
-      # from monitors.conf, and live open/close changes use bindl events.
-      return 0
-      ;;
-    *)
-      echo "Could not determine lid state" >&2
-      return 1
-      ;;
+    open) ;;
+    *) printf 'Could not determine lid state\n' >&2; return 1 ;;
   esac
 }
 
@@ -219,8 +104,5 @@ case "$state" in
   close|closed|off) close_lid ;;
   open|opened|on) open_lid ;;
   startup|auto) startup_lid ;;
-  *)
-    echo "Usage: $0 {close|open|startup}" >&2
-    exit 2
-    ;;
+  *) printf 'Usage: %s {close|open|startup}\n' "$0" >&2; exit 2 ;;
 esac

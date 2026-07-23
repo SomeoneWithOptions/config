@@ -1,0 +1,54 @@
+@import "../omarchy/current/theme/swayosd.css";
+
+window#osd {
+  border: none;
+  border-radius: 18px;
+  background: alpha(@background-color, 0.94);
+}
+
+window#osd #container {
+  margin: 14px 18px;
+}
+
+window#osd label {
+  color: @label;
+  font-family: "DM Sans";
+  font-size: 12pt;
+  font-weight: 600;
+}
+
+window#osd image {
+  color: @image;
+}
+
+window#osd progressbar,
+window#osd segmentedprogress {
+  min-height: 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+}
+
+window#osd trough,
+window#osd segment {
+  min-height: inherit;
+  border: none;
+  border-radius: inherit;
+  background: alpha(@label, 0.22);
+}
+
+window#osd progress,
+window#osd segment.active {
+  min-height: inherit;
+  border: none;
+  border-radius: inherit;
+  background: @label;
+}
+
+window#osd segment {
+  margin-left: 6px;
+}
+
+window#osd segment:first-child {
+  margin-left: 0;
+}

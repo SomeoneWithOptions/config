@@ -134,6 +134,7 @@ copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/o-front" "$HOME/.pi/agent/skills/o-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/grill-me" "$HOME/.pi/agent/skills/grill-me"
+copy_dir_required "$SCRIPT_DIR/pi/agent/skills/impeccable" "$HOME/.pi/agent/skills/impeccable"
 
 # Local Helper Scripts
 mkdir -p "$HOME/.local/bin"
@@ -141,6 +142,7 @@ for helper in \
     alt-edit-shortcut \
     battery-power-mode \
     copy-file-to-clipboard \
+    hyprsunset-gamma-display \
     lid-monitor-mode \
     lid-monitor-mode-watch \
     matrix-launch-screensaver \
@@ -221,6 +223,7 @@ copy_required "$SCRIPT_DIR/fontconfig/fonts.conf" "$HOME/.config/fontconfig/font
 copy_required "$SCRIPT_DIR/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
 copy_required "$SCRIPT_DIR/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
 copy_required "$SCRIPT_DIR/mise/config.toml" "$HOME/.config/mise/config.toml"
+copy_required "$SCRIPT_DIR/git/ignore" "$HOME/.config/git/ignore"
 
 # Alacritty Configuration
 mkdir -p "$HOME/.config/alacritty"
@@ -281,6 +284,8 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
     fi
+    restart_if_present omarchy-restart-hypridle
+    restart_if_present omarchy-restart-hyprsunset
 fi
 
 # Arch/Omarchy Specific Configuration
@@ -298,6 +303,10 @@ if is_arch_like; then
     copy_required "$SCRIPT_DIR/waybar/style.css" "$HOME/.config/waybar/style.css"
     copy_executable_required "$SCRIPT_DIR/waybar/scripts/battery-power-profile.sh" "$HOME/.config/waybar/scripts/battery-power-profile.sh"
     restart_if_present omarchy-restart-waybar
+
+    # SwayOSD styling
+    copy_required "$SCRIPT_DIR/swayosd/style.css" "$HOME/.config/swayosd/style.css"
+    restart_if_present omarchy-restart-swayosd
 
     # Walker exact snapshot
     mkdir -p "$HOME/.config/walker/themes"

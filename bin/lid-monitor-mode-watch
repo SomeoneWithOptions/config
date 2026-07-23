@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Watch Hyprland monitor hotplug events and re-apply the existing lid monitor
-# policy. This intentionally calls `lid-monitor-mode startup`, which only
-# changes monitor layout when the laptop lid is CLOSED. Open-lid hotplug/wake
-# behavior stays controlled by monitors.conf and Hyprland defaults.
+# Handle only newly added monitors while the lid is already closed. Omarchy's
+# stock watcher handles removals, and its stock lid bindings handle open/close.
+# The delegated startup action is idempotent and does not issue direct modesets.
 
 SCRIPT="${HOME}/.local/bin/lid-monitor-mode"
 DEBOUNCE_SECONDS="${LID_MONITOR_MODE_DEBOUNCE_SECONDS:-1}"
@@ -47,7 +46,7 @@ while true; do
 
   socat -U - "UNIX-CONNECT:${socket}" 2>/dev/null | while IFS= read -r event; do
     case "$event" in
-      monitoradded\>\>*|monitoraddedv2\>\>*|monitorremoved\>\>*|monitorremovedv2\>\>*)
+      monitoradded\>\>*|monitoraddedv2\>\>*)
         schedule_sync
         ;;
     esac

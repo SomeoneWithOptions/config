@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
-AC=/sys/class/power_supply/AC/online
-[ -r "$AC" ] || exit 0
-if [ "$(cat "$AC")" = "0" ]; then
-  powerprofilesctl set power-saver 2>/dev/null || true
+
+POWER_SUPPLY_ROOT="${POWER_SUPPLY_ROOT:-/sys/class/power_supply}"
+STATE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/battery-power-mode.state"
+
+find_ac_online() {
+  local supply
+  for supply in "$POWER_SUPPLY_ROOT"/*; do
+    [ -r "$supply/type" ] && [ -r "$supply/online" ] || continue
+    [ "$(cat "$supply/type")" = "Mains" ] || continue
+    printf '%s\n' "$supply/online"
+    return
+  done
+  return 1
+}
+
+AC="$(find_ac_online || true)"
+[ -n "$AC" ] || exit 0
+online="$(cat "$AC")"
+[ "$(cat "$STATE" 2>/dev/null || true)" = "$online" ] && exit 0
+
+if [ "$online" = "0" ]; then
+  powerprofilesctl set power-saver
 else
-  powerprofilesctl set balanced 2>/dev/null || true
+  powerprofilesctl set balanced
 fi
+printf '%s\n' "$online" >"$STATE"

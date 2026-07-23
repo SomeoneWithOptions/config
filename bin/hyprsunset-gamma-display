@@ -1,0 +1,12 @@
+#!/bin/bash
+
+hyprctl hyprsunset gamma "${1:?gamma adjustment required}" >/dev/null || exit
+percent="$(hyprctl hyprsunset gamma)"
+percent="$(awk -v p="$percent" 'BEGIN{printf "%.0f", p}')"
+progress="$(awk -v p="$percent" 'BEGIN{printf "%.2f", p/100}')"
+[[ $progress == "0.00" ]] && progress="0.01"
+
+omarchy-swayosd-client \
+  --custom-icon display-brightness-symbolic \
+  --custom-progress "$progress" \
+  --custom-progress-text "Gamma ${percent}%"

@@ -48,6 +48,46 @@ install_pi() {
   curl -fsSL https://pi.dev/install.sh | sh || warn "Pi official installer failed."
 }
 
+install_commiter() {
+  if [ -x "$HOME/.local/bin/c" ]; then
+    log "commiter is already installed."
+    return 0
+  fi
+
+  if ! has_command curl; then
+    warn "curl not found; cannot install commiter."
+    return 0
+  fi
+
+  log "Installing commiter using the official installer."
+  curl -fsSL https://go.sanetomore.com/commiter | sh || warn "commiter installer failed."
+}
+
+install_npm_cli() {
+  local package="$1"
+  local command_name="$2"
+
+  if has_command "$command_name"; then
+    log "${command_name} is already installed."
+  elif has_command omarchy; then
+    run_or_warn "install ${command_name} npx wrapper" omarchy npx install "$package" "$command_name"
+  elif has_command npm; then
+    if [ "$(uname -s)" = "Linux" ] && has_command sudo; then
+      run_or_warn "npm install ${package}" sudo npm install --global "$package"
+    else
+      run_or_warn "npm install ${package}" npm install --global "$package"
+    fi
+  else
+    warn "npm not found; cannot install ${command_name}."
+  fi
+}
+
+install_personal_dev_tools() {
+  install_commiter
+  install_npm_cli @google/clasp clasp
+  install_npm_cli vercel vercel
+}
+
 install_rtk_official() {
   if has_command rtk; then
     log "RTK is already installed."
@@ -182,6 +222,8 @@ install_ubuntu_packages() {
   for package in 1password 1password-cli; do
     apt_install_if_missing "$package"
   done
+
+  install_personal_dev_tools
 }
 
 pacman_package_installed() {
@@ -340,6 +382,7 @@ install_arch_packages() {
 
   install_zed_linux
   install_arch_1password
+  install_personal_dev_tools
 }
 
 ensure_homebrew() {
@@ -496,6 +539,8 @@ install_macos_packages() {
       run_or_warn "Remove quarantine from Alacritty.app" sudo xattr -r -d com.apple.quarantine /Applications/Alacritty.app
     fi
   fi
+
+  install_personal_dev_tools
 }
 
 print_summary() {

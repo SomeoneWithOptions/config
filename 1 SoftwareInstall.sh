@@ -206,6 +206,9 @@ install_ubuntu_packages() {
     apt_install_if_missing "$package"
   done
 
+  # Ghostty has no official apt package; the config is still installed for a manual/snap build.
+  has_command ghostty || warn "Ghostty not installed: no official apt package, see https://ghostty.org/docs/install/binary"
+
   install_rtk_official
   verify_rtk
   install_pi
@@ -363,7 +366,7 @@ install_arch_packages() {
 
   log "Ensuring core packages are installed with pacman."
   local package
-  for package in git github-cli tmux fish alacritty vim curl gnupg openssh nodejs npm; do
+  for package in git github-cli tmux fish alacritty ghostty vim curl gnupg openssh nodejs npm; do
     pacman_install_if_missing "$package"
   done
 
@@ -518,7 +521,7 @@ install_macos_packages() {
 
   log "Ensuring applications are installed with Homebrew Cask."
   local cask
-  for cask in alacritty zed; do
+  for cask in alacritty ghostty zed; do
     brew_install_cask_if_missing "$cask" "$cask"
   done
   brew_install_cask_if_missing aerospace nikitabobko/tap/aerospace

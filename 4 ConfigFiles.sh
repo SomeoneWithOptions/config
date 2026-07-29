@@ -237,6 +237,9 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
     fi
 fi
 
+# Ghostty Configuration
+copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
+
 # Tmux Configuration
 TMUX_CONF="$HOME/.tmux.conf"
 touch "$TMUX_CONF"

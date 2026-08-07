@@ -123,12 +123,14 @@ restart_if_present() {
 # Pi Configuration
 mkdir -p "$HOME/.pi/agent/extensions"
 mkdir -p "$HOME/.pi/agent/skills"
+mkdir -p "$HOME/code/worktrees" # /worktree extension creates worktrees here
 copy_required "$SCRIPT_DIR/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/rtk-bash-rewrite.ts" "$HOME/.pi/agent/extensions/rtk-bash-rewrite.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/ask-user.ts" "$HOME/.pi/agent/extensions/ask-user.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/exit-command.ts" "$HOME/.pi/agent/extensions/exit-command.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/web-research.ts" "$HOME/.pi/agent/extensions/web-research.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/omarchy-system-theme.ts" "$HOME/.pi/agent/extensions/omarchy-system-theme.ts"
+copy_required "$SCRIPT_DIR/pi/agent/extensions/worktree.ts" "$HOME/.pi/agent/extensions/worktree.ts"
 copy_required "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"

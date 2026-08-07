@@ -7,6 +7,7 @@ bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" "$ROOT"/bin/*
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
+node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

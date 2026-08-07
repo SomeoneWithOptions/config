@@ -9,6 +9,10 @@ python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
 
+# Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
+grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"
+grep -q '#zen-appcontent-navbar-wrapper' "$ROOT/zen/userChrome.css"
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/bin" "$tmp/power/AC0" "$tmp/runtime"

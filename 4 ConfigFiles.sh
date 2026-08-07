@@ -302,6 +302,20 @@ if is_arch_like; then
         xdg-settings set default-web-browser zen.desktop || true
     fi
 
+    # Zen prefs + chrome CSS. Profile dirs are randomly named, so fan out over
+    # all of them. Zen only creates a profile on first launch: if none exists
+    # yet, launch Zen once and re-run this script.
+    zen_profiles_found=0
+    for zen_profile in "$HOME"/.config/zen/*/; do
+        [[ -f "$zen_profile/times.json" || -f "$zen_profile/prefs.js" ]] || continue
+        copy_required "$SCRIPT_DIR/zen/user.js" "$zen_profile/user.js"
+        copy_required "$SCRIPT_DIR/zen/userChrome.css" "$zen_profile/chrome/userChrome.css"
+        zen_profiles_found=1
+    done
+    if [[ $zen_profiles_found -eq 0 ]]; then
+        printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
+    fi
+
     # Waybar exact snapshot
     mkdir -p "$HOME/.config/waybar/scripts"
     copy_required "$SCRIPT_DIR/waybar/config.jsonc" "$HOME/.config/waybar/config.jsonc"

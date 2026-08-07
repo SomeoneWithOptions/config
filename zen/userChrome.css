@@ -1,0 +1,56 @@
+/* Browser UI sans font: DM Sans as primary, with Helvetica-like free
+   substitutes (Nimbus Sans / Liberation Sans) as fallbacks. Web-page fonts
+   are set separately in user.js and are NOT affected by this file. */
+#navigator-toolbox,
+#browser,
+#zen-main-app-wrapper,
+#zen-sidebar-web-panel-wrapper,
+menupopup,
+panel,
+tooltip,
+toolbar,
+.tab-label,
+.tabbrowser-tab,
+#urlbar,
+#searchbar {
+  font-family: "DM Sans", "Nimbus Sans", "Liberation Sans", sans-serif !important;
+}
+
+/* Browser UI monospace font: Azeret Mono (Zen's default UI typeface) for the
+   few chrome areas that explicitly request a monospace context. */
+#navigator-toolbox :is(code, pre, kbd, samp),
+#browser :is(code, pre, kbd, samp),
+#zen-main-app-wrapper :is(code, pre, kbd, samp),
+#zen-sidebar-web-panel-wrapper :is(code, pre, kbd, samp),
+menupopup :is(code, pre, kbd, samp),
+panel :is(code, pre, kbd, samp),
+tooltip :is(code, pre, kbd, samp),
+#urlbar.mono,
+#searchbar.mono {
+  font-family: "Azeret Mono", monospace !important;
+}
+
+/* Hide Zen/Firefox native window controls/titlebar button strip on Linux. */
+.titlebar-buttonbox-container,
+.titlebar-buttonbox,
+#titlebar .titlebar-buttonbox-container,
+#titlebar .titlebar-buttonbox {
+  display: none !important;
+}
+
+/* Compact Mode: kill the top-edge hover reveal only. Zen attaches mouseover to
+   #zen-appcontent-navbar-wrapper (ZenCompactMode.mjs hoverableElements,
+   screenEdge "top"); the hover sets [zen-has-hover] on it AND
+   [has-toolbar-hovered] on #tabbrowser-tabpanels, and that second one is what
+   shifts the page up (zen-browser-container.css). Making the collapsed strip
+   mouse-transparent means neither ever fires. Sidebar is a separate hoverable
+   element, so left-edge hover for tabs still works. */
+:root[zen-compact-mode='true']
+  #zen-appcontent-navbar-wrapper:not([zen-has-hover]):not([has-popup-menu]):not([zen-compact-mode-active]):not([flash-popup]) {
+  pointer-events: none !important;
+}
+
+/* Ctrl+L / focused urlbar must stay clickable even inside that dead strip. */
+:root[zen-compact-mode='true'] #urlbar:is([focused], [open], [breakout-extend='true']) {
+  pointer-events: auto !important;
+}

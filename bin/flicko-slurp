@@ -51,6 +51,9 @@ wait "$pid" || true
 pid=
 rm -f "$pidfile"
 
+# Allow compositor frame pass to complete unmapping flicko-picker overlay
+sleep 0.05
+
 result=$(<"$output")
 if [[ ${FLICKO_TEST:-0} == 1 ]]; then
   [[ $result == "10,20 300x200" ]] || {

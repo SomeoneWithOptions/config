@@ -10,6 +10,7 @@ ShellRoot {
     readonly property string outputPath: Quickshell.env("FLICKO_OUTPUT") || ""
     readonly property color accent: Quickshell.env("FLICKO_ACCENT") || "#89b4fa"
     readonly property color background: Quickshell.env("FLICKO_BACKGROUND") || "#1e1e2e"
+    property bool pickerVisible: true
     property string activeScreenName: Quickshell.env("FLICKO_SCREEN") || ""
     property bool selecting: false
     property real startX: 0
@@ -35,11 +36,13 @@ ShellRoot {
     }
 
     function writeResult(value) {
+        pickerVisible = false
         if (outputPath) resultFile.setText(value)
         Qt.callLater(Qt.quit)
     }
 
     function finish() {
+        pickerVisible = false
         var x = Math.round(left)
         var y = Math.round(top)
         var width = Math.max(1, Math.round(right) - x)
@@ -49,6 +52,7 @@ ShellRoot {
     }
 
     function fullscreen(screen) {
+        pickerVisible = false
         startX = screen.x
         startY = screen.y
         endX = screen.x + screen.width
@@ -57,6 +61,7 @@ ShellRoot {
     }
 
     function cancel() {
+        pickerVisible = false
         selecting = false
         writeResult("")
     }
@@ -116,7 +121,7 @@ ShellRoot {
             id: panel
             property var modelData
             screen: modelData
-            visible: Quickshell.env("FLICKO_TEST") !== "1"
+            visible: root.pickerVisible && Quickshell.env("FLICKO_TEST") !== "1"
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; right: true; bottom: true; left: true }
@@ -154,36 +159,36 @@ ShellRoot {
                     anchors.fill: parent
                     color: root.background
                     opacity: 0.78
-                    visible: !root.selecting || !stage.intersects
+                    visible: root.pickerVisible && (!root.selecting || !stage.intersects)
                 }
 
                 Rectangle {
                     x: 0; y: 0; width: parent.width; height: stage.clippedTop
                     color: root.background; opacity: 0.78
-                    visible: root.selecting && stage.intersects
+                    visible: root.pickerVisible && root.selecting && stage.intersects
                 }
                 Rectangle {
                     x: 0; y: stage.clippedBottom
                     width: parent.width; height: parent.height - y
                     color: root.background; opacity: 0.78
-                    visible: root.selecting && stage.intersects
+                    visible: root.pickerVisible && root.selecting && stage.intersects
                 }
                 Rectangle {
                     x: 0; y: stage.clippedTop
                     width: stage.clippedLeft; height: stage.clippedBottom - stage.clippedTop
                     color: root.background; opacity: 0.78
-                    visible: root.selecting && stage.intersects
+                    visible: root.pickerVisible && root.selecting && stage.intersects
                 }
                 Rectangle {
                     x: stage.clippedRight; y: stage.clippedTop
                     width: parent.width - x; height: stage.clippedBottom - stage.clippedTop
                     color: root.background; opacity: 0.78
-                    visible: root.selecting && stage.intersects
+                    visible: root.pickerVisible && root.selecting && stage.intersects
                 }
 
                 Item {
                     anchors.fill: parent
-                    visible: root.selecting && panel.screen.name === root.activeScreenName
+                    visible: root.pickerVisible && root.selecting && panel.screen.name === root.activeScreenName
 
                     ElasticRope {
                         anchors.fill: parent
@@ -215,11 +220,11 @@ ShellRoot {
                     color: "transparent"
                     border.color: root.accent
                     border.width: 4
-                    visible: root.selecting
+                    visible: root.pickerVisible && root.selecting
                 }
 
                 Repeater {
-                    model: root.selecting ? [
+                    model: (root.pickerVisible && root.selecting) ? [
                         [stage.selectionLeft, stage.selectionTop],
                         [stage.selectionRight, stage.selectionTop],
                         [stage.selectionLeft, stage.selectionBottom],
@@ -264,7 +269,7 @@ ShellRoot {
                     height: 26
                     radius: 13
                     color: root.accent
-                    visible: pointer.containsMouse && !root.selecting
+                    visible: root.pickerVisible && pointer.containsMouse && !root.selecting
                 }
             }
         }

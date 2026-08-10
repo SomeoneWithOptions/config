@@ -8,6 +8,12 @@ bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
+if command -v qmllint >/dev/null 2>&1; then
+  qmllint -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
+fi
+if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+  FLICKO_PICKER_DIR="$ROOT/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null
+fi
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"

@@ -20,18 +20,15 @@ fi
 
 capacity=${capacity:-0}
 
-if [[ "$state" == "charging" ]]; then
-  icons=(󰢜 󰂆 󰂇 󰂈 󰢝 󰂉 󰢞 󰂊 󰂋 󰂅)
-elif [[ "$state" == "fully-charged" || "$state" == "full" ]]; then
-  icons=(󰂅 󰂅 󰂅 󰂅 󰂅 󰂅 󰂅 󰂅 󰂅 󰂅)
-else
-  icons=(󰁺 󰁻 󰁼 󰁽 󰁾 󰁿 󰂀 󰂁 󰂂 󰁹)
+if [[ "$capacity" -ge 95 ]]; then icon="battery_android_full"
+elif [[ "$capacity" -ge 80 ]]; then icon="battery_android_6"
+elif [[ "$capacity" -ge 65 ]]; then icon="battery_android_5"
+elif [[ "$capacity" -ge 50 ]]; then icon="battery_android_4"
+elif [[ "$capacity" -ge 35 ]]; then icon="battery_android_3"
+elif [[ "$capacity" -ge 20 ]]; then icon="battery_android_2"
+elif [[ "$capacity" -ge 10 ]]; then icon="battery_android_1"
+else icon="battery_android_0"
 fi
-idx=$(( capacity / 10 ))
-(( idx > 9 )) && idx=9
-icon=${icons[$idx]}
-[[ "$state" == "fully-charged" || "$state" == "full" ]] && icon="󰂅"
-[[ "$state" == "charging" && "$capacity" -ge 100 ]] && icon="󰂅"
 
 case "$profile" in
   power-saver) class="power-saver"; label="Battery saver" ;;
@@ -44,4 +41,5 @@ tooltip="$label • ${capacity}%"
 [[ -n "${rate:-}" ]] && tooltip="$tooltip • $rate"
 [[ -n "${state_label:-}" ]] && tooltip="$tooltip • $state_label"
 
-printf '{"text":"%s%% %s","class":"%s","tooltip":"%s"}\n' "$capacity" "$icon" "$class" "$tooltip"
+# Separate sizes and baseline offsets center both glyphs optically inside the pill.
+printf '{"text":"<span font=\x27Material Symbols Rounded 12 @FILL=1\x27 rise=\x27-1200\x27>%s</span> <span rise=\x27600\x27>%s%%</span>","class":"%s","tooltip":"%s"}\n' "$icon" "$capacity" "$class" "$tooltip"

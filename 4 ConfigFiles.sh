@@ -295,6 +295,11 @@ fi
 
 # Arch/Omarchy Specific Configuration
 if is_arch_like; then
+    # Animated screenshot selector. Adapter is named `slurp` only inside the
+    # screenshot wrapper's scoped PATH, leaving the system slurp untouched.
+    copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
+    copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
+
     # XDG defaults
     copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
     copy_required "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"

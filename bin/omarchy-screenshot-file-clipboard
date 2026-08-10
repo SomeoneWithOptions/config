@@ -14,7 +14,14 @@ case "$mode" in
     ;;
 esac
 
-filepath="$(omarchy-capture-screenshot "$mode" save "$@" | tail -n 1)"
+capture_path="$PATH"
+if command -v quickshell >/dev/null 2>&1 \
+  && [[ -x "$HOME/.local/lib/flicko-picker/slurp" ]] \
+  && [[ -f "$HOME/.config/quickshell/flicko-picker/shell.qml" ]]; then
+  capture_path="$HOME/.local/lib/flicko-picker:$capture_path"
+fi
+
+filepath="$(PATH="$capture_path" omarchy-capture-screenshot "$mode" save "$@" | tail -n 1)"
 [[ -n "$filepath" && -f "$filepath" ]] || exit 0
 
 clipboard_helper="$HOME/.local/bin/copy-file-to-clipboard"

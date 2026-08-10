@@ -305,6 +305,7 @@ install_arch_laptop_packages() {
     bind \
     fwupd \
     cmatrix \
+    quickshell \
     vlc \
     libfprint-git \
     fprintd \

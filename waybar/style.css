@@ -7,7 +7,7 @@
   border: none;
   border-radius: 0;
   min-height: 0;
-  font-family: 'DM Sans', 'JetBrainsMono Nerd Font';
+  font-family: 'DM Sans', 'Material Symbols Rounded', 'JetBrainsMono Nerd Font';
   font-size: 12px;
 }
 
@@ -21,34 +21,27 @@ window#waybar {
 #time {
   background-color: #000000;
   border-radius: 999px;
-  margin: 3px;
+  margin: 3px 5px;
 }
 
-/* One spacing system: every module carries 6px side padding (-> 12px between
-   neighbours), each pill adds 8px so the edge inset is 14px >= corner radius. */
+.modules-left,
+.modules-right {
+  margin: 0;
+}
+
 #system,
 #time {
-  padding: 0 8px;
+  padding: 0 10px;
 }
 
-/* apps pill: no padding of its own so it collapses to nothing when tray empty
-   and no update is pending. Inner spacing comes from the children. */
 #apps {
   padding: 0;
 }
 
-.modules-left {
-  margin-left: 8px;
-}
-
-.modules-right {
-  margin-right: 8px;
-}
-
 #workspaces button {
   all: initial;
-  min-width: 12px;
-  padding: 0;
+  min-width: 14px;
+  padding: 0 2px;
   margin: 0;
   color: @foreground;
   font-family: 'DM Sans';
@@ -60,7 +53,6 @@ window#waybar {
   opacity: 0.5;
 }
 
-/* text modules: 6px each side -> 12px between neighbours */
 #workspaces,
 #cpu,
 #custom-battery-profile,
@@ -72,11 +64,6 @@ window#waybar {
   font-weight: 600;
 }
 
-/* icon-only modules: uniform box + 4px each side.
-   Nerd Font's Material Design glyphs cannot be spaced evenly here -- their ink
-   is not centred inside its advance box (measured offsets varied by ~4px), so
-   equal boxes still produced ragged gaps. Material Symbols draws every icon on
-   one 24px grid, centred, so equal padding is all that's needed. */
 #pulseaudio,
 #custom-omarchy,
 #custom-update,
@@ -91,13 +78,10 @@ window#waybar {
   padding: 0 4px;
 }
 
-/* these three are fed by scripts in ~/.local/share/omarchy (read-only), which
-   still emit Nerd Font glyphs -- leave them on the font that has them */
 #custom-screenrecording-indicator,
 #custom-idle-indicator,
 #custom-notification-silencing-indicator {
-  font-family: 'JetBrainsMono Nerd Font';
-  font-size: 14px;
+  font-family: 'Material Symbols Rounded';
 }
 
 #custom-battery-profile.power-saver {
@@ -112,19 +96,16 @@ window#waybar {
   color: #8fce8f;
 }
 
-/* Padding lives here, not on #apps: waybar hides #tray when there are no items,
-   so the pill collapses to nothing instead of leaving a black nub.
-   14px >= the pill's 13px corner radius, otherwise icons clip the rounded ends. */
 #tray {
   margin: 0;
-  padding: 0 12px;
+  padding: 0 10px;
 }
 
 tooltip {
-  padding: 2px;
+  padding: 4px 8px;
   background-color: #000000;
+  border-radius: 8px;
 }
-
 
 #custom-weather.unavailable {
   min-width: 0;
@@ -136,15 +117,9 @@ tooltip {
   opacity: 0;
 }
 
-#custom-screenrecording-indicator.active {
-  color: #a55555;
-}
-
+#custom-screenrecording-indicator.active,
 #custom-idle-indicator.active,
-#custom-notification-silencing-indicator.active {
-  color: #a55555;
-}
-
+#custom-notification-silencing-indicator.active,
 #custom-voxtype.recording {
   color: #a55555;
 }

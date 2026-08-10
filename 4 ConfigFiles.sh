@@ -326,10 +326,7 @@ if is_arch_like; then
     fi
 
     # Waybar exact snapshot
-    mkdir -p "$HOME/.config/waybar/scripts"
-    copy_required "$SCRIPT_DIR/waybar/config.jsonc" "$HOME/.config/waybar/config.jsonc"
-    copy_required "$SCRIPT_DIR/waybar/style.css" "$HOME/.config/waybar/style.css"
-    copy_executable_required "$SCRIPT_DIR/waybar/scripts/battery-power-profile.sh" "$HOME/.config/waybar/scripts/battery-power-profile.sh"
+    copy_dir_required "$SCRIPT_DIR/waybar" "$HOME/.config/waybar"
     restart_if_present omarchy-restart-waybar
 
     # SwayOSD styling

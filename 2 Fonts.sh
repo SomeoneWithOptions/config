@@ -45,6 +45,7 @@ install_font_set() {
   copy_fonts "$FONT_ROOT/azaret/variable" "$install_dir"
   copy_fonts "$FONT_ROOT/dm-sans" "$install_dir"
   copy_fonts "$FONT_ROOT/dejavu" "$install_dir"
+  copy_fonts "$FONT_ROOT/material-symbols-rounded" "$install_dir"
 }
 
 OS="$(uname)"

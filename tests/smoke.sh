@@ -4,7 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
-  "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" "$ROOT"/bin/*
+  "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
+  "$ROOT"/bin/* "$ROOT"/waybar/scripts/*
+python -m json.tool "$ROOT/waybar/config.jsonc" >/dev/null
+for script in battery-power-profile idle notification-silencing screen-recording; do
+  grep -q "~/.config/waybar/scripts/$script.sh" "$ROOT/waybar/config.jsonc"
+  test -x "$ROOT/waybar/scripts/$script.sh"
+done
+test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null

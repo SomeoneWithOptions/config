@@ -19,26 +19,16 @@ fi
 
 capacity=${capacity:-0}
 
-if [[ "$state" == "charging" || "$state" == "fully-charged" ]]; then
-  if [[ "$capacity" -ge 95 ]]; then icon="battery_charging_full"
-  elif [[ "$capacity" -ge 85 ]]; then icon="battery_charging_90"
-  elif [[ "$capacity" -ge 70 ]]; then icon="battery_charging_80"
-  elif [[ "$capacity" -ge 50 ]]; then icon="battery_charging_60"
-  elif [[ "$capacity" -ge 30 ]]; then icon="battery_charging_50"
-  elif [[ "$capacity" -ge 20 ]]; then icon="battery_charging_30"
-  else icon="battery_charging_20"
-  fi
-else
-  if [[ "$capacity" -ge 95 ]]; then icon="battery_android_full"
-  elif [[ "$capacity" -ge 80 ]]; then icon="battery_android_6"
-  elif [[ "$capacity" -ge 65 ]]; then icon="battery_android_5"
-  elif [[ "$capacity" -ge 50 ]]; then icon="battery_android_4"
-  elif [[ "$capacity" -ge 35 ]]; then icon="battery_android_3"
-  elif [[ "$capacity" -ge 20 ]]; then icon="battery_android_2"
-  elif [[ "$capacity" -ge 10 ]]; then icon="battery_android_1"
-  else icon="battery_android_0"
-  fi
+if [[ "$capacity" -ge 95 ]]; then icon="battery_android_full"
+elif [[ "$capacity" -ge 80 ]]; then icon="battery_android_6"
+elif [[ "$capacity" -ge 65 ]]; then icon="battery_android_5"
+elif [[ "$capacity" -ge 50 ]]; then icon="battery_android_4"
+elif [[ "$capacity" -ge 35 ]]; then icon="battery_android_3"
+elif [[ "$capacity" -ge 20 ]]; then icon="battery_android_2"
+elif [[ "$capacity" -ge 10 ]]; then icon="battery_android_1"
+else icon="battery_android_0"
 fi
+[[ "$state" == "charging" ]] && icon="battery_android_frame_bolt"
 
 case "$profile" in
   power-saver) class="power-saver"; label="Battery saver" ;;

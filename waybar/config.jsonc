@@ -107,9 +107,7 @@
     "format-ethernet": "<span font='Material Symbols Rounded 12 @FILL=1'>lan</span>",
     "format-icons": [
       "<span font='Material Symbols Rounded 12 @FILL=1'>wifi_1_bar</span>",
-      "<span font='Material Symbols Rounded 12 @FILL=1'>wifi_1_bar</span>",
       "<span font='Material Symbols Rounded 12 @FILL=1'>wifi_2_bar</span>",
-      "<span font='Material Symbols Rounded 12 @FILL=1'>wifi_3_bar</span>",
       "<span font='Material Symbols Rounded 12 @FILL=1'>wifi</span>"
     ],
     "format-wifi": "{icon}",

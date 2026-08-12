@@ -363,7 +363,28 @@ if is_arch_like; then
     copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
     copy_required "$SCRIPT_DIR/chess.jpg" "$HOME/.config/omarchy/backgrounds/chess.jpg"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-go-with-mise" "$HOME/.config/omarchy/hooks/post-update.d/update-go-with-mise"
+    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/reapply-user-config" "$HOME/.config/omarchy/hooks/post-update.d/reapply-user-config"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/theme-set.d/only-chess-wallpaper" "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper"
+
+    # The hook above reapplies this repo after `omarchy update` runs its migrations,
+    # so it needs a checkout that outlives the update. `bootstrap.sh` deliberately
+    # runs from a throwaway /tmp extract, so on a new laptop there is nothing at
+    # CONFIG_REPO and the hook would skip silently -- exactly the failure it exists
+    # to prevent. Clone over HTTPS: `5 Keys.sh` installs SSH keys only afterwards.
+    CONFIG_REPO="$HOME/code/config"
+    if [[ "$SCRIPT_DIR" != "$CONFIG_REPO" && ! -d "$CONFIG_REPO" ]]; then
+        if command -v git >/dev/null 2>&1; then
+            mkdir -p "$(dirname "$CONFIG_REPO")"
+            if git clone https://github.com/SomeoneWithOptions/config.git "$CONFIG_REPO"; then
+                git -C "$CONFIG_REPO" remote set-url --push origin git@github.com:SomeoneWithOptions/config.git
+                printf 'Cloned config repo to %s for post-update reapply\n' "$CONFIG_REPO"
+            else
+                printf 'Could not clone config repo to %s; post-update reapply will skip.\n' "$CONFIG_REPO" >&2
+            fi
+        else
+            printf 'git not found; skipped config repo clone to %s.\n' "$CONFIG_REPO" >&2
+        fi
+    fi
 
     if command -v omarchy-theme-current >/dev/null 2>&1; then
         CURRENT_THEME=$(omarchy-theme-current 2>/dev/null || true)

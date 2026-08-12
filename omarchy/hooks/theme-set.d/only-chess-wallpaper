@@ -2,7 +2,7 @@
 set -euo pipefail
 THEME_NAME="${1:-}"
 [[ "$THEME_NAME" == "catppuccin" ]] || exit 0
-SRC="/.config/omarchy/backgrounds/chess.jpg"
+SRC="$HOME/.config/omarchy/backgrounds/chess.jpg"
 DEST_DIR="$HOME/.config/omarchy/current/theme/backgrounds"
 [[ -f "$SRC" ]] || exit 0
 mkdir -p "$DEST_DIR"

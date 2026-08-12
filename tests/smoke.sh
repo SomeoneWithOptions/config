@@ -56,36 +56,20 @@ if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 &
   DESKTOP_FRAME_TEST=1 timeout 5 quickshell --no-color --path "$ROOT/quickshell/desktop-frame" >/dev/null
 fi
 
-# Hooks are fire-and-forget: `omarchy-hook` swallows failures and this one guards on
-# a path, so a wrong path just exits 0 and the wallpaper silently reverts to the
-# theme's stock background. Run it against a fake HOME so that stays caught.
-hook_tmp="$(mktemp -d)"
-mkdir -p "$hook_tmp/home/.config/omarchy/backgrounds" "$hook_tmp/bin"
-printf 'x' >"$hook_tmp/home/.config/omarchy/backgrounds/chess.jpg"
-for stub in pkill setsid uwsm-app swaybg; do
-  printf '#!/bin/sh\nexit 0\n' >"$hook_tmp/bin/$stub"
-done
-chmod +x "$hook_tmp/bin"/*
-run_theme_hook() {
-  HOME="$hook_tmp/home" PATH="$hook_tmp/bin:$PATH" \
-    bash "$ROOT/omarchy/hooks/theme-set.d/only-chess-wallpaper" "$1"
-}
-run_theme_hook catppuccin
-test -f "$hook_tmp/home/.config/omarchy/current/theme/backgrounds/chess.jpg"
-[ "$(readlink "$hook_tmp/home/.config/omarchy/current/background")" \
-  = "$hook_tmp/home/.config/omarchy/current/theme/backgrounds/chess.jpg" ]
-run_theme_hook tokyo-night # other themes keep their own wallpaper
-rm -rf "$hook_tmp"
-
 # Migrations rewrite ~/.config in place during `omarchy update`, so the post-update
 # hook reapplying this repo is the only thing keeping customizations. Its missing-repo
 # guard must exit 0 rather than run the installer from a bad path.
 test -x "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'post-update.d/reapply-user-config' "$ROOT/4 ConfigFiles.sh"
 # A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go
-# unprotected without ever saying so.
-! CONFIG_REPO=/nonexistent PATH=/usr/bin:/bin \
+# unprotected without ever saying so. notify-send is stubbed: the guard's whole job is
+# to shout, and unstubbed it shouts at the real desktop on every test run.
+notify_stub="$(mktemp -d)"
+printf '#!/bin/sh\nexit 0\n' >"$notify_stub/notify-send"
+chmod +x "$notify_stub/notify-send"
+! CONFIG_REPO=/nonexistent PATH="$notify_stub:/usr/bin:/bin" \
   bash "$ROOT/omarchy/hooks/post-update.d/reapply-user-config" >/dev/null 2>&1
+rm -rf "$notify_stub"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"

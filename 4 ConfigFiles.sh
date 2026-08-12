@@ -354,17 +354,13 @@ if is_arch_like; then
     copy_dir_required "$SCRIPT_DIR/walker/themes/frame" "$HOME/.config/walker/themes/frame"
     restart_if_present omarchy-restart-walker
 
-    # Omarchy theme, branding, background, and hooks
+    # Omarchy theme, branding, and hooks
     mkdir -p "$HOME/.config/omarchy/branding"
-    mkdir -p "$HOME/.config/omarchy/backgrounds"
     mkdir -p "$HOME/.config/omarchy/hooks/post-update.d"
-    mkdir -p "$HOME/.config/omarchy/hooks/theme-set.d"
     copy_required "$SCRIPT_DIR/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
     copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
-    copy_required "$SCRIPT_DIR/chess.jpg" "$HOME/.config/omarchy/backgrounds/chess.jpg"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-go-with-mise" "$HOME/.config/omarchy/hooks/post-update.d/update-go-with-mise"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/reapply-user-config" "$HOME/.config/omarchy/hooks/post-update.d/reapply-user-config"
-    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/theme-set.d/only-chess-wallpaper" "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper"
 
     # The hook above reapplies this repo after `omarchy update` runs its migrations,
     # so it needs a checkout that outlives the update. `bootstrap.sh` deliberately
@@ -399,7 +395,6 @@ if is_arch_like; then
 
     mkdir -p "$HOME/.config/omarchy/current/theme"
     copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
-    "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper" catppuccin || true
     # mako is stopped while the desktop frame owns notifications; reloading it
     # then just prints a DBus error. The theme file above is still its fallback.
     if pgrep -x mako >/dev/null 2>&1; then

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -25,9 +24,12 @@ Item {
     readonly property int rowHeight: 54
     readonly property int rowGap: 4
     readonly property int searchHeight: 72
-    readonly property int frameInset: 12
-    readonly property int corner: 18
-    readonly property color frameColor: "#000000"
+
+    FrameStyle { id: style }
+
+    readonly property int frameInset: style.edgeInset
+    readonly property int corner: style.cornerRadius
+    readonly property color frameColor: style.frameColor
     readonly property string uiFont: "DM Sans"
     readonly property string detailFont: "Azeret Mono"
     readonly property int closeDuration: reduceMotion ? 0 : 400
@@ -198,8 +200,8 @@ Item {
                     width: card.bodyWidth
                     height: parent.height
                     color: root.frameColor
-                    topLeftRadius: 24
-                    topRightRadius: 24
+                    topLeftRadius: root.corner
+                    topRightRadius: root.corner
                 }
 
                 Fillet {
@@ -511,22 +513,7 @@ Item {
             }
     }
 
-    // Shared with Notifications.qml: quarter-circle cutout joining panel to frame.
-    component Fillet: Shape {
-        id: fillet
-        readonly property int r: root.corner
-        width: r
-        height: r
-        preferredRendererType: Shape.CurveRenderer
-        ShapePath {
-            strokeWidth: 0
-            fillColor: root.frameColor
-            PathSvg {
-                path: "M 0 0 L " + fillet.r + " 0 L " + fillet.r + " " + fillet.r
-                    + " A " + fillet.r + " " + fillet.r + " 0 0 0 0 0 Z"
-            }
-        }
-    }
+    component Fillet: FrameJoin {}
 
     Variants {
         model: Quickshell.screens

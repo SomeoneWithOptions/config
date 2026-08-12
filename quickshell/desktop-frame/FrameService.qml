@@ -11,13 +11,33 @@ Item {
 
     property var shell
     property bool enabled: true
-    readonly property int borderWidth: 12
-    readonly property int radius: 18
-    // Standalone: matches Waybar's 29px window so the black top strip reaches
-    // the app's flush edge. Quattro: tracks the shell bar's own height.
+
+    FrameStyle { id: style }
+
+    readonly property int borderWidth: style.borderWidth
+    readonly property int radius: style.cornerRadius
+    // Squircle instead of a circular arc. Higher power preserves more app
+    // chrome near each corner. Kept with every frame metric in FrameStyle.
+    readonly property real roundingPower: style.roundingPower
+    // Standalone uses Waybar height; Quattro tracks shell bar height.
     readonly property int topHeight: shell && shell.bar && shell.bar.barSize
-        ? shell.bar.barSize : 29
-    readonly property color frameColor: "#000000"
+        ? shell.bar.barSize : style.topBarHeight
+    // Paint past reserved gap so frame and app curves do not fight.
+    readonly property int overlap: style.overlap
+    readonly property color frameColor: style.frameColor
+
+    // Wedge between the square corner and the squircle, sampled as a polyline.
+    // At 18px a 24-segment fan is already sub-pixel, so no Bezier fitting needed.
+    function cornerPath(r, flipX, flipY) {
+        var pts = []
+        for (var i = 0; i <= 24; i++) {
+            var t = Math.PI / 2 * (1 - i / 24)
+            var x = r * (1 - Math.pow(Math.cos(t), 2 / roundingPower))
+            var y = r * (1 - Math.pow(Math.sin(t), 2 / roundingPower))
+            pts.push((flipX ? r - x : x) + " " + (flipY ? r - y : y))
+        }
+        return "M " + (flipX ? r : 0) + " " + (flipY ? r : 0) + " L " + pts.join(" L ") + " Z"
+    }
 
     component EdgePanel: PanelWindow {
         required property var modelData
@@ -31,7 +51,11 @@ Item {
         color: root.frameColor
         mask: Region {}
         WlrLayershell.namespace: "andres-desktop-frame-" + edge
-        WlrLayershell.layer: WlrLayer.Bottom
+        // These panels paint `overlap` px past what they reserve, so they have
+        // to sit above the windows or that extra strip renders behind them and
+        // does nothing. The top edge stays on Bottom: Waybar is already a Top
+        // layer covering the same strip, and racing it would hide the bar.
+        WlrLayershell.layer: edge === "top" ? WlrLayer.Bottom : WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     }
 
@@ -41,7 +65,7 @@ Item {
         EdgePanel {
             edge: "left"
             anchors { top: true; bottom: true; left: true }
-            implicitWidth: root.borderWidth
+            implicitWidth: root.borderWidth + root.overlap
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -52,7 +76,7 @@ Item {
         EdgePanel {
             edge: "right"
             anchors { top: true; right: true; bottom: true }
-            implicitWidth: root.borderWidth
+            implicitWidth: root.borderWidth + root.overlap
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -63,7 +87,7 @@ Item {
         EdgePanel {
             edge: "bottom"
             anchors { right: true; bottom: true; left: true }
-            implicitHeight: root.borderWidth
+            implicitHeight: root.borderWidth + root.overlap
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -93,10 +117,10 @@ Item {
             readonly property bool fullscreen: hyprMonitor && hyprMonitor.activeWorkspace
                 ? hyprMonitor.activeWorkspace.hasFullscreen : false
             readonly property int r: root.radius
-            readonly property int leftEdge: root.borderWidth
-            readonly property int rightEdge: width - root.borderWidth
+            readonly property int leftEdge: root.borderWidth + root.overlap
+            readonly property int rightEdge: width - root.borderWidth - root.overlap
             readonly property int topEdge: root.topHeight
-            readonly property int bottomEdge: height - root.borderWidth
+            readonly property int bottomEdge: height - root.borderWidth - root.overlap
 
             screen: modelData
             visible: root.enabled && !fullscreen
@@ -118,7 +142,7 @@ Item {
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: "M 0 0 L " + corners.r + " 0 A " + corners.r + " " + corners.r + " 0 0 0 0 " + corners.r + " Z" }
+                    PathSvg { path: root.cornerPath(corners.r, false, false) }
                 }
             }
 
@@ -131,7 +155,7 @@ Item {
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: "M 0 0 L " + corners.r + " 0 L " + corners.r + " " + corners.r + " A " + corners.r + " " + corners.r + " 0 0 0 0 0 Z" }
+                    PathSvg { path: root.cornerPath(corners.r, true, false) }
                 }
             }
 
@@ -144,7 +168,7 @@ Item {
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: "M 0 0 A " + corners.r + " " + corners.r + " 0 0 0 " + corners.r + " " + corners.r + " L 0 " + corners.r + " Z" }
+                    PathSvg { path: root.cornerPath(corners.r, false, true) }
                 }
             }
 
@@ -157,7 +181,7 @@ Item {
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: "M " + corners.r + " 0 L " + corners.r + " " + corners.r + " L 0 " + corners.r + " A " + corners.r + " " + corners.r + " 0 0 0 " + corners.r + " 0 Z" }
+                    PathSvg { path: root.cornerPath(corners.r, true, true) }
                 }
             }
         }

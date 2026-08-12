@@ -19,7 +19,7 @@ if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
   "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
-  for qml in FrameService.qml Launcher.qml Notifications.qml shell.qml; do
+  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml Notifications.qml shell.qml; do
     "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/desktop-frame/$qml"
   done
 fi

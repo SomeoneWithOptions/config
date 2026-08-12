@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -16,14 +15,17 @@ Item {
     property double now: Date.now()
     readonly property var items: server.trackedNotifications.values
     readonly property int count: items.length
-    // The stack is a drawer of the frame itself: it starts where the black top
-    // strip ends, runs into the right border, and slides out from behind them.
-    readonly property int topOffset: 29
-    readonly property int frameBorder: 12
-    readonly property int corner: 18
+
+    FrameStyle { id: style }
+
+    // Drawer joins painted frame edges, not smaller reserved workspace edges.
+    // This keeps full curves visible where it leaves top and right bars.
+    readonly property int topOffset: style.topBarHeight
+    readonly property int frameBorder: style.edgeInset
+    readonly property int corner: style.cornerRadius
     readonly property int cardsWidth: 400
     readonly property int pad: 10
-    readonly property color frameColor: "#000000"
+    readonly property color frameColor: style.frameColor
     readonly property string uiFont: "DM Sans"
     readonly property string detailFont: "Azeret Mono"
     readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
@@ -439,21 +441,7 @@ Item {
         }
     }
 
-    component Fillet: Shape {
-        id: fillet
-        readonly property int r: root.corner
-        width: r
-        height: r
-        preferredRendererType: Shape.CurveRenderer
-        ShapePath {
-            strokeWidth: 0
-            fillColor: root.frameColor
-            PathSvg {
-                path: "M 0 0 L " + fillet.r + " 0 L " + fillet.r + " " + fillet.r
-                    + " A " + fillet.r + " " + fillet.r + " 0 0 0 0 0 Z"
-            }
-        }
-    }
+    component Fillet: FrameJoin {}
 
     Variants {
         model: Quickshell.screens

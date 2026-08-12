@@ -188,27 +188,33 @@ ShellRoot {
 
                 Item {
                     anchors.fill: parent
-                    visible: root.pickerVisible && root.selecting && panel.screen.name === root.activeScreenName
+                    visible: root.pickerVisible && (root.selecting
+                        ? panel.screen.name === root.activeScreenName
+                        : pointer.containsMouse)
 
                     ElasticRope {
                         anchors.fill: parent
                         anchorX: 0; anchorY: 0
-                        targetX: stage.selectionLeft; targetY: stage.selectionTop
+                        targetX: root.selecting ? stage.selectionLeft : pointer.mouseX
+                        targetY: root.selecting ? stage.selectionTop : pointer.mouseY
                     }
                     ElasticRope {
                         anchors.fill: parent
                         anchorX: parent.width; anchorY: 0
-                        targetX: stage.selectionRight; targetY: stage.selectionTop
+                        targetX: root.selecting ? stage.selectionRight : pointer.mouseX
+                        targetY: root.selecting ? stage.selectionTop : pointer.mouseY
                     }
                     ElasticRope {
                         anchors.fill: parent
                         anchorX: 0; anchorY: parent.height
-                        targetX: stage.selectionLeft; targetY: stage.selectionBottom
+                        targetX: root.selecting ? stage.selectionLeft : pointer.mouseX
+                        targetY: root.selecting ? stage.selectionBottom : pointer.mouseY
                     }
                     ElasticRope {
                         anchors.fill: parent
                         anchorX: parent.width; anchorY: parent.height
-                        targetX: stage.selectionRight; targetY: stage.selectionBottom
+                        targetX: root.selecting ? stage.selectionRight : pointer.mouseX
+                        targetY: root.selecting ? stage.selectionBottom : pointer.mouseY
                     }
                 }
 

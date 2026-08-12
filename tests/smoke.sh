@@ -58,7 +58,7 @@ fi
 
 # Migrations rewrite ~/.config in place during `omarchy update`, so the post-update
 # hook reapplying this repo is the only thing keeping customizations. Its missing-repo
-# guard must exit 0 rather than run the installer from a bad path.
+# guard must fail loudly rather than run the installer from a bad path.
 test -x "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'post-update.d/reapply-user-config' "$ROOT/4 ConfigFiles.sh"
 # A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go

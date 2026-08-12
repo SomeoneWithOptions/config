@@ -20,7 +20,7 @@ Item {
 
     // Drawer joins painted frame edges, not smaller reserved workspace edges.
     // This keeps full curves visible where it leaves top and right bars.
-    readonly property int topOffset: style.topBarHeight
+    readonly property int topOffset: style.drawerTop
     readonly property int frameBorder: style.edgeInset
     readonly property int corner: style.cornerRadius
     readonly property int cardsWidth: 400

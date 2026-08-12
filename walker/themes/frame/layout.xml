@@ -16,9 +16,10 @@
         <property name="orientation">horizontal</property>
         <property name="valign">start</property>
         <property name="halign">center</property>
-        <!-- Flush with the bottom of the frame's 29px top strip, so the menu
-             reads as a drawer sliding out of it (same as the notification stack). -->
-        <property name="margin-top">29</property>
+        <!-- Flush with the bottom of the frame's top strip, so the menu reads as
+             a drawer sliding out of it (same as the notification stack). XML
+             cannot read FrameStyle: keep in sync with its drawerTop. -->
+        <property name="margin-top">41</property>
         <!-- Concave fillets into the top strip. They need their own widgets: a
              gradient's geometry is computed over the whole background area, so
              background-size alone cannot scope one to a corner. -->

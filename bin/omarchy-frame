@@ -6,6 +6,7 @@ hypr_config=${DESKTOP_FRAME_HYPR_CONFIG:-$HOME/.config/hypr/desktop-frame.conf}
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy
 state_flag=$state_dir/desktop-frame-off
 dnd_flag=$state_dir/notifications-silenced
+waybar_flag=$state_dir/toggles/waybar-off
 log=$state_dir/desktop-frame.log
 
 write_geometry() {
@@ -27,6 +28,29 @@ EOF
     command -v hyprctl >/dev/null && hyprctl reload >/dev/null
   fi
   rm -f "$tmp"
+}
+
+# Omarchy only autostarts Waybar when this toggle flag is absent
+# (default/hypr/autostart.conf). The Quickshell top bar replaces Waybar, so the
+# flag has to follow the frame state instead of being set by hand -- otherwise a
+# freshly installed machine boots with both bars stacked on top of each other.
+sync_waybar() {
+  if is_off; then
+    rm -f "$waybar_flag"
+    return
+  fi
+  mkdir -p "$(dirname "$waybar_flag")"
+  touch "$waybar_flag"
+}
+
+stop_waybar() {
+  pkill -x waybar >/dev/null 2>&1 || true
+}
+
+start_waybar() {
+  pgrep -x waybar >/dev/null 2>&1 && return 0
+  command -v omarchy-restart-waybar >/dev/null 2>&1 && omarchy-restart-waybar
+  return 0
 }
 
 quattro_running() {
@@ -73,20 +97,27 @@ is_off() {
 case ${1:-status} in
   configure)
     mkdir -p "$state_dir"
+    sync_waybar
     if is_off; then write_geometry 10 8; else write_geometry 0 18; fi
     ;;
   start)
     mkdir -p "$state_dir"
+    sync_waybar
     if is_off; then
       write_geometry 10 8
     else
       write_geometry 0 18
+      # Waybar's autostart and this one are both exec-once, so the flag alone
+      # does not settle the race on a machine that had Waybar running.
+      stop_waybar
       quattro_running || start_shell
     fi
     ;;
   on)
     mkdir -p "$state_dir"
     rm -f "$state_flag"
+    sync_waybar
+    stop_waybar
     write_geometry 0 18
     quattro_running || start_shell
     printf 'Desktop frame enabled.\n'
@@ -94,8 +125,10 @@ case ${1:-status} in
   off|restore)
     mkdir -p "$state_dir"
     touch "$state_flag"
+    sync_waybar
     stop_shell
     start_mako
+    start_waybar
     write_geometry 10 8
     printf 'Original desktop restored. Re-enable: omarchy-frame on\n'
     ;;

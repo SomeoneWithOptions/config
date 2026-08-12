@@ -10,6 +10,10 @@ ShellRoot {
         enabled: !root.testMode
     }
 
+    TopBar {
+        enabled: !root.testMode
+    }
+
     Launcher {
         id: launcher
     }

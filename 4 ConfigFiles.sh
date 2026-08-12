@@ -336,9 +336,13 @@ if is_arch_like; then
         fi
     fi
 
-    # Waybar exact snapshot
+    # Waybar exact snapshot. It is the fallback bar for `omarchy-frame off`, so
+    # the config is still installed, but restarting it while the frame owns the
+    # top bar would stack two bars. `omarchy-frame configure` above owns the flag.
     copy_dir_required "$SCRIPT_DIR/waybar" "$HOME/.config/waybar"
-    restart_if_present omarchy-restart-waybar
+    if [[ ! -e "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/toggles/waybar-off" ]]; then
+        restart_if_present omarchy-restart-waybar
+    fi
 
     # SwayOSD styling
     copy_required "$SCRIPT_DIR/swayosd/style.css" "$HOME/.config/swayosd/style.css"

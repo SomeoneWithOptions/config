@@ -19,7 +19,7 @@ if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
   "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
-  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml Notifications.qml shell.qml; do
+  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml Notifications.qml TopBar.qml shell.qml; do
     "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/desktop-frame/$qml"
   done
 fi
@@ -42,9 +42,13 @@ run_frame() {
 run_frame configure
 grep -qx '    gaps_out = 0' "$frame_tmp/desktop-frame.conf"
 grep -qx '    rounding = 18' "$frame_tmp/desktop-frame.conf"
+# Waybar must stay suppressed while the frame owns the top bar, and come back
+# when it does not. Inverting this stacks two bars on a fresh machine.
+test -e "$frame_tmp/state/omarchy/toggles/waybar-off"
 touch "$frame_tmp/state/omarchy/desktop-frame-off"
 run_frame configure
 grep -qx '    gaps_out = 10' "$frame_tmp/desktop-frame.conf"
+test ! -e "$frame_tmp/state/omarchy/toggles/waybar-off"
 [ "$(run_frame status)" = "off (original desktop)" ]
 rm -rf "$frame_tmp"
 if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then

@@ -6,7 +6,7 @@ QtObject {
     readonly property int overlap: 7
     readonly property int edgeInset: borderWidth + overlap
     readonly property int cornerRadius: 18
-    readonly property int topBarHeight: 29
+    readonly property int topBarHeight: 42
     // Keep in sync with decoration:rounding_power in Hyprland looknfeel.conf.
     readonly property real roundingPower: 4.0
     readonly property color frameColor: "#000000"

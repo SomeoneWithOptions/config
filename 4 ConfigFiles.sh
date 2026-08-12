@@ -149,6 +149,7 @@ for helper in \
     lid-monitor-mode-watch \
     matrix-launch-screensaver \
     matrix-screensaver \
+    omarchy-frame \
     omarchy-screenshot-file-clipboard; do
     copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
 done
@@ -285,6 +286,11 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
     done
 
+    # hyprland.conf sources this, so it must exist before the reload below.
+    # `omarchy-frame` owns it afterwards -- copying it every run would clobber
+    # the machine-local on/off state.
+    copy_required_if_missing "$SCRIPT_DIR/hypr/desktop-frame.conf" "$HOME/.config/hypr/desktop-frame.conf"
+
     if command -v hyprctl >/dev/null 2>&1; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
@@ -299,6 +305,11 @@ if is_arch_like; then
     # screenshot wrapper's scoped PATH, leaving the system slurp untouched.
     copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
+
+    # Standalone today; same manifest/components load as a Quattro plugin later.
+    copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/quickshell/desktop-frame"
+    copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
+    "$HOME/.local/bin/omarchy-frame" configure
 
     # XDG defaults
     copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
@@ -336,7 +347,7 @@ if is_arch_like; then
     # Walker exact snapshot
     mkdir -p "$HOME/.config/walker/themes"
     copy_required "$SCRIPT_DIR/walker/config.toml" "$HOME/.config/walker/config.toml"
-    copy_dir_required "$SCRIPT_DIR/walker/themes/spotlight" "$HOME/.config/walker/themes/spotlight"
+    copy_dir_required "$SCRIPT_DIR/walker/themes/frame" "$HOME/.config/walker/themes/frame"
     restart_if_present omarchy-restart-walker
 
     # Omarchy theme, branding, background, and hooks
@@ -364,7 +375,11 @@ if is_arch_like; then
     mkdir -p "$HOME/.config/omarchy/current/theme"
     copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
     "$HOME/.config/omarchy/hooks/theme-set.d/only-chess-wallpaper" catppuccin || true
-    restart_if_present omarchy-restart-mako
+    # mako is stopped while the desktop frame owns notifications; reloading it
+    # then just prints a DBus error. The theme file above is still its fallback.
+    if pgrep -x mako >/dev/null 2>&1; then
+        restart_if_present omarchy-restart-mako
+    fi
 
     # Custom user systemd units/timers
     mkdir -p "$HOME/.config/systemd/user"

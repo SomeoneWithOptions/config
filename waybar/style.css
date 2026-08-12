@@ -12,7 +12,9 @@
 }
 
 window#waybar {
-  background: transparent;
+  /* Opaque so the top strip reads as part of the black frame instead of
+     letting the window below show through the gaps around the pills. */
+  background: #000000;
 }
 
 /* pills */

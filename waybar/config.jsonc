@@ -88,7 +88,7 @@
   },
   "custom/notification-silencing-indicator": {
     "exec": "~/.config/waybar/scripts/notification-silencing.sh",
-    "on-click": "omarchy-toggle-notification-silencing",
+    "on-click": "~/.local/bin/omarchy-frame notify dnd",
     "return-type": "json",
     "signal": 10
   },

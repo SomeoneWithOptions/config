@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "andres.desktop-frame",
+  "name": "Desktop Frame",
+  "version": "1.0.0",
+  "author": "Andres",
+  "description": "Black rounded desktop frame and bottom program launcher",
+  "kinds": ["service", "menu"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "FrameService.qml",
+    "menu": "Launcher.qml"
+  }
+}

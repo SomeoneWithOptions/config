@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_dir=${DESKTOP_FRAME_CONFIG:-$HOME/.config/quickshell/desktop-frame}
+hypr_config=${DESKTOP_FRAME_HYPR_CONFIG:-$HOME/.config/hypr/desktop-frame.conf}
+state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy
+state_flag=$state_dir/desktop-frame-off
+dnd_flag=$state_dir/notifications-silenced
+log=$state_dir/desktop-frame.log
+
+write_geometry() {
+  local gaps=$1 rounding=$2 tmp
+  mkdir -p "$(dirname "$hypr_config")"
+  tmp=$(mktemp)
+  cat >"$tmp" <<EOF
+# Managed by \`omarchy-frame on|off\`.
+general {
+    gaps_out = $gaps
+}
+
+decoration {
+    rounding = $rounding
+}
+EOF
+  if [[ ! -f $hypr_config ]] || ! cmp -s "$tmp" "$hypr_config"; then
+    cp "$tmp" "$hypr_config"
+    command -v hyprctl >/dev/null && hyprctl reload >/dev/null
+  fi
+  rm -f "$tmp"
+}
+
+quattro_running() {
+  command -v omarchy-shell >/dev/null 2>&1 \
+    && timeout 1 omarchy-shell shell ping >/dev/null 2>&1
+}
+
+# Only one process can own org.freedesktop.Notifications. Mako wins the login
+# race (Omarchy autostarts it first), so hand the bus name over before starting.
+stop_mako() {
+  systemctl --user stop mako.service >/dev/null 2>&1 || true
+  pkill -x mako >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    pgrep -x mako >/dev/null 2>&1 || return 0
+    sleep 0.05
+  done
+}
+
+start_mako() {
+  pgrep -x mako >/dev/null 2>&1 && return 0
+  systemctl --user start mako.service >/dev/null 2>&1 || true
+}
+
+start_shell() {
+  [[ -d $config_dir ]] || return 1
+  mkdir -p "$state_dir"
+  [[ -f $dnd_flag ]] || printf '0\n' >"$dnd_flag"
+  stop_mako
+  QS_NO_RELOAD_POPUP=1 quickshell --no-color --no-duplicate --daemonize --path "$config_dir" >>"$log" 2>&1 || true
+}
+
+stop_shell() {
+  quickshell kill --path "$config_dir" >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    quickshell list --path "$config_dir" 2>/dev/null | grep -q '^Instance ' || return 0
+    sleep 0.05
+  done
+}
+
+is_off() {
+  [[ -e $state_flag ]]
+}
+
+case ${1:-status} in
+  configure)
+    mkdir -p "$state_dir"
+    if is_off; then write_geometry 10 8; else write_geometry 0 18; fi
+    ;;
+  start)
+    mkdir -p "$state_dir"
+    if is_off; then
+      write_geometry 10 8
+    else
+      write_geometry 0 18
+      quattro_running || start_shell
+    fi
+    ;;
+  on)
+    mkdir -p "$state_dir"
+    rm -f "$state_flag"
+    write_geometry 0 18
+    quattro_running || start_shell
+    printf 'Desktop frame enabled.\n'
+    ;;
+  off|restore)
+    mkdir -p "$state_dir"
+    touch "$state_flag"
+    stop_shell
+    start_mako
+    write_geometry 10 8
+    printf 'Original desktop restored. Re-enable: omarchy-frame on\n'
+    ;;
+  restart)
+    stop_shell
+    is_off || { write_geometry 0 18; quattro_running || start_shell; }
+    ;;
+  launcher)
+    if is_off; then
+      exec omarchy-launch-walker
+    elif quattro_running; then
+      omarchy-shell shell toggle andres.desktop-frame '{}' >/dev/null 2>&1 || exec omarchy-launch-walker
+    else
+      start_shell
+      for _ in {1..10}; do
+        if quickshell ipc --path "$config_dir" call desktopFrame toggle >/dev/null 2>&1; then exit 0; fi
+        sleep 0.05
+      done
+      exec omarchy-launch-walker
+    fi
+    ;;
+  notify)
+    # Routes Omarchy's notification keybindings to whichever daemon is live.
+    action=${2:-}
+    if is_off; then
+      case $action in
+        dismiss) makoctl dismiss ;;
+        dismiss-all) makoctl dismiss --all ;;
+        invoke) makoctl invoke ;;
+        dnd) exec omarchy-toggle-notification-silencing ;;
+        *) printf 'Usage: omarchy-frame notify {dismiss|dismiss-all|invoke|dnd}\n' >&2; exit 2 ;;
+      esac
+      exit 0
+    fi
+    mkdir -p "$state_dir"
+    case $action in
+      dismiss) quickshell ipc --path "$config_dir" call notifications dismiss >/dev/null 2>&1 || true ;;
+      dismiss-all) quickshell ipc --path "$config_dir" call notifications dismissAll >/dev/null 2>&1 || true ;;
+      invoke) quickshell ipc --path "$config_dir" call notifications invoke >/dev/null 2>&1 || true ;;
+      dnd)
+        if [[ $(cat "$dnd_flag" 2>/dev/null) == 1 ]]; then
+          printf '0\n' >"$dnd_flag"
+          notify-send -u low "󰂚    Enabled notifications"
+        else
+          printf '1\n' >"$dnd_flag"
+          notify-send -u low "󰂛    Silenced notifications"
+        fi
+        pkill -RTMIN+10 waybar >/dev/null 2>&1 || true
+        ;;
+      *) printf 'Usage: omarchy-frame notify {dismiss|dismiss-all|invoke|dnd}\n' >&2; exit 2 ;;
+    esac
+    ;;
+  status)
+    if is_off; then printf 'off (original desktop)\n'; else printf 'on\n'; fi
+    ;;
+  *)
+    printf 'Usage: omarchy-frame {on|off|restart|launcher|notify|status}\n' >&2
+    exit 2
+    ;;
+esac

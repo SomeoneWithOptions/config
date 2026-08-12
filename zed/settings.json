@@ -47,6 +47,9 @@
     "frac": false
   },
   "terminal": {
+    "shell": {
+      "program": "/usr/bin/fish"
+    },
     "font_features": {
       "liga": false,
       "clig": false,

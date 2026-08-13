@@ -371,12 +371,16 @@ Item {
                         GlyphButton {
                             readonly property int percent: Math.round(UPower.displayDevice.percentage * 100)
                             readonly property bool charging: !UPower.onBattery
+                            readonly property int profile: PowerProfiles.profile
                             glyph: charging ? "battery_android_frame_bolt" : percent >= 95 ? "battery_android_full"
                                 : percent >= 80 ? "battery_android_6" : percent >= 65 ? "battery_android_5"
                                 : percent >= 50 ? "battery_android_4" : percent >= 35 ? "battery_android_3"
                                 : percent >= 20 ? "battery_android_2" : percent >= 10 ? "battery_android_1" : "battery_android_0"
                             label: percent + "%"
-                            tooltip: PowerProfile.toString(PowerProfiles.profile) + " • " + percent + "%"
+                            tooltip: PowerProfile.toString(profile) + " • " + percent + "%"
+                            tint: profile === PowerProfile.PowerSaver ? "#e0b84a"
+                                : profile === PowerProfile.Performance ? "#7dba7d"
+                                : root.foreground
                             alert: percent <= 15 && UPower.onBattery
                             onActivated: button => root.launch(button === Qt.RightButton
                                 ? "notify-send -u low \"$(omarchy-battery-status)\"" : "omarchy-menu power")
@@ -418,6 +422,7 @@ Item {
         required property string glyph
         property string label: ""
         property string tooltip: ""
+        property color tint: root.foreground
         property bool alert: false
         signal activated(int button)
         signal scrolled(real delta)
@@ -441,7 +446,7 @@ Item {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: button.glyph
-                color: button.alert ? "#d78383" : root.foreground
+                color: button.alert ? "#d78383" : button.tint
                 font.family: "Material Symbols Rounded"
                 font.pixelSize: 15
                 font.variableAxes: ({ "FILL": 1 })
@@ -451,7 +456,7 @@ Item {
                 visible: button.label.length > 0
                 anchors.verticalCenter: parent.verticalCenter
                 text: button.label
-                color: button.alert ? "#d78383" : root.foreground
+                color: button.alert ? "#d78383" : button.tint
                 font.family: "DM Sans"
                 font.pixelSize: 11
                 font.weight: Font.DemiBold

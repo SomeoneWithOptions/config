@@ -470,9 +470,6 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: event => button.activated(event.button)
             onWheel: event => button.scrolled(event.angleDelta.y)
-            Controls.ToolTip.visible: containsMouse && button.tooltip.length > 0
-            Controls.ToolTip.text: button.tooltip
-            Controls.ToolTip.delay: 450
         }
     }
 

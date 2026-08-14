@@ -131,8 +131,13 @@ copy_required "$SCRIPT_DIR/pi/agent/extensions/exit-command.ts" "$HOME/.pi/agent
 copy_required "$SCRIPT_DIR/pi/agent/extensions/web-research.ts" "$HOME/.pi/agent/extensions/web-research.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/omarchy-system-theme.ts" "$HOME/.pi/agent/extensions/omarchy-system-theme.ts"
 copy_required "$SCRIPT_DIR/pi/agent/extensions/worktree.ts" "$HOME/.pi/agent/extensions/worktree.ts"
-copy_required "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
-copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
+# Seed only: pi writes this file itself (lastChangelogVersion, model picks made in
+# the TUI). Overwriting it on every update replayed the changelog and reset models.
+copy_required_if_missing "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
+# Seed only: local skill updates must survive the post-update config replay.
+if [[ ! -d "$HOME/.pi/agent/skills/a-front" ]]; then
+    copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
+fi
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/o-front" "$HOME/.pi/agent/skills/o-front"
 copy_dir_required "$SCRIPT_DIR/pi/agent/skills/grill-me" "$HOME/.pi/agent/skills/grill-me"
@@ -313,7 +318,9 @@ if is_arch_like; then
 
     # XDG defaults
     copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
-    copy_required "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
+    # Seed only: apps append their own associations here (xdg-mime, browser
+    # "set as default" buttons). A plain copy reverted those on every update.
+    copy_required_if_missing "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
     if command -v xdg-settings >/dev/null 2>&1 && command -v zen-browser >/dev/null 2>&1; then
         xdg-settings set default-web-browser zen.desktop || true
     fi

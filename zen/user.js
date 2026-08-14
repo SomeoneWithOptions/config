@@ -1,3 +1,12 @@
+// Silence the "make Zen your default browser" nag. Zen IS the default
+// (xdg-settings check default-web-browser zen.desktop => yes), but its own check
+// compares the http handler's Exec first token against /proc/self/exe. Our
+// ~/.local/share/applications/zen.desktop starts with `env LD_LIBRARY_PATH=...`
+// (needed: Zen wants libavcodec.so.62, system ffmpeg ships .63), so the compare
+// sees `env` and reports "not default" on every launch. Dropping the env wrapper
+// would mean exporting LD_LIBRARY_PATH session-wide, which is worse.
+user_pref("browser.shell.checkDefaultBrowser", false);
+
 // Enable custom browser chrome CSS (loads chrome/userChrome.css on restart).
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 

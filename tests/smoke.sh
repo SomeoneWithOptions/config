@@ -73,6 +73,8 @@ rm -rf "$notify_stub"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
+# a-front is user-updatable; config replay may seed it, never overwrite it.
+grep -q '\[\[ ! -d "\$HOME/.pi/agent/skills/a-front" \]\]' "$ROOT/4 ConfigFiles.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"

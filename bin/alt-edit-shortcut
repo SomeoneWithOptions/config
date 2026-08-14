@@ -15,20 +15,16 @@ case "$window_class" in
 esac
 
 case "$action:$terminal" in
-  copy:1)
-    hyprctl dispatch sendshortcut "CTRL SHIFT,C,activewindow"
-    ;;
-  paste:1)
-    hyprctl dispatch sendshortcut "CTRL SHIFT,V,activewindow"
-    ;;
-  copy:0)
-    hyprctl dispatch sendshortcut "CTRL,C,activewindow"
-    ;;
-  paste:0)
-    hyprctl dispatch sendshortcut "CTRL,V,activewindow"
-    ;;
+  copy:1)  mods="CTRL SHIFT"; key=C ;;
+  paste:1) mods="CTRL SHIFT"; key=V ;;
+  copy:0)  mods=CTRL;         key=C ;;
+  paste:0) mods=CTRL;         key=V ;;
   *)
     echo "Usage: alt-edit-shortcut copy|paste" >&2
     exit 64
     ;;
 esac
+
+hyprctl dispatch "hl.dsp.send_key_state({ mods = \"$mods\", key = \"$key\", state = \"down\" })"
+sleep 0.05
+hyprctl dispatch "hl.dsp.send_key_state({ mods = \"$mods\", key = \"$key\", state = \"up\" })"

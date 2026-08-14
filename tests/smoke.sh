@@ -8,6 +8,29 @@ bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT"/bin/* "$ROOT"/waybar/scripts/* "$ROOT"/omarchy/hooks/*.d/*
 python -m json.tool "$ROOT/waybar/config.jsonc" >/dev/null
 python -m json.tool "$ROOT/omarchy/shell.json" >/dev/null
+python - "$ROOT/omarchy/install-framed-panels.py" <<'PY'
+import sys
+compile(open(sys.argv[1]).read(), sys.argv[1], "exec")
+PY
+if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
+  framed_panels_tmp="$(mktemp -d)"
+  OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py"
+  test -z "$(OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py")"
+  for panel in audio bluetooth clock monitor network power; do
+    python -m json.tool "$framed_panels_tmp/plugins/andres.$panel/manifest.json" >/dev/null
+    grep -q '  FramePanel {' "$framed_panels_tmp/plugins/andres.$panel/Panel.qml"
+    grep -q 'property int gap: -1' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+  done
+  rm -rf "$framed_panels_tmp"
+fi
+for plugin in andres.workspaces andres.menu andres.notifications; do
+  python -m json.tool "$ROOT/omarchy/plugins/$plugin/manifest.json" >/dev/null
+  grep -q "\"id\": \"$plugin\"" "$ROOT/omarchy/shell.json"
+  grep -q "omarchy/plugins/$plugin" "$ROOT/4 ConfigFiles.sh"
+  if command -v omarchy-plugin-validate >/dev/null 2>&1; then
+    omarchy-plugin-validate "$ROOT/omarchy/plugins/$plugin"
+  fi
+done
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
 for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
 for script in battery-power-profile idle notification-silencing screen-recording; do
@@ -25,6 +48,8 @@ if command -v qmllint >/dev/null 2>&1; then
   for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml Notifications.qml TopBar.qml shell.qml; do
     "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/desktop-frame/$qml"
   done
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.menu/Menu.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
 fi
 python -m json.tool "$ROOT/quickshell/desktop-frame/manifest.json" >/dev/null
 

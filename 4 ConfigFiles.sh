@@ -333,9 +333,19 @@ if is_arch_like; then
     # Keep a standalone legacy copy and install the same code as a Quattro plugin.
     copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/quickshell/desktop-frame"
     copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.workspaces" "$HOME/.config/omarchy/plugins/andres.workspaces"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.menu" "$HOME/.config/omarchy/plugins/andres.menu"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.notifications" "$HOME/.config/omarchy/plugins/andres.notifications"
     if (( OMARCHY_QUATTRO )); then
+        framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
         copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
         copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
+        if [[ -n "$framed_panels_changed" ]]; then
+            printf 'Updated framed Omarchy panels\n'
+            omarchy restart shell || true
+        else
+            omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+        fi
     else
         "$HOME/.local/bin/omarchy-frame" configure
     fi

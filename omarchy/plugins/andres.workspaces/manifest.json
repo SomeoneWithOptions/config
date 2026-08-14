@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "andres.workspaces",
+  "name": "Andres Workspaces",
+  "version": "1.0.0",
+  "author": "Andres",
+  "description": "Workspace pills with application icons",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Workspaces.qml"
+  },
+  "barWidget": {
+    "displayName": "Andres Workspaces",
+    "description": "Workspace pills with application icons",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.workspaces"
+  }
+}

@@ -82,6 +82,7 @@ Item {
 
     function open(payload) {
         closeTimer.stop()
+        closingListAnimation.stop()
         initialListDelay.stop()
         initialListAnimation.stop()
         query = ""
@@ -102,10 +103,15 @@ Item {
     }
 
     function close() {
-        if (!mounted) return
+        if (!mounted || !opened) return
         initialListDelay.stop()
         initialListAnimation.stop()
         opened = false
+        if (reduceMotion || initialListProgress <= 0) beginPanelClose()
+        else closingListAnimation.restart()
+    }
+
+    function beginPanelClose() {
         reveal = 0
         if (closeDuration === 0) mounted = false
         else closeTimer.restart()
@@ -165,6 +171,16 @@ Item {
         to: 1
         duration: 460
         easing.type: Easing.OutQuart
+    }
+
+    NumberAnimation {
+        id: closingListAnimation
+        target: root
+        property: "initialListProgress"
+        to: 0
+        duration: root.reduceMotion ? 0 : 140
+        easing.type: Easing.InQuart
+        onFinished: if (!root.opened) root.beginPanelClose()
     }
 
     Timer {

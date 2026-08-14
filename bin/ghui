@@ -1,0 +1,4 @@
+#!/bin/bash
+export MISE_MINIMUM_RELEASE_AGE=0
+mise use -g "npm:@kitlangton/ghui" || exit 1
+exec mise x "npm:@kitlangton/ghui" -- "ghui" "$@"

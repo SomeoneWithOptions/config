@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Keep mise tools current after `omarchy update`.
+
+set -euo pipefail
+
+echo "Updating mise tools..."
+mise upgrade --yes
+mise reshim >/dev/null 2>&1 || true

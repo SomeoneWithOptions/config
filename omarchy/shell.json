@@ -14,32 +14,34 @@
       ],
       "center": [],
       "right": [
-        { "id": "omarchy.tray" },
-        { "id": "omarchy.indicators" },
         { "id": "omarchy.system-update" },
-        { "id": "andres.bluetooth" },
-        { "id": "andres.network" },
-        { "id": "andres.audio" },
-        { "id": "andres.monitor" },
-        { "id": "andres.power" },
+        { "id": "andres.tray" },
         {
           "id": "andres.clock",
           "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy"
-        }
+        },
+        { "id": "andres.bluetooth" },
+        { "id": "andres.network" },
+        { "id": "andres.audio" },
+        { "id": "andres.monitor" },
+        { "id": "andres.power" }
       ]
     }
   },
   "plugins": [
     { "id": "andres.desktop-frame" },
+    { "id": "andres.idle" },
     { "id": "andres.menu" },
     { "id": "andres.notifications" }
   ],
   "disabledPlugins": [
+    "omarchy.idle",
     "omarchy.menu",
     "omarchy.notifications"
   ],
   "cloneSourceRestores": [
+    "andres.idle",
     "andres.menu",
     "andres.notifications"
   ]

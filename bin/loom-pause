@@ -1,0 +1,5 @@
+#!/bin/bash
+# loom-pause — pause/unpause an in-flight recording (gsr SIGUSR2), flag for the top bar.
+pgrep -f '^gpu-screen-recorder' >/dev/null || exit 0
+pkill -SIGUSR2 -f '^gpu-screen-recorder'
+if [[ -f /tmp/loom-paused ]]; then rm -f /tmp/loom-paused; else touch /tmp/loom-paused; fi

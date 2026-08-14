@@ -20,10 +20,14 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
     python -m json.tool "$framed_panels_tmp/plugins/andres.$panel/manifest.json" >/dev/null
     grep -q '  FramePanel {' "$framed_panels_tmp/plugins/andres.$panel/Panel.qml"
     grep -q 'property int gap: -1' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+    grep -q 'bottomRightRadius: root.attachedRight ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+    grep -A4 'id: card' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml" | grep -q 'y: 0'
+    grep -q 'id: revealClip' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+    grep -q 'duration: root.reduceMotion ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
   done
   rm -rf "$framed_panels_tmp"
 fi
-for plugin in andres.workspaces andres.menu andres.notifications; do
+for plugin in andres.workspaces andres.menu andres.notifications andres.tray andres.idle; do
   python -m json.tool "$ROOT/omarchy/plugins/$plugin/manifest.json" >/dev/null
   grep -q "\"id\": \"$plugin\"" "$ROOT/omarchy/shell.json"
   grep -q "omarchy/plugins/$plugin" "$ROOT/4 ConfigFiles.sh"

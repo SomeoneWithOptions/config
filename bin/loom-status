@@ -1,0 +1,13 @@
+#!/bin/bash
+# loom-status — JSON for the Quickshell CommandIndicator in TopBar.qml.
+# text = material symbol name, class "active" = highlighted. (Same shape waybar used, but
+# nothing here talks to waybar: Quickshell polls this every 1000ms, no refresh signal.)
+if pgrep -f '^gpu-screen-recorder' >/dev/null; then
+  if [[ -f /tmp/loom-paused ]]; then
+    echo '{"text": "pause", "tooltip": "Recording paused — click to stop", "class": "active"}'
+  else
+    echo '{"text": "videocam", "tooltip": "Stop recording", "class": "active"}'
+  fi
+else
+  echo '{"text": ""}'
+fi

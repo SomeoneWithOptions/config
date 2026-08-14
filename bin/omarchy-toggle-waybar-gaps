@@ -1,0 +1,11 @@
+#!/bin/bash
+
+[[ $1 == --sync ]] || omarchy-toggle-waybar
+
+if omarchy-toggle-enabled waybar-off; then
+  gaps="10,10,10,10"
+else
+  gaps="0,10,10,10"
+fi
+
+hyprctl keyword general:gaps_out "$gaps" >/dev/null

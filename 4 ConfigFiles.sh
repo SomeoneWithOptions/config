@@ -157,13 +157,21 @@ for helper in \
     alt-edit-shortcut \
     battery-power-mode \
     copy-file-to-clipboard \
+    ghui \
+    hunk \
     hyprsunset-gamma-display \
     lid-monitor-mode \
     lid-monitor-mode-watch \
+    lock-preserve-keyboard \
+    loom \
+    loom-cam \
+    loom-pause \
+    loom-status \
     matrix-launch-screensaver \
     matrix-screensaver \
     omarchy-frame \
-    omarchy-screenshot-file-clipboard; do
+    omarchy-screenshot-file-clipboard \
+    omarchy-toggle-waybar-gaps; do
     copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
 done
 
@@ -336,6 +344,9 @@ if is_arch_like; then
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.workspaces" "$HOME/.config/omarchy/plugins/andres.workspaces"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.menu" "$HOME/.config/omarchy/plugins/andres.menu"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.notifications" "$HOME/.config/omarchy/plugins/andres.notifications"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.tray" "$HOME/.config/omarchy/plugins/andres.tray"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.idle" "$HOME/.config/omarchy/plugins/andres.idle"
+    copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
     if (( OMARCHY_QUATTRO )); then
         framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
         copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
@@ -400,6 +411,7 @@ if is_arch_like; then
     copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-go-with-mise" "$HOME/.config/omarchy/hooks/post-update.d/update-go-with-mise"
     copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/reapply-user-config" "$HOME/.config/omarchy/hooks/post-update.d/reapply-user-config"
+    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-mise-and-npm" "$HOME/.config/omarchy/hooks/post-update.d/update-mise-and-npm"
 
     # The hook above reapplies this repo after `omarchy update` runs its migrations,
     # so it needs a checkout that outlives the update. `bootstrap.sh` deliberately

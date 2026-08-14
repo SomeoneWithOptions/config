@@ -37,7 +37,44 @@ def install():
     keyboard = replace_once(
         keyboard,
         "  property int gap: Style.gapsOut  // distance between bar edge and panel",
-        "  property int gap: -1  // overlap top bar so panel grows directly from frame",
+        """  property int gap: -1  // overlap top bar so panel grows directly from frame
+  property int frameInset: 19  // desktop frame border + overlap
+  readonly property bool attachedRight: barPos === "top"
+    && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 1
+  readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
+  property real reveal: open || popoutSwitching ? 1 : 0
+
+  Behavior on reveal {
+    NumberAnimation {
+      duration: root.reduceMotion ? 0 : (root.open ? 240 : 180)
+      easing.type: Easing.OutExpo
+    }
+  }""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        "  visible: open || card.opacity > 0 || popoutSwitching",
+        "  visible: open || reveal > 0 || popoutSwitching",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """  readonly property real availableCardHeight: screenH > 0
+    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barH + gap + margin : margin * 2))
+    : 0""",
+        """  readonly property real availableCardHeight: screenH > 0
+    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom")
+      ? barH + gap + (barPos === "top" ? frameInset + Style.cornerRadius : margin)
+      : margin * 2))
+    : 0""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        "    x = Math.max(margin, Math.min(x, screenW - contentWidth - margin))",
+        """    var rightMargin = barPos === "top" ? frameInset : margin
+    x = Math.max(margin, Math.min(x, screenW - contentWidth - rightMargin))""",
         keyboard_path,
     )
     keyboard = replace_once(
@@ -45,27 +82,74 @@ def install():
         "  // --- card ----------------------------------------------------------------\n\n  BorderSurface {",
         """  // --- card ----------------------------------------------------------------
 
+  Item {
+    id: revealClip
+    x: 0
+    y: root.cardOrigin.y
+    width: root.screenW
+    height: Math.round((root.contentHeight + Style.cornerRadius) * root.reveal)
+    clip: true
+  }
+
   FrameJoin {
+    parent: revealClip
     visible: root.barPos === "top"
     x: card.x - width
-    y: card.y
+    y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
     frameColor: Color.popups.background
   }
 
   FrameJoin {
-    id: rightFrameJoin
-    visible: root.barPos === "top"
+    id: topRightFrameJoin
+    parent: revealClip
+    visible: root.barPos === "top" && !root.attachedRight
     x: card.x + card.width
-    y: card.y
+    y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
     frameColor: Color.popups.background
-    transform: Scale { origin.x: rightFrameJoin.width / 2; xScale: -1 }
+    transform: Scale { origin.x: topRightFrameJoin.width / 2; xScale: -1 }
   }
 
-  BorderSurface {""",
+  Rectangle {
+    parent: revealClip
+    visible: root.attachedRight
+    x: card.x + card.width
+    y: 0
+    width: root.frameInset
+    height: card.height
+    color: Color.popups.background
+    opacity: card.opacity
+  }
+
+  FrameJoin {
+    parent: revealClip
+    visible: root.attachedRight
+    x: root.screenW - root.frameInset - width
+    y: card.height
+    opacity: card.opacity
+    cornerRadius: Style.cornerRadius
+    frameColor: Color.popups.background
+  }
+
+  BorderSurface {
+    parent: revealClip""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """  BorderSurface {
+    parent: revealClip
+    id: card
+    x: root.cardOrigin.x
+    y: root.cardOrigin.y""",
+        """  BorderSurface {
+    parent: revealClip
+    id: card
+    x: root.cardOrigin.x
+    y: 0""",
         keyboard_path,
     )
     keyboard = replace_once(
@@ -74,13 +158,19 @@ def install():
     padding: root.padding
     radius: Style.cornerRadius
     opacity: root.open || root.popoutSwitching ? 1.0 : 0
+
+    Behavior on opacity {
+      enabled: !root.popoutSwitching && !root.popoutSwitchClosing
+      NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+    }
 """,
         """    borderSpec: root.barPos === "top" ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
     topLeftRadius: root.barPos === "top" ? 0 : Style.cornerRadius
     topRightRadius: root.barPos === "top" ? 0 : Style.cornerRadius
-    opacity: root.open || root.popoutSwitching ? 1.0 : 0
+    bottomRightRadius: root.attachedRight ? 0 : Style.cornerRadius
+    opacity: 1
 """,
         keyboard_path,
     )

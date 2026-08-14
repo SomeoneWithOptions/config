@@ -25,6 +25,19 @@ Item {
     // Paint past reserved gap so frame and app curves do not fight.
     readonly property int overlap: style.overlap
     readonly property color frameColor: style.frameColor
+    readonly property bool quattro: Quickshell.env("OMARCHY_PATH").startsWith("/usr/share/omarchy")
+
+    // hypridle retires in Quattro. Preserve this laptop's battery-only
+    // 15-minute suspend without running a second legacy idle daemon.
+    IdleMonitor {
+        enabled: root.enabled && root.quattro
+        timeout: 900
+        respectInhibitors: true
+        onIsIdleChanged: if (isIdle) Quickshell.execDetached([
+            "sh", "-c",
+            "test \"$(cat /sys/class/power_supply/AC/online 2>/dev/null)\" = 0 && systemctl suspend"
+        ])
+    }
 
     // Wedge between the square corner and the squircle, sampled as a polyline.
     // At 18px a 24-segment fan is already sub-pixel, so no Bezier fitting needed.

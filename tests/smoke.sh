@@ -7,6 +7,9 @@ bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
   "$ROOT"/bin/* "$ROOT"/waybar/scripts/* "$ROOT"/omarchy/hooks/*.d/*
 python -m json.tool "$ROOT/waybar/config.jsonc" >/dev/null
+python -m json.tool "$ROOT/omarchy/shell.json" >/dev/null
+python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
+for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
 for script in battery-power-profile idle notification-silencing screen-recording; do
   grep -q "~/.config/waybar/scripts/$script.sh" "$ROOT/waybar/config.jsonc"
   test -x "$ROOT/waybar/scripts/$script.sh"
@@ -35,7 +38,7 @@ grep -q "walker/themes/$WALKER_THEME\"" "$ROOT/4 ConfigFiles.sh"
 # flag it keys off is easy to invert.
 frame_tmp="$(mktemp -d)"
 run_frame() {
-  DESKTOP_FRAME_HYPR_CONFIG="$frame_tmp/desktop-frame.conf" \
+  OMARCHY_QUATTRO=0 DESKTOP_FRAME_HYPR_CONFIG="$frame_tmp/desktop-frame.conf" \
     XDG_STATE_HOME="$frame_tmp/state" PATH="/nonexistent:/usr/bin:/bin" \
     "$ROOT/bin/omarchy-frame" "$@"
 }

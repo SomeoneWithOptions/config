@@ -1,0 +1,114 @@
+# Machine-level Quattro overrides. Merged over every active theme.
+
+[bar]
+background = "#000000"
+background-alpha = 1.0
+text = "#f2f0e8"
+active = "#a55555"
+scale-with-font = false
+size-horizontal = 42
+size-vertical = 42
+
+[spacing]
+scale = 1.0
+scale-with-font = false
+
+[font]
+base-size = 12
+
+[controls]
+normal-color = "#f2f0e8"
+normal-fill-alpha = 0.04
+normal-border = "#35363a"
+normal-border-width = 1
+normal-border-alpha = 1.0
+hover-cursor-color = "#f2f0e8"
+hover-cursor-fill-alpha = 0.08
+hover-cursor-border = "#555555"
+hover-cursor-border-width = 1
+hover-cursor-border-alpha = 1.0
+focus-color = "#f2f0e8"
+focus-fill-alpha = 0.08
+focus-border = "#555555"
+focus-border-width = 1
+focus-border-alpha = 1.0
+selected-color = "#f2f0e8"
+selected-fill-alpha = 0.12
+selected-border-width = 0
+
+[popups]
+background = "#000000"
+background-alpha = 1.0
+text = "#f2f0e8"
+border = "#35363a"
+border-alpha = 1.0
+border-width = 1
+
+[tooltip]
+background = "#000000"
+background-alpha = 1.0
+text = "#f2f0e8"
+border = "#35363a"
+border-alpha = 1.0
+
+[notifications]
+background = "#1f1f1f"
+background-alpha = 1.0
+text = "#f4f4f4"
+border = "#35363a"
+border-alpha = 1.0
+border-width = 1
+countdown = "#a55555"
+
+[launcher]
+background = "#000000"
+background-alpha = 1.0
+text = "#f4f4f4"
+border = "#35363a"
+border-alpha = 1.0
+scrim = "#000000"
+scrim-alpha = 0.5
+selected-background = "#f2f0e8"
+selected-background-alpha = 0.08
+selected-text = "#f4f4f4"
+selected-border = "#555555"
+selected-border-alpha = 1.0
+
+[menu]
+background = "#000000"
+background-alpha = 1.0
+text = "#f4f4f4"
+border = "#35363a"
+border-alpha = 1.0
+scrim = "#000000"
+scrim-alpha = 0.5
+selected-background = "#f2f0e8"
+selected-background-alpha = 0.08
+selected-text = "#f4f4f4"
+selected-border = "#555555"
+selected-border-alpha = 1.0
+
+[polkit]
+background = "#121212"
+background-alpha = 1.0
+text = "#f4f4f4"
+text-error = "#d78383"
+border = "#555555"
+border-error = "#d78383"
+border-alpha = 1.0
+scrim = "#000000"
+scrim-alpha = 0.5
+accent = "#f2f0e8"
+
+[lock]
+background = "#141418"
+background-alpha = 0.55
+text = "#f4f4f4"
+placeholder = "#858585"
+text-error = "#ff5a5a"
+border = "#ffffff"
+border-active = "#ffffff"
+border-error = "#ff5a5a"
+border-alpha = 0.24
+selection = "#555555"
+selection-alpha = 0.45

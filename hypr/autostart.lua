@@ -1,0 +1,2 @@
+-- Quattro owns shell startup, night light, and clamshell handling.
+-- Personal startup processes belong here via o.launch_on_start("command").

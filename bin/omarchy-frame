@@ -53,9 +53,12 @@ start_waybar() {
   return 0
 }
 
-quattro_running() {
-  command -v omarchy-shell >/dev/null 2>&1 \
-    && timeout 1 omarchy-shell shell ping >/dev/null 2>&1
+quattro_installed() {
+  case ${OMARCHY_QUATTRO:-auto} in
+    1) return 0 ;;
+    0) return 1 ;;
+    *) [[ -f /usr/share/omarchy/shell/shell.qml ]] ;;
+  esac
 }
 
 # Only one process can own org.freedesktop.Notifications. Mako wins the login
@@ -96,11 +99,14 @@ is_off() {
 
 case ${1:-status} in
   configure)
+    quattro_installed && exit 0
     mkdir -p "$state_dir"
     sync_waybar
     if is_off; then write_geometry 10 8; else write_geometry 0 18; fi
     ;;
   start)
+    # Quattro starts one package-owned shell and loads this frame as a plugin.
+    quattro_installed && exit 0
     mkdir -p "$state_dir"
     sync_waybar
     if is_off; then
@@ -110,19 +116,29 @@ case ${1:-status} in
       # Waybar's autostart and this one are both exec-once, so the flag alone
       # does not settle the race on a machine that had Waybar running.
       stop_waybar
-      quattro_running || start_shell
+      start_shell
     fi
     ;;
   on)
+    if quattro_installed; then
+      omarchy plugin enable andres.desktop-frame
+      printf 'Desktop frame enabled.\n'
+      exit 0
+    fi
     mkdir -p "$state_dir"
     rm -f "$state_flag"
     sync_waybar
     stop_waybar
     write_geometry 0 18
-    quattro_running || start_shell
+    start_shell
     printf 'Desktop frame enabled.\n'
     ;;
   off|restore)
+    if quattro_installed; then
+      omarchy plugin disable andres.desktop-frame
+      printf 'Desktop frame disabled. Re-enable: omarchy-frame on\n'
+      exit 0
+    fi
     mkdir -p "$state_dir"
     touch "$state_flag"
     sync_waybar
@@ -133,14 +149,17 @@ case ${1:-status} in
     printf 'Original desktop restored. Re-enable: omarchy-frame on\n'
     ;;
   restart)
+    if quattro_installed; then
+      exec omarchy restart shell
+    fi
     stop_shell
-    is_off || { write_geometry 0 18; quattro_running || start_shell; }
+    is_off || { write_geometry 0 18; start_shell; }
     ;;
   launcher)
-    if is_off; then
+    if quattro_installed; then
+      exec omarchy-shell shell toggle andres.desktop-frame '{}'
+    elif is_off; then
       exec omarchy-launch-walker
-    elif quattro_running; then
-      omarchy-shell shell toggle andres.desktop-frame '{}' >/dev/null 2>&1 || exec omarchy-launch-walker
     else
       start_shell
       for _ in {1..10}; do
@@ -151,8 +170,17 @@ case ${1:-status} in
     fi
     ;;
   notify)
-    # Routes Omarchy's notification keybindings to whichever daemon is live.
+    # Routes legacy callers to Quattro's native notification service.
     action=${2:-}
+    if quattro_installed; then
+      case $action in
+        dismiss) exec omarchy-shell notifications dismissOne ;;
+        dismiss-all) exec omarchy-shell notifications dismissAll ;;
+        invoke) exec omarchy-shell notifications invokeLast ;;
+        dnd) exec omarchy-toggle-notification-silencing ;;
+        *) printf 'Usage: omarchy-frame notify {dismiss|dismiss-all|invoke|dnd}\n' >&2; exit 2 ;;
+      esac
+    fi
     if is_off; then
       case $action in
         dismiss) makoctl dismiss ;;

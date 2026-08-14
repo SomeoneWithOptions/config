@@ -4,6 +4,14 @@ set -euo pipefail
 
 OS_NAME=$(uname -s)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+case ${OMARCHY_QUATTRO:-auto} in
+    1) OMARCHY_QUATTRO=1 ;;
+    0) OMARCHY_QUATTRO=0 ;;
+    *)
+        OMARCHY_QUATTRO=0
+        [[ -f /usr/share/omarchy/config/hypr/hyprland.lua ]] && OMARCHY_QUATTRO=1
+        ;;
+esac
 
 copy_required() {
     local source_path="$1"
@@ -277,30 +285,41 @@ copy_dir_required "$SCRIPT_DIR/nvim" "$HOME/.config/nvim"
 # Hyprland Configuration
 if [[ "$OS_NAME" == "Linux" ]]; then
     mkdir -p "$HOME/.config/hypr"
-    for hypr_file in \
-        autostart.conf \
-        bindings.conf \
-        hypridle.conf \
-        hyprland.conf \
-        hyprlock.conf \
-        hyprsunset.conf \
-        input.conf \
-        looknfeel.conf \
-        monitors.conf \
-        xdph.conf; do
-        copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
-    done
+    if (( OMARCHY_QUATTRO )); then
+        for hypr_file in \
+            autostart.lua \
+            bindings.lua \
+            hyprland.lua \
+            input.lua \
+            looknfeel.lua \
+            monitors.lua \
+            windows.lua; do
+            copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
+        done
+    else
+        for hypr_file in \
+            autostart.conf \
+            bindings.conf \
+            hypridle.conf \
+            hyprland.conf \
+            hyprlock.conf \
+            hyprsunset.conf \
+            input.conf \
+            looknfeel.conf \
+            monitors.conf \
+            xdph.conf; do
+            copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
+        done
 
-    # hyprland.conf sources this, so it must exist before the reload below.
-    # `omarchy-frame` owns it afterwards -- copying it every run would clobber
-    # the machine-local on/off state.
-    copy_required_if_missing "$SCRIPT_DIR/hypr/desktop-frame.conf" "$HOME/.config/hypr/desktop-frame.conf"
+        # Legacy frame state. Quattro gets frame geometry from looknfeel.lua.
+        copy_required_if_missing "$SCRIPT_DIR/hypr/desktop-frame.conf" "$HOME/.config/hypr/desktop-frame.conf"
+    fi
 
     if command -v hyprctl >/dev/null 2>&1; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
     fi
-    restart_if_present omarchy-restart-hypridle
+    (( OMARCHY_QUATTRO )) || restart_if_present omarchy-restart-hypridle
     restart_if_present omarchy-restart-hyprsunset
 fi
 
@@ -311,10 +330,15 @@ if is_arch_like; then
     copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
 
-    # Standalone today; same manifest/components load as a Quattro plugin later.
+    # Keep a standalone legacy copy and install the same code as a Quattro plugin.
     copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/quickshell/desktop-frame"
     copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
-    "$HOME/.local/bin/omarchy-frame" configure
+    if (( OMARCHY_QUATTRO )); then
+        copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
+        copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
+    else
+        "$HOME/.local/bin/omarchy-frame" configure
+    fi
 
     # XDG defaults
     copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
@@ -343,23 +367,21 @@ if is_arch_like; then
         fi
     fi
 
-    # Waybar exact snapshot. It is the fallback bar for `omarchy-frame off`, so
-    # the config is still installed, but restarting it while the frame owns the
-    # top bar would stack two bars. `omarchy-frame configure` above owns the flag.
-    copy_dir_required "$SCRIPT_DIR/waybar" "$HOME/.config/waybar"
-    if [[ ! -e "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/toggles/waybar-off" ]]; then
-        restart_if_present omarchy-restart-waybar
+    # Quattro replaces Waybar, SwayOSD, and Walker with omarchy-shell.
+    if (( ! OMARCHY_QUATTRO )); then
+        copy_dir_required "$SCRIPT_DIR/waybar" "$HOME/.config/waybar"
+        if [[ ! -e "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/toggles/waybar-off" ]]; then
+            restart_if_present omarchy-restart-waybar
+        fi
+
+        copy_required "$SCRIPT_DIR/swayosd/style.css" "$HOME/.config/swayosd/style.css"
+        restart_if_present omarchy-restart-swayosd
+
+        mkdir -p "$HOME/.config/walker/themes"
+        copy_required "$SCRIPT_DIR/walker/config.toml" "$HOME/.config/walker/config.toml"
+        copy_dir_required "$SCRIPT_DIR/walker/themes/frame" "$HOME/.config/walker/themes/frame"
+        restart_if_present omarchy-restart-walker
     fi
-
-    # SwayOSD styling
-    copy_required "$SCRIPT_DIR/swayosd/style.css" "$HOME/.config/swayosd/style.css"
-    restart_if_present omarchy-restart-swayosd
-
-    # Walker exact snapshot
-    mkdir -p "$HOME/.config/walker/themes"
-    copy_required "$SCRIPT_DIR/walker/config.toml" "$HOME/.config/walker/config.toml"
-    copy_dir_required "$SCRIPT_DIR/walker/themes/frame" "$HOME/.config/walker/themes/frame"
-    restart_if_present omarchy-restart-walker
 
     # Omarchy theme, branding, and hooks
     mkdir -p "$HOME/.config/omarchy/branding"
@@ -400,12 +422,13 @@ if is_arch_like; then
         fi
     fi
 
-    mkdir -p "$HOME/.config/omarchy/current/theme"
-    copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
-    # mako is stopped while the desktop frame owns notifications; reloading it
-    # then just prints a DBus error. The theme file above is still its fallback.
-    if pgrep -x mako >/dev/null 2>&1; then
-        restart_if_present omarchy-restart-mako
+    if (( ! OMARCHY_QUATTRO )); then
+        mkdir -p "$HOME/.config/omarchy/current/theme"
+        copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
+        # Mako is stopped while the legacy desktop frame owns notifications.
+        if pgrep -x mako >/dev/null 2>&1; then
+            restart_if_present omarchy-restart-mako
+        fi
     fi
 
     # Custom user systemd units/timers

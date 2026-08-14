@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "idle": {
+    "screensaver": 300,
+    "lock": 600
+  },
+  "bar": {
+    "position": "top",
+    "transparent": false,
+    "centerAnchor": "omarchy.clock",
+    "layout": {
+      "left": [
+        { "id": "omarchy.workspaces" }
+      ],
+      "center": [],
+      "right": [
+        { "id": "omarchy.tray" },
+        { "id": "omarchy.indicators" },
+        { "id": "omarchy.system-update" },
+        { "id": "omarchy.bluetooth" },
+        { "id": "omarchy.network" },
+        { "id": "omarchy.audio" },
+        { "id": "omarchy.monitor" },
+        { "id": "omarchy.power" },
+        {
+          "id": "omarchy.clock",
+          "format": "ddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy"
+        }
+      ]
+    }
+  },
+  "plugins": [
+    { "id": "andres.desktop-frame" }
+  ]
+}

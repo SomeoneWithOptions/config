@@ -14,18 +14,22 @@
       ],
       "center": [],
       "right": [
-        { "id": "omarchy.system-update" },
+        { "id": "andres.pill" },
         { "id": "andres.tray" },
+        { "id": "omarchy.system-update" },
+        { "id": "andres.pill" },
+        { "id": "andres.bluetooth" },
+        { "id": "andres.network" },
+        { "id": "andres.audio" },
+        { "id": "andres.monitor" },
+        { "id": "andres.power" },
+        { "id": "andres.pill" },
         {
           "id": "andres.clock",
           "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy"
         },
-        { "id": "andres.bluetooth" },
-        { "id": "andres.network" },
-        { "id": "andres.audio" },
-        { "id": "andres.monitor" },
-        { "id": "andres.power" }
+        { "id": "omarchy.spacer", "size": 16 }
       ]
     }
   },

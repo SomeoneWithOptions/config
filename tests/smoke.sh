@@ -27,7 +27,7 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
   done
   rm -rf "$framed_panels_tmp"
 fi
-for plugin in andres.workspaces andres.menu andres.notifications andres.tray andres.idle; do
+for plugin in andres.workspaces andres.menu andres.notifications andres.tray andres.idle andres.pill; do
   python -m json.tool "$ROOT/omarchy/plugins/$plugin/manifest.json" >/dev/null
   grep -q "\"id\": \"$plugin\"" "$ROOT/omarchy/shell.json"
   grep -q "omarchy/plugins/$plugin" "$ROOT/4 ConfigFiles.sh"

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "andres.pill",
+  "name": "Pill",
+  "version": "1.0.0",
+  "author": "Andres",
+  "description": "Rounded background behind the bar widgets that follow it",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Pill.qml"
+  },
+  "barWidget": {
+    "displayName": "Pill",
+    "description": "Rounded background behind the bar widgets that follow it",
+    "category": "Layout",
+    "allowMultiple": true
+  }
+}

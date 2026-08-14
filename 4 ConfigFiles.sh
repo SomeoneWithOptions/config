@@ -345,6 +345,7 @@ if is_arch_like; then
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.menu" "$HOME/.config/omarchy/plugins/andres.menu"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.notifications" "$HOME/.config/omarchy/plugins/andres.notifications"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.tray" "$HOME/.config/omarchy/plugins/andres.tray"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.pill" "$HOME/.config/omarchy/plugins/andres.pill"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.idle" "$HOME/.config/omarchy/plugins/andres.idle"
     copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
     if (( OMARCHY_QUATTRO )); then

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # `omarchy update` runs `omarchy-migrate`, and migrations edit ~/.config in place
-# (`sed -i` on hypr/looknfeel.conf, hypr/bindings.conf, waybar/config.jsonc,
-# waybar/style.css; a plain `cp` over hypr/hypridle.conf and fontconfig/fonts.conf).
+# (`sed -i` on hypr/*.lua, a plain `cp` over fontconfig/fonts.conf, whole-file
+# rewrites during major upgrades like the Quattro one).
 # The user layer is not sacred to them, so customizations silently revert.
 #
 # This hook runs after migrations and before `omarchy-update-restart`, so

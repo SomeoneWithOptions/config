@@ -4,14 +4,6 @@ set -euo pipefail
 
 OS_NAME=$(uname -s)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-case ${OMARCHY_QUATTRO:-auto} in
-    1) OMARCHY_QUATTRO=1 ;;
-    0) OMARCHY_QUATTRO=0 ;;
-    *)
-        OMARCHY_QUATTRO=0
-        [[ -f /usr/share/omarchy/config/hypr/hyprland.lua ]] && OMARCHY_QUATTRO=1
-        ;;
-esac
 
 copy_required() {
     local source_path="$1"
@@ -160,18 +152,13 @@ for helper in \
     ghui \
     hunk \
     hyprsunset-gamma-display \
-    lid-monitor-mode \
-    lid-monitor-mode-watch \
-    lock-preserve-keyboard \
     loom \
     loom-cam \
     loom-pause \
     loom-status \
     matrix-launch-screensaver \
     matrix-screensaver \
-    omarchy-frame \
-    omarchy-screenshot-file-clipboard \
-    omarchy-toggle-waybar-gaps; do
+    omarchy-screenshot-file-clipboard; do
     copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
 done
 
@@ -264,12 +251,6 @@ fi
 # Ghostty Configuration
 copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
 
-# Tmux Configuration
-TMUX_CONF="$HOME/.tmux.conf"
-touch "$TMUX_CONF"
-append_line_once "set -g mouse on" "$TMUX_CONF"
-append_line_once "set -g base-index 1" "$TMUX_CONF"
-
 # Zed Configuration
 mkdir -p "$HOME/.config/zed"
 copy_required "$SCRIPT_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
@@ -293,41 +274,22 @@ copy_dir_required "$SCRIPT_DIR/nvim" "$HOME/.config/nvim"
 # Hyprland Configuration
 if [[ "$OS_NAME" == "Linux" ]]; then
     mkdir -p "$HOME/.config/hypr"
-    if (( OMARCHY_QUATTRO )); then
-        for hypr_file in \
-            autostart.lua \
-            bindings.lua \
-            hyprland.lua \
-            input.lua \
-            looknfeel.lua \
-            monitors.lua \
-            windows.lua; do
-            copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
-        done
-    else
-        for hypr_file in \
-            autostart.conf \
-            bindings.conf \
-            hypridle.conf \
-            hyprland.conf \
-            hyprlock.conf \
-            hyprsunset.conf \
-            input.conf \
-            looknfeel.conf \
-            monitors.conf \
-            xdph.conf; do
-            copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
-        done
-
-        # Legacy frame state. Quattro gets frame geometry from looknfeel.lua.
-        copy_required_if_missing "$SCRIPT_DIR/hypr/desktop-frame.conf" "$HOME/.config/hypr/desktop-frame.conf"
-    fi
+    for hypr_file in \
+        autostart.lua \
+        bindings.lua \
+        hyprland.lua \
+        input.lua \
+        looknfeel.lua \
+        monitors.lua \
+        windows.lua \
+        xdph.conf; do
+        copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
+    done
 
     if command -v hyprctl >/dev/null 2>&1; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
     fi
-    (( OMARCHY_QUATTRO )) || restart_if_present omarchy-restart-hypridle
     restart_if_present omarchy-restart-hyprsunset
 fi
 
@@ -338,9 +300,7 @@ if is_arch_like; then
     copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
 
-    # Keep a standalone legacy copy and install the same code as a Quattro plugin.
-    copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/quickshell/desktop-frame"
-    copy_dir_required "$SCRIPT_DIR/quickshell/desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
+    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.workspaces" "$HOME/.config/omarchy/plugins/andres.workspaces"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.menu" "$HOME/.config/omarchy/plugins/andres.menu"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.notifications" "$HOME/.config/omarchy/plugins/andres.notifications"
@@ -348,18 +308,14 @@ if is_arch_like; then
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.pill" "$HOME/.config/omarchy/plugins/andres.pill"
     copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.idle" "$HOME/.config/omarchy/plugins/andres.idle"
     copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
-    if (( OMARCHY_QUATTRO )); then
-        framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
-        copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
-        copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
-        if [[ -n "$framed_panels_changed" ]]; then
-            printf 'Updated framed Omarchy panels\n'
-            omarchy restart shell || true
-        else
-            omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-        fi
+    framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
+    copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
+    copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
+    if [[ -n "$framed_panels_changed" ]]; then
+        printf 'Updated framed Omarchy panels\n'
+        omarchy restart shell || true
     else
-        "$HOME/.local/bin/omarchy-frame" configure
+        omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
     fi
 
     # XDG defaults
@@ -387,22 +343,6 @@ if is_arch_like; then
         if [[ $zen_profiles_found -eq 0 ]]; then
             printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
         fi
-    fi
-
-    # Quattro replaces Waybar, SwayOSD, and Walker with omarchy-shell.
-    if (( ! OMARCHY_QUATTRO )); then
-        copy_dir_required "$SCRIPT_DIR/waybar" "$HOME/.config/waybar"
-        if [[ ! -e "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/toggles/waybar-off" ]]; then
-            restart_if_present omarchy-restart-waybar
-        fi
-
-        copy_required "$SCRIPT_DIR/swayosd/style.css" "$HOME/.config/swayosd/style.css"
-        restart_if_present omarchy-restart-swayosd
-
-        mkdir -p "$HOME/.config/walker/themes"
-        copy_required "$SCRIPT_DIR/walker/config.toml" "$HOME/.config/walker/config.toml"
-        copy_dir_required "$SCRIPT_DIR/walker/themes/frame" "$HOME/.config/walker/themes/frame"
-        restart_if_present omarchy-restart-walker
     fi
 
     # Omarchy theme, branding, and hooks
@@ -442,15 +382,6 @@ if is_arch_like; then
             elif command -v omarchy-theme-set >/dev/null 2>&1; then
                 omarchy-theme-set catppuccin || true
             fi
-        fi
-    fi
-
-    if (( ! OMARCHY_QUATTRO )); then
-        mkdir -p "$HOME/.config/omarchy/current/theme"
-        copy_required "$SCRIPT_DIR/omarchy/current/theme/mako.ini" "$HOME/.config/omarchy/current/theme/mako.ini"
-        # Mako is stopped while the legacy desktop frame owns notifications.
-        if pgrep -x mako >/dev/null 2>&1; then
-            restart_if_present omarchy-restart-mako
         fi
     fi
 

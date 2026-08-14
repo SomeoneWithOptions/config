@@ -5,8 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
-  "$ROOT"/bin/* "$ROOT"/waybar/scripts/* "$ROOT"/omarchy/hooks/*.d/*
-python -m json.tool "$ROOT/waybar/config.jsonc" >/dev/null
+  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/*
 python -m json.tool "$ROOT/omarchy/shell.json" >/dev/null
 python - "$ROOT/omarchy/install-framed-panels.py" <<'PY'
 import sys
@@ -27,7 +26,7 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
   done
   rm -rf "$framed_panels_tmp"
 fi
-for plugin in andres.workspaces andres.menu andres.notifications andres.tray andres.idle andres.pill; do
+for plugin in andres.desktop-frame andres.workspaces andres.menu andres.notifications andres.tray andres.idle andres.pill; do
   python -m json.tool "$ROOT/omarchy/plugins/$plugin/manifest.json" >/dev/null
   grep -q "\"id\": \"$plugin\"" "$ROOT/omarchy/shell.json"
   grep -q "omarchy/plugins/$plugin" "$ROOT/4 ConfigFiles.sh"
@@ -37,10 +36,6 @@ for plugin in andres.workspaces andres.menu andres.notifications andres.tray and
 done
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
 for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
-for script in battery-power-profile idle notification-silencing screen-recording; do
-  grep -q "~/.config/waybar/scripts/$script.sh" "$ROOT/waybar/config.jsonc"
-  test -x "$ROOT/waybar/scripts/$script.sh"
-done
 test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
@@ -49,44 +44,20 @@ if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
   "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
-  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml Notifications.qml TopBar.qml shell.qml; do
-    "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/desktop-frame/$qml"
+  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml; do
+    "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/omarchy/plugins/andres.desktop-frame/$qml"
   done
   "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.menu/Menu.qml"
   "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
 fi
-python -m json.tool "$ROOT/quickshell/desktop-frame/manifest.json" >/dev/null
-
-# A theme rename that misses config.toml or the installer leaves walker unstyled
-# with no error, so pin both to the same directory.
-WALKER_THEME=$(sed -n 's/^theme = "\([^"]*\)".*/\1/p' "$ROOT/walker/config.toml")
-test -d "$ROOT/walker/themes/$WALKER_THEME"
-grep -q "walker/themes/$WALKER_THEME\"" "$ROOT/4 ConfigFiles.sh"
-
-# omarchy-frame owns the gaps/rounding that make the frame flush, and the on/off
-# flag it keys off is easy to invert.
-frame_tmp="$(mktemp -d)"
-run_frame() {
-  OMARCHY_QUATTRO=0 DESKTOP_FRAME_HYPR_CONFIG="$frame_tmp/desktop-frame.conf" \
-    XDG_STATE_HOME="$frame_tmp/state" PATH="/nonexistent:/usr/bin:/bin" \
-    "$ROOT/bin/omarchy-frame" "$@"
-}
-run_frame configure
-grep -qx '    gaps_out = 0' "$frame_tmp/desktop-frame.conf"
-grep -qx '    rounding = 18' "$frame_tmp/desktop-frame.conf"
-# Waybar must stay suppressed while the frame owns the top bar, and come back
-# when it does not. Inverting this stacks two bars on a fresh machine.
-test -e "$frame_tmp/state/omarchy/toggles/waybar-off"
-touch "$frame_tmp/state/omarchy/desktop-frame-off"
-run_frame configure
-grep -qx '    gaps_out = 10' "$frame_tmp/desktop-frame.conf"
-test ! -e "$frame_tmp/state/omarchy/toggles/waybar-off"
-[ "$(run_frame status)" = "off (original desktop)" ]
-rm -rf "$frame_tmp"
 if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
   FLICKO_PICKER_DIR="$ROOT/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null
-  DESKTOP_FRAME_TEST=1 timeout 5 quickshell --no-color --path "$ROOT/quickshell/desktop-frame" >/dev/null
 fi
+
+# The gamma keys are silent without an OSD, and Quattro renamed the client the
+# old script called (omarchy-swayosd-client -> omarchy-osd).
+grep -q 'omarchy-osd ' "$ROOT/bin/hyprsunset-gamma-display"
+command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found in PATH" >&2
 
 # Migrations rewrite ~/.config in place during `omarchy update`, so the post-update
 # hook reapplying this repo is the only thing keeping customizations. Its missing-repo

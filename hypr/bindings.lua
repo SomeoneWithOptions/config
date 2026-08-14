@@ -1,8 +1,11 @@
 -- Personal bindings layered over Omarchy Quattro defaults.
 
--- Bottom desktop-frame launcher replaces the root menu on SUPER+SPACE.
+-- Keep the custom app launcher on SUPER+SPACE and the Omarchy root/settings
+-- menu on SUPER+ALT+SPACE, matching this machine's pre-Quattro behavior.
 hl.unbind("SUPER + SPACE")
 o.bind("SUPER + SPACE", "Launch apps", "omarchy-shell shell toggle andres.desktop-frame '{}'")
+hl.unbind("SUPER + ALT + SPACE")
+o.bind("SUPER + ALT + SPACE", "Omarchy menu", "omarchy-menu toggle root")
 
 -- Preserve Typora and btop shortcuts.
 hl.unbind("SUPER + SHIFT + W")

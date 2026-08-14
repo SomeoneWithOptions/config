@@ -1,52 +1,9 @@
 #!/bin/bash
 
-# Launch Matrix screensaver in Omarchy's supported terminal.
-
-hyprctl clients -j | jq -e '.[] | select(.class == "org.omarchy.screensaver")' >/dev/null 2>&1 && exit 0
-
-if omarchy-toggle-enabled screensaver-off && [[ $1 != "force" ]]; then
+# Keep Omarchy's current multi-monitor launcher, replacing only its animation.
+launcher=/usr/share/omarchy/bin/omarchy-launch-screensaver
+if ! grep -q -- '-e omarchy-screensaver' "$launcher"; then
+  notify-send -u critical "Matrix screensaver needs updating"
   exit 1
 fi
-
-walker -q 2>/dev/null || true
-
-focused=$(omarchy-hyprland-monitor-focused)
-terminal=$(xdg-terminal-exec --print-id)
-
-for m in $(hyprctl monitors -j | jq -r '.[] | .name'); do
-  hyprctl dispatch focusmonitor "$m"
-
-  case $terminal in
-  *Alacritty*)
-    hyprctl dispatch exec -- \
-      alacritty --class=org.omarchy.screensaver \
-      --config-file ~/.local/share/omarchy/default/alacritty/screensaver.toml \
-      -e ~/.local/bin/matrix-screensaver
-    ;;
-  *ghostty*)
-    hyprctl dispatch exec -- \
-      ghostty --class=org.omarchy.screensaver \
-      --config-file=~/.local/share/omarchy/default/ghostty/screensaver \
-      --font-size=18 \
-      -e ~/.local/bin/matrix-screensaver
-    ;;
-  *foot*)
-    hyprctl dispatch exec -- \
-      foot --app-id=org.omarchy.screensaver \
-      --config="$OMARCHY_PATH/default/foot/screensaver.ini" \
-      -e ~/.local/bin/matrix-screensaver
-    ;;
-  *kitty*)
-    hyprctl dispatch exec -- \
-      kitty --class=org.omarchy.screensaver \
-      --override font_size=18 \
-      --override window_padding_width=0 \
-      -e ~/.local/bin/matrix-screensaver
-    ;;
-  *)
-    notify-send -u low "✋ Matrix screensaver only runs in Alacritty, Foot, Ghostty, or Kitty"
-    ;;
-  esac
-done
-
-hyprctl dispatch focusmonitor "$focused"
+exec bash <(sed "s|-e omarchy-screensaver|-e $HOME/.local/bin/matrix-screensaver|g" "$launcher") "$@"

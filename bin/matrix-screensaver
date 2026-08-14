@@ -35,7 +35,7 @@ done
 clear
 
 if command -v cmatrix &>/dev/null; then
-  cmatrix -abC green &
+  cmatrix -abC white &
 else
   tte -i ~/.config/omarchy/branding/screensaver.txt \
     --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas \

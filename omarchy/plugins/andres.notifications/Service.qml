@@ -51,7 +51,7 @@ Item {
   readonly property int liveBarSize: shell && shell.bar && !shell.bar.barHidden ? Math.max(0, shell.bar.barSize) : defaultBarSize
   readonly property int barClearance: liveBarSize + Style.gapsOut
   readonly property int drawerTop: Math.max(0, liveBarSize - 1)
-  readonly property int frameInset: 19
+  readonly property int frameInset: 10  // matches Hyprland gaps_out
   readonly property int drawerPadding: 10
   readonly property int cardWidth: Style.space(380)
 

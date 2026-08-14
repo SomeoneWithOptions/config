@@ -1,7 +1,7 @@
--- Flush black desktop frame with squircle window corners.
+-- Black top strip only; sides and bottom use the same gap as between windows.
 hl.config({
   general = {
-    gaps_out = 0,
+    gaps_out = 10,
     border_size = 0,
     resize_on_border = true,
   },

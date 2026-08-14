@@ -38,7 +38,7 @@ def install():
         keyboard,
         "  property int gap: Style.gapsOut  // distance between bar edge and panel",
         """  property int gap: -1  // overlap top bar so panel grows directly from frame
-  property int frameInset: 19  // desktop frame border + overlap
+  property int frameInset: 10  // matches Hyprland gaps_out
   readonly property bool attachedRight: barPos === "top"
     && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 1
   readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"

@@ -10,7 +10,7 @@ Shape {
 
     width: style.cornerRadius
     height: style.cornerRadius
-    preferredRendererType: Shape.CurveRenderer
+    preferredRendererType: Shape.GeometryRenderer
 
     ShapePath {
         strokeWidth: 0

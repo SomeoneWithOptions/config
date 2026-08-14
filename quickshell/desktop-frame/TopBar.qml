@@ -131,7 +131,7 @@ Item {
             Row {
                 id: workspaceRow
                 anchors.left: parent.left
-                anchors.leftMargin: style.edgeInset + 5
+                anchors.leftMargin: style.edgeInset
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 9
 
@@ -247,7 +247,7 @@ Item {
             Row {
                 id: rightSide
                 anchors.right: parent.right
-                anchors.rightMargin: style.edgeInset + 5
+                anchors.rightMargin: style.edgeInset
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 9
 

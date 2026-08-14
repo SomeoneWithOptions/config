@@ -78,7 +78,7 @@ Item {
         EdgePanel {
             edge: "left"
             anchors { top: true; bottom: true; left: true }
-            implicitWidth: root.borderWidth + root.overlap
+            implicitWidth: root.borderWidth
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -89,7 +89,7 @@ Item {
         EdgePanel {
             edge: "right"
             anchors { top: true; right: true; bottom: true }
-            implicitWidth: root.borderWidth + root.overlap
+            implicitWidth: root.borderWidth
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -100,7 +100,7 @@ Item {
         EdgePanel {
             edge: "bottom"
             anchors { right: true; bottom: true; left: true }
-            implicitHeight: root.borderWidth + root.overlap
+            implicitHeight: root.borderWidth
             exclusiveZone: visible ? root.borderWidth : 0
         }
     }
@@ -130,10 +130,10 @@ Item {
             readonly property bool fullscreen: hyprMonitor && hyprMonitor.activeWorkspace
                 ? hyprMonitor.activeWorkspace.hasFullscreen : false
             readonly property int r: root.radius
-            readonly property int leftEdge: root.borderWidth + root.overlap
-            readonly property int rightEdge: width - root.borderWidth - root.overlap
+            readonly property int leftEdge: root.borderWidth
+            readonly property int rightEdge: width - root.borderWidth
             readonly property int topEdge: root.topHeight
-            readonly property int bottomEdge: height - root.borderWidth - root.overlap
+            readonly property int bottomEdge: height - root.borderWidth
 
             screen: modelData
             visible: root.enabled && !fullscreen
@@ -151,11 +151,11 @@ Item {
                 y: corners.topEdge
                 width: corners.r
                 height: corners.r
-                preferredRendererType: Shape.CurveRenderer
+                preferredRendererType: Shape.GeometryRenderer
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: root.cornerPath(corners.r, false, false) }
+                    PathSvg { path: "M 0 0 L " + corners.r + " 0 A " + corners.r + " " + corners.r + " 0 0 0 0 " + corners.r + " Z" }
                 }
             }
 
@@ -164,11 +164,11 @@ Item {
                 y: corners.topEdge
                 width: corners.r
                 height: corners.r
-                preferredRendererType: Shape.CurveRenderer
+                preferredRendererType: Shape.GeometryRenderer
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: root.cornerPath(corners.r, true, false) }
+                    PathSvg { path: "M 0 0 L " + corners.r + " 0 L " + corners.r + " " + corners.r + " A " + corners.r + " " + corners.r + " 0 0 0 0 0 Z" }
                 }
             }
 
@@ -177,11 +177,11 @@ Item {
                 y: corners.bottomEdge - corners.r
                 width: corners.r
                 height: corners.r
-                preferredRendererType: Shape.CurveRenderer
+                preferredRendererType: Shape.GeometryRenderer
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: root.cornerPath(corners.r, false, true) }
+                    PathSvg { path: "M 0 0 A " + corners.r + " " + corners.r + " 0 0 0 " + corners.r + " " + corners.r + " L 0 " + corners.r + " Z" }
                 }
             }
 
@@ -190,11 +190,11 @@ Item {
                 y: corners.bottomEdge - corners.r
                 width: corners.r
                 height: corners.r
-                preferredRendererType: Shape.CurveRenderer
+                preferredRendererType: Shape.GeometryRenderer
                 ShapePath {
                     strokeWidth: 0
                     fillColor: root.frameColor
-                    PathSvg { path: root.cornerPath(corners.r, true, true) }
+                    PathSvg { path: "M " + corners.r + " 0 L " + corners.r + " " + corners.r + " L 0 " + corners.r + " A " + corners.r + " " + corners.r + " 0 0 0 " + corners.r + " 0 Z" }
                 }
             }
         }

@@ -10,6 +10,7 @@
     "centerAnchor": "andres.clock",
     "layout": {
       "left": [
+        { "id": "omarchy.spacer", "size": 3 },
         { "id": "andres.workspaces" }
       ],
       "center": [],
@@ -29,7 +30,7 @@
           "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy"
         },
-        { "id": "omarchy.spacer", "size": 16 }
+        { "id": "omarchy.spacer", "size": 11 }
       ]
     }
   },

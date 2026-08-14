@@ -19,6 +19,7 @@ Item {
     property var results: []
     property int selectedIndex: 0
     property real filterProgress: 1
+    property real initialListProgress: 1
     readonly property int visibleRows: 7
     readonly property int resultLimit: 150
     readonly property int rowHeight: 54
@@ -32,6 +33,7 @@ Item {
     readonly property color frameColor: style.frameColor
     readonly property string uiFont: "DM Sans"
     readonly property string detailFont: "Azeret Mono"
+    readonly property int openDuration: reduceMotion ? 0 : 500
     readonly property int closeDuration: reduceMotion ? 0 : 400
     readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
 
@@ -80,7 +82,11 @@ Item {
 
     function open(payload) {
         closeTimer.stop()
+        initialListDelay.stop()
+        initialListAnimation.stop()
         query = ""
+        filterAnimation.stop()
+        filterProgress = 1
         selectedIndex = 0
         var monitor = Hyprland.focusedMonitor
         screenName = monitor ? monitor.name : ""
@@ -88,11 +94,17 @@ Item {
         opened = true
         refreshApplications()
         reveal = 0
-        Qt.callLater(function() { reveal = 1 })
+        initialListProgress = reduceMotion ? 1 : 0
+        Qt.callLater(function() {
+            reveal = 1
+            if (!reduceMotion) initialListDelay.restart()
+        })
     }
 
     function close() {
         if (!mounted) return
+        initialListDelay.stop()
+        initialListAnimation.stop()
         opened = false
         reveal = 0
         if (closeDuration === 0) mounted = false
@@ -119,11 +131,14 @@ Item {
     onQueryChanged: {
         selectedIndex = 0
         rebuildResults()
-        if (!reduceMotion) filterAnimation.restart()
+        if (!reduceMotion && opened) filterAnimation.restart()
     }
 
     Behavior on reveal {
-        NumberAnimation { duration: root.reduceMotion ? 0 : 380; easing.type: Easing.OutExpo }
+        NumberAnimation {
+            duration: root.reduceMotion ? 0 : (root.opened ? root.openDuration : 380)
+            easing.type: Easing.OutExpo
+        }
     }
 
     NumberAnimation {
@@ -132,7 +147,23 @@ Item {
         property: "filterProgress"
         from: 0
         to: 1
-        duration: 300
+        duration: 420
+        easing.type: Easing.OutQuart
+    }
+
+    Timer {
+        id: initialListDelay
+        interval: root.openDuration
+        onTriggered: initialListAnimation.restart()
+    }
+
+    NumberAnimation {
+        id: initialListAnimation
+        target: root
+        property: "initialListProgress"
+        from: 0
+        to: 1
+        duration: 460
         easing.type: Easing.OutQuart
     }
 
@@ -261,11 +292,7 @@ Item {
                                         resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
                                 }
                             }
-                            opacity: 0.45 + root.filterProgress * 0.55
-                            transform: Translate {
-                                x: (1 - root.filterProgress) * 18
-                                y: (1 - root.filterProgress) * 7
-                            }
+                            opacity: 0.78 + root.filterProgress * 0.22
 
                             delegate: Rectangle {
                                 id: row
@@ -273,9 +300,13 @@ Item {
                                 required property int index
                                 readonly property bool selected: index === root.selectedIndex
                                 readonly property string iconSource: Quickshell.iconPath(modelData.icon, true)
+                                readonly property real entranceProgress: root.reduceMotion ? 1 : Math.max(0, Math.min(1,
+                                    (root.initialListProgress - Math.min(index, root.visibleRows - 1) * 0.065) / 0.58))
                                 width: ListView.view.width
                                 height: root.rowHeight
                                 radius: 16
+                                opacity: entranceProgress
+                                transform: Translate { y: -(1 - row.entranceProgress) * 8 }
                                 color: selected ? "#1d1d1d" : "transparent"
                                 border.width: 1
                                 border.color: selected ? "#3c3c3c" : "transparent"
@@ -380,7 +411,7 @@ Item {
                             anchors.centerIn: parent
                             visible: root.results.length === 0
                             spacing: 6
-                            opacity: 0.45 + root.filterProgress * 0.55
+                            opacity: 0.78 + root.filterProgress * 0.22
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter

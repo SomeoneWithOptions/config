@@ -71,7 +71,47 @@ def patch_power_panel(text, source):
   // open-panel mark takes the painted width instead of the icon-sized
   // fraction of the slot the fallback assumes.
   readonly property real openPanelIndicatorWidth: button.vertical ? 0 : content.implicitWidth
-  readonly property bool batteryAlert: discharging && batteryFraction <= 0.15""",
+  readonly property bool batteryAlert: discharging && batteryFraction <= 0.15
+  // Pre-Quattro bar tint: yellow saver, theme foreground balanced, green performance.
+  readonly property color profileTint: {
+    if (root.activeProfile === "power-saver") return "#e0af68"
+    if (root.activeProfile === "performance") return "#9ece6a"
+    return button.foreground
+  }""",
+        source,
+    )
+    text = replace_once(
+        text,
+        """  Process {
+    id: batteryProc""",
+        """  // activeProfile is only refreshed while the panel is open, but the bar tint
+  // needs it always. powerprofilesd announces switches on the system bus, so
+  // one long-lived monitor replaces polling powerprofilesctl on a timer.
+  Process {
+    running: true
+    command: ["busctl", "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var initial = text.match(/"([a-z-]+)"/)
+        if (initial) root.activeProfile = initial[1]
+      }
+    }
+  }
+
+  Process {
+    running: true
+    command: ["gdbus", "monitor", "--system", "--dest", "net.hadess.PowerProfiles"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        var changed = String(line).match(/'ActiveProfile': <'([a-z-]+)'>/)
+        if (changed) root.activeProfile = changed[1]
+      }
+    }
+  }
+
+  Process {
+    id: batteryProc""",
         source,
     )
     text = replace_once(
@@ -124,7 +164,7 @@ def patch_power_panel(text, source):
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: root.batteryGlyph()
-        color: root.batteryAlert ? Color.urgent : button.foreground
+        color: root.batteryAlert ? Color.urgent : root.profileTint
         // Material Symbols paint smaller than the Nerd Font glyphs the other
         // widgets use, so the icon runs a few px larger to match them.
         font.family: "Material Symbols Rounded"
@@ -139,7 +179,7 @@ def patch_power_panel(text, source):
         visible: root.showPercentage && !button.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: Math.round(root.batteryFraction * 100) + "%"
-        color: root.batteryAlert ? Color.urgent : button.foreground
+        color: root.batteryAlert ? Color.urgent : root.profileTint
         font.family: button.fontFamily
         font.pixelSize: Style.font.body
         renderType: Text.NativeRendering

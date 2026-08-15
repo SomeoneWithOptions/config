@@ -196,6 +196,211 @@ def patch_power_panel(text, source):
     )
 
 
+def patch_monitor_panel(text, source):
+    """Add a gamma slider beneath brightness, wired to hyprsunset.
+
+    Backlight brightness bottoms out well above what a dark room wants; gamma
+    (the CTM hyprsunset drives) takes it the rest of the way. The row behaves
+    exactly like the brightness row, so it joins the same j/k cursor model.
+    """
+    text = replace_once(
+        text,
+        "  property bool brightnessAvailable: false\n",
+        "  property bool brightnessAvailable: false\n"
+        "  // Identity until hyprsunset answers; a stopped daemon means no CTM.\n"
+        "  property int gammaPercent: 100\n",
+        source,
+    )
+    text = replace_once(
+        text,
+        '    if (brightnessAvailable) list.push("brightness")\n',
+        '    if (brightnessAvailable) list.push("brightness")\n'
+        '    list.push("gamma")\n',
+        source,
+    )
+    text = replace_once(
+        text,
+        '    if (section === "brightness") return 0  // only the slider sentinel at -1',
+        '    if (section === "brightness" || section === "gamma") return 0  // only the slider sentinel at -1',
+        source,
+    )
+    text = replace_once(
+        text,
+        '    return section === "brightness" || section === "textsize" || section === "scale"',
+        '    return section === "brightness" || section === "gamma" || section === "textsize" || section === "scale"',
+        source,
+    )
+    text = replace_once(
+        text,
+        '    if (section === "brightness" || section === "textsize") return -1',
+        '    if (section === "brightness" || section === "gamma" || section === "textsize") return -1',
+        source,
+    )
+    text = replace_once(
+        text,
+        '      if (focusSection === "brightness" || focusSection === "textsize") selectedIndex = -1',
+        '      if (focusSection === "brightness" || focusSection === "gamma" || focusSection === "textsize") selectedIndex = -1',
+        source,
+    )
+    text = replace_once(
+        text,
+        '          if (root.focusSection === "brightness") root.adjustBrightness(dx * 5)',
+        '          if (root.focusSection === "brightness") root.adjustBrightness(dx * 5)\n'
+        '          else if (root.focusSection === "gamma") root.adjustGamma(dx * 5)',
+        source,
+    )
+    text = replace_once(
+        text,
+        "  function refresh() {\n    if (!stateProc.running) stateProc.running = true\n  }",
+        "  function refresh() {\n"
+        "    if (!stateProc.running) stateProc.running = true\n"
+        "    if (!gammaProc.running) gammaProc.running = true\n"
+        "  }",
+        source,
+    )
+    text = replace_once(
+        text,
+        "  function previewBrightness(value) {",
+        """  function clampGamma(value) {
+    // Floor at 10%: below that the screen is unreadable and the slider is the
+    // only way back up.
+    return Math.max(10, Math.min(100, Math.round(value)))
+  }
+
+  function setGamma(value) {
+    root.gammaPercent = root.clampGamma(value)
+    // Drags are debounced to ~180ms and every release writes again, so a
+    // dropped in-flight write costs nothing.
+    if (setGammaProc.running) return
+    setGammaProc.command = ["hyprsunset-gamma-display", "--no-osd", String(root.gammaPercent)]
+    setGammaProc.running = true
+  }
+
+  function previewGamma(value) {
+    root.gammaPercent = root.clampGamma(value)
+    gammaDebounce.restart()
+  }
+
+  function adjustGamma(delta) {
+    if (focusSection !== "gamma") return
+    setGamma(root.gammaPercent + delta)
+  }
+
+  function previewBrightness(value) {""",
+        source,
+    )
+    text = replace_once(
+        text,
+        "  Timer {\n    id: brightnessDebounce",
+        """  Process {
+    id: gammaProc
+    command: ["hyprctl", "hyprsunset", "gamma"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var parsed = parseInt(String(text || "").trim(), 10)
+        // Daemon not running yet -> nothing is dimming the screen.
+        root.gammaPercent = isNaN(parsed) ? 100 : root.clampGamma(parsed)
+      }
+    }
+  }
+
+  Timer {
+    id: gammaDebounce
+    interval: 180
+    repeat: false
+    onTriggered: root.setGamma(root.gammaPercent)
+  }
+
+  Process {
+    id: setGammaProc
+    stdout: StdioCollector { waitForEnd: true }
+  }
+
+  Timer {
+    id: brightnessDebounce""",
+        source,
+    )
+    return replace_once(
+        text,
+        "          // ---------- Text size ----------",
+        """          // ---------- Gamma ----------
+          PanelSeparator {
+            foreground: root.bar.foreground
+          }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(6)
+
+            Item {
+              width: parent.width
+              implicitHeight: Math.max(gammaHeader.implicitHeight, gammaValueText.implicitHeight)
+
+              PanelSectionHeader {
+                id: gammaHeader
+                text: "GAMMA"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              Text {
+                id: gammaValueText
+                text: Math.round(gammaSlider.dragging ? gammaSlider.liveValue : root.gammaPercent) + "%"
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(6)
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+
+            CursorSurface {
+              id: gammaRow
+              width: parent.width
+              height: gammaSlider.implicitHeight + Style.spacing.controlGap
+              hasCursor: root.cursorActive && root.focusSection === "gamma" && root.selectedIndex === -1
+              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(gammaRow)
+              foreground: root.bar.foreground
+              outline: true
+
+              PanelSlider {
+                id: gammaSlider
+                bar: root.bar
+                anchors.fill: parent
+                anchors.leftMargin: Style.space(6)
+                anchors.rightMargin: Style.space(6)
+                minimum: 10
+                maximum: 100
+                step: 1
+                value: root.gammaPercent
+                integer: true
+                onMoved: function(v) { root.previewGamma(v) }
+                onReleased: function(v) {
+                  gammaDebounce.stop()
+                  root.setGamma(v)
+                }
+              }
+
+              HoverHandler {
+                onHoveredChanged: if (hovered && !root.reflowingText) {
+                  root.cursorActive = true
+                  root.focusSection = "gamma"
+                  root.selectedIndex = -1
+                }
+              }
+            }
+          }
+
+          // ---------- Text size ----------""",
+        source,
+    )
+
+
 def install():
     shell_root = Path(os.environ.get("OMARCHY_SHELL_ROOT", "/usr/share/omarchy/shell"))
     config_root = Path(os.environ.get("OMARCHY_CONFIG_ROOT", Path.home() / ".config/omarchy"))
@@ -364,6 +569,8 @@ def install():
             panel = replace_once(
                 panel_path.read_text(), "  KeyboardPanel {", "  FramePanel {", panel_path
             )
+            if panel_id == "monitor":
+                panel = patch_monitor_panel(panel, panel_path)
             if panel_id == "power":
                 panel = patch_power_panel(panel, panel_path)
                 model_path = staged / "Model.js"

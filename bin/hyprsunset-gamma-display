@@ -9,7 +9,17 @@ if ! pgrep -x hyprsunset >/dev/null; then
   done
 fi
 
+# The Display panel's gamma slider drives this too, and drags shouldn't
+# summon an OSD on top of the panel already showing the percent.
+osd=1
+if [[ ${1:-} == --no-osd ]]; then
+  osd=0
+  shift
+fi
+
+# Takes a relative step (+10/-10) from the keys, or an absolute percent.
 hyprctl hyprsunset gamma "${1:?gamma adjustment required}" >/dev/null || exit
+((osd)) || exit 0
 percent="$(hyprctl hyprsunset gamma)"
 percent="$(awk -v p="$percent" 'BEGIN{printf "%.0f", p}')"
 

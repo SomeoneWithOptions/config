@@ -24,6 +24,10 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
     grep -q 'id: revealClip' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
     grep -q 'duration: root.reduceMotion ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
   done
+  # The gamma row is patched onto the stock Display panel. An upstream rename must
+  # fail here rather than quietly ship a panel with the slider missing.
+  grep -q 'text: "GAMMA"' "$framed_panels_tmp/plugins/andres.monitor/Panel.qml"
+  grep -q '"hyprsunset-gamma-display", "--no-osd"' "$framed_panels_tmp/plugins/andres.monitor/Panel.qml"
   rm -rf "$framed_panels_tmp"
 fi
 # Every plugin folder is installed by one glob in the installer, so the only
@@ -59,6 +63,9 @@ fi
 # The gamma keys are silent without an OSD, and Quattro renamed the client the
 # old script called (omarchy-swayosd-client -> omarchy-osd).
 grep -q 'omarchy-osd ' "$ROOT/bin/hyprsunset-gamma-display"
+# The panel slider calls the same script with --no-osd; dropping that flag would
+# make every drag frame summon a toast.
+grep -q -- '--no-osd' "$ROOT/bin/hyprsunset-gamma-display"
 command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found in PATH" >&2
 
 # Migrations rewrite ~/.config in place during `omarchy update`, so the post-update

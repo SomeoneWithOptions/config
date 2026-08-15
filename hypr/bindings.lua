@@ -1,9 +1,8 @@
 -- Personal bindings layered over Omarchy Quattro defaults.
 
--- Omarchy root/settings menu stays on SUPER+SPACE (the Quattro default), custom
--- app launcher moves to SUPER+ALT+SPACE.
+-- Everything menu-ish lives on SUPER+SPACE. Drop Quattro's apps-menu shortcut
+-- so there is only one way in.
 hl.unbind("SUPER + ALT + SPACE")
-o.bind("SUPER + ALT + SPACE", "Launch apps", "omarchy-shell shell toggle andres.desktop-frame '{}'")
 
 -- Preserve Typora and btop shortcuts.
 hl.unbind("SUPER + SHIFT + W")

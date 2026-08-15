@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-PANEL_IDS = ("audio", "bluetooth", "clock", "monitor", "network", "power")
+PANEL_IDS = ("audio", "bluetooth", "clock", "monitor", "network", "power", "tailscale")
 
 
 def replace_once(text, old, new, source):

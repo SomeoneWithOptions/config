@@ -46,7 +46,7 @@ if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
   "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
-  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml Launcher.qml; do
+  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml; do
     "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/omarchy/plugins/andres.desktop-frame/$qml"
   done
   "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.menu/Menu.qml"

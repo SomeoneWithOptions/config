@@ -45,9 +45,9 @@ Omarchy/Arch only:
 - `hypr/` — Hyprland Lua config (`*.lua`) plus `xdph.conf` for screen sharing
 - `omarchy/plugins/andres.*` — Quattro shell plugins (bar widgets, frame, menu,
   notifications, idle)
-- `omarchy/install-framed-panels.py` — generates `andres.{audio,bluetooth,clock,monitor,network,power}`
+- `omarchy/install-framed-panels.py` — generates `andres.{audio,bluetooth,clock,monitor,network,power,tailscale}`
   by cloning the stock panels and attaching them to the desktop frame. Generated,
-  so those six are not tracked here
+  so those seven are not tracked here
 - `omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
 - `omarchy/hooks/post-update.d/` — reapply this repo after `omarchy update`
 - `quickshell/flicko-picker/` — animated screenshot region picker

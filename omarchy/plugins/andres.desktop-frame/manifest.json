@@ -4,11 +4,10 @@
   "name": "Desktop Frame",
   "version": "1.0.0",
   "author": "Andres",
-  "description": "Black rounded desktop frame and bottom program launcher",
-  "kinds": ["service", "menu"],
+  "description": "Black rounded desktop frame",
+  "kinds": ["service"],
   "keepLoaded": true,
   "entryPoints": {
-    "service": "FrameService.qml",
-    "menu": "Launcher.qml"
+    "service": "FrameService.qml"
   }
 }

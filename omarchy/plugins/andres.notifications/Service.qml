@@ -973,7 +973,9 @@ Item {
       // which is what stretched/squished the cards during count changes.
       anchors { top: true; bottom: true; left: true; right: true }
 
-      // Drawer fuses with black top/right frame, matching bottom launcher.
+      // Drawer runs into the top strip and the right screen edge. The side
+      // frame is gone, so the bottom fillet curves into the edge itself
+      // rather than into the frame's old inner border.
       mask: Region { item: drawer }
 
       FrameJoin {
@@ -984,7 +986,7 @@ Item {
       }
 
       FrameJoin {
-        x: popupWindow.width - service.frameInset - width
+        x: popupWindow.width - width
         y: drawer.y + drawer.height
         cornerRadius: service.cornerRadius
         frameColor: "#000000"

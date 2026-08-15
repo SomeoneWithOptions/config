@@ -34,4 +34,6 @@ else
 fi
 
 printf '%s\n' "$filepath"
-notify-send "Screenshot copied" "Paste to attach it, or paste in a terminal for its path." -t 3000 -i "$filepath"
+omarchy-notification-send "Screenshot copied" "Click to edit, or paste to attach it." \
+  --image "$filepath" \
+  --exec "$(printf '%q %q' "${OMARCHY_SCREENSHOT_EDITOR:-tensaku-edit}" "$filepath")" -t 3000

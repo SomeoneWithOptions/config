@@ -285,6 +285,8 @@ def install():
     transform: Scale { origin.x: topRightFrameJoin.width / 2; xScale: -1 }
   }
 
+  // A panel pinned to the right runs into the screen edge instead: the strip
+  // bridges the gaps_out inset, and the fillet below curves into the edge.
   Rectangle {
     parent: revealClip
     visible: root.attachedRight
@@ -299,7 +301,7 @@ def install():
   FrameJoin {
     parent: revealClip
     visible: root.attachedRight
-    x: root.screenW - root.frameInset - width
+    x: root.screenW - width
     y: card.height
     opacity: card.opacity
     cornerRadius: Style.cornerRadius

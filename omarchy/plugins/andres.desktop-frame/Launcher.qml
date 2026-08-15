@@ -237,11 +237,13 @@ Item {
                 width: bodyWidth + 2 * root.corner
                 height: panel.animatedCardHeight
                 x: Math.round((panel.width - width) / 2)
-                y: panel.height - root.frameInset - height
+                // Bottom frame bar is gone, so the card runs into the screen
+                // edge itself and the side fillets curve out of that edge.
+                y: panel.height - height
                 opacity: Math.min(1, root.reveal * 1.5)
 
-                // Same concave fillets as Notifications: body ends at frame edge;
-                // side fillets visually fuse it into black bottom border.
+                // Same concave fillets as Notifications: body ends at the screen
+                // edge; side fillets flare it out into that edge.
                 Rectangle {
                     x: root.corner
                     width: card.bodyWidth

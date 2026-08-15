@@ -170,6 +170,10 @@ def patch_power_panel(text, source):
         font.family: "Material Symbols Rounded"
         font.pixelSize: Style.bar.iconFont + 4
         font.variableAxes: ({ "FILL": 1 })
+        // The Material Symbols ink box sits ~0.07em above the center of its
+        // line box, so centering the Text leaves the battery riding high over
+        // the percentage. Push it back down.
+        anchors.verticalCenterOffset: Math.round(font.pixelSize * 0.07)
         renderType: Text.NativeRendering
 
         Behavior on color { ColorAnimation { duration: 160 } }

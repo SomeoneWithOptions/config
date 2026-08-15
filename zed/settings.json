@@ -26,8 +26,8 @@
   "relative_line_numbers": "enabled",
   "ui_font_family": "Azeret Mono",
   "buffer_font_family": "Azeret Mono",
-  "ui_font_features": { "liga": false, "calt": false, "dlig": false },
-  "buffer_font_features": { "liga": false, "calt": false, "dlig": false },
+  "ui_font_features": { "liga": false, "calt": false, "dlig": false, "frac": false },
+  "buffer_font_features": { "liga": false, "calt": false, "dlig": false, "frac": false },
   "ensure_final_newline_on_save": false,
   "format_on_save": "on",
   "tab_bar": {
@@ -37,16 +37,6 @@
     "inline_blame": {
       "enabled": false
     }
-  },
-  "buffer_font_features": {
-    "calt": false,
-    "liga": false,
-    "frac": false
-  },
-  "ui_font_features": {
-    "calt": false,
-    "liga": false,
-    "frac": false
   },
   "terminal": {
     "shell": {

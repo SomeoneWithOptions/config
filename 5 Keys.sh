@@ -1,36 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
-# Detect the current platform using available tools (sw_vers, /etc/os-release, uname).
-detect_platform() {
-  if command -v sw_vers >/dev/null 2>&1; then
-    printf 'macos'
-    return
-  fi
-
-  if [ -r /etc/os-release ]; then
-    . /etc/os-release
-    case "${ID:-}" in
-      arch)
-        printf 'arch'
-        return
-        ;;
-    esac
-  fi
-
-  case "$(uname -s 2>/dev/null || true)" in
-    Darwin)
-      printf 'macos'
-      ;;
-    Linux)
-      printf 'linux'
-      ;;
-    *)
-      printf 'unknown'
-      ;;
-  esac
-}
+# Installs the SSH key from 1Password on macOS and Omarchy/Arch.
 
 # Ensure an ssh-agent is available. Reuse existing agent when possible.
 agent_is_reachable() {
@@ -127,7 +99,6 @@ add_ssh_key_if_missing() {
   "${SSH_ADD_CMD[@]}" "$key_path"
 }
 
-PLATFORM="$(detect_platform)"
 SSH_ADD_CMD=(ssh-add)
 
 if ! command -v op >/dev/null 2>&1; then
@@ -141,22 +112,12 @@ if ! op whoami >/dev/null 2>&1; then
   exit 0
 fi
 
-case "$PLATFORM" in
-  arch)
-    if command -v sudo >/dev/null 2>&1; then
-      sudo pacman -S --needed --noconfirm openssh
-    else
-      pacman -S --needed --noconfirm openssh
-    fi
-    ;;
-  macos)
-    ensure_macos_ssh_agent
-    SSH_ADD_CMD=(ssh-add --apple-use-keychain)
-    ;;
-  *)
-    ensure_ssh_agent_running
-    ;;
-esac
+if [ "$(uname -s)" = "Darwin" ]; then
+  ensure_macos_ssh_agent
+  SSH_ADD_CMD=(ssh-add --apple-use-keychain)
+else
+  sudo pacman -S --needed --noconfirm openssh
+fi
 
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"

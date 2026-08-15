@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+# Installs software on the only two machine types this repo configures:
+# macOS (Homebrew) and Omarchy/Arch (pacman + yay).
+
 # Keep installers non-interactive. Commands may still ask for sudo credentials when needed.
-export DEBIAN_FRONTEND=noninteractive
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_ANALYTICS=1
 export NONINTERACTIVE=1
@@ -33,14 +35,11 @@ has_command() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# --- Cross-platform installers ---------------------------------------------
+
 install_pi() {
   if has_command pi; then
     log "pi is already installed."
-    return 0
-  fi
-
-  if ! has_command curl; then
-    warn "curl not found; cannot install pi."
     return 0
   fi
 
@@ -54,11 +53,6 @@ install_commiter() {
     return 0
   fi
 
-  if ! has_command curl; then
-    warn "curl not found; cannot install commiter."
-    return 0
-  fi
-
   log "Installing commiter using the official installer."
   curl -fsSL https://go.sanetomore.com/commiter | sh || warn "commiter installer failed."
 }
@@ -69,16 +63,12 @@ install_npm_cli() {
 
   if has_command "$command_name"; then
     log "${command_name} is already installed."
-  elif has_command omarchy; then
-    run_or_warn "install ${command_name} npx wrapper" omarchy npx install "$package" "$command_name"
-  elif has_command npm; then
-    if [ "$(uname -s)" = "Linux" ] && has_command sudo; then
-      run_or_warn "npm install ${package}" sudo npm install --global "$package"
-    else
-      run_or_warn "npm install ${package}" npm install --global "$package"
-    fi
-  else
+  elif ! has_command npm; then
     warn "npm not found; cannot install ${command_name}."
+  elif [ "$(uname -s)" = "Linux" ]; then
+    run_or_warn "npm install ${package}" sudo npm install --global "$package"
+  else
+    run_or_warn "npm install ${package}" npm install --global "$package"
   fi
 }
 
@@ -88,23 +78,18 @@ install_personal_dev_tools() {
   install_npm_cli vercel vercel
 }
 
-install_rtk_official() {
+install_rtk() {
   if has_command rtk; then
     log "RTK is already installed."
-    return 0
-  fi
-
-  if has_command brew; then
+  elif has_command brew; then
     run_or_warn "Homebrew install rtk" brew install rtk
-    return 0
+  else
+    log "Installing RTK using the official installer."
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
+      || warn "RTK official installer failed."
   fi
 
-  log "Installing RTK using the official installer."
-  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
-    || warn "RTK official installer failed."
-}
-
-verify_rtk() {
+  # pi's rtk bash rewrite extension needs rtk in PATH, so verify it actually runs.
   if has_command rtk; then
     rtk --version >/dev/null 2>&1 || warn "rtk command is installed but failed to run."
   else
@@ -112,122 +97,7 @@ verify_rtk() {
   fi
 }
 
-install_zed_linux() {
-  if has_command zed; then
-    log "Zed is already installed."
-    return 0
-  fi
-
-  log "Installing Zed editor using the official installer."
-  curl -fsSL https://zed.dev/install.sh | sh || warn "Zed installer failed."
-}
-
-apt_package_installed() {
-  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
-}
-
-apt_install_if_missing() {
-  local package="$1"
-
-  if apt_package_installed "$package"; then
-    log "${package} is already installed."
-    return 0
-  fi
-
-  run_or_warn "apt install ${package}" sudo apt-get install -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$package"
-}
-
-install_1password_apt_repo() {
-  log "Ensuring 1Password apt repository is configured."
-
-  curl -fsS https://downloads.1password.com/linux/keys/1password.asc \
-    | sudo gpg --dearmor --batch --yes -o /usr/share/keyrings/1password-archive-keyring.gpg \
-    || warn "Install 1Password apt key failed."
-
-  printf '%s\n' 'deb [signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' \
-    | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null \
-    || warn "Configure 1Password apt source failed."
-
-  run_or_warn "create 1Password debsig policy directory" sudo mkdir -p /etc/debsig/policies/AC2D62742012EA22/
-  curl -fsS https://downloads.1password.com/linux/debian/debsig/1password.pol \
-    | sudo tee /etc/debsig/policies/AC2D62742012EA22/1password.pol >/dev/null \
-    || warn "Install 1Password debsig policy failed."
-
-  run_or_warn "create 1Password debsig key directory" sudo mkdir -p /etc/debsig/keys/AC2D62742012EA22/
-  curl -fsS https://downloads.1password.com/linux/keys/1password.asc \
-    | sudo gpg --dearmor --batch --yes -o /etc/debsig/keys/AC2D62742012EA22/1password.gpg \
-    || warn "Install 1Password debsig key failed."
-}
-
-install_github_cli_apt_repo() {
-  log "Ensuring GitHub CLI apt repository is configured."
-
-  run_or_warn "create GitHub CLI apt keyring directory" sudo mkdir -p -m 755 /etc/apt/keyrings
-  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
-    || warn "Install GitHub CLI apt key failed."
-  run_or_warn "set GitHub CLI apt key permissions" sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-  run_or_warn "create GitHub CLI apt sources directory" sudo mkdir -p -m 755 /etc/apt/sources.list.d
-
-  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' "$(dpkg --print-architecture)" \
-    | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
-    || warn "Configure GitHub CLI apt source failed."
-}
-
-install_gcloud_apt_repo() {
-  log "Ensuring Google Cloud CLI apt repository is configured."
-
-  run_or_warn "create Google Cloud CLI apt keyring directory" sudo mkdir -p -m 755 /usr/share/keyrings
-  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-    | sudo gpg --dearmor --batch --yes -o /usr/share/keyrings/cloud.google.gpg \
-    || warn "Install Google Cloud CLI apt key failed."
-  run_or_warn "set Google Cloud CLI apt key permissions" sudo chmod go+r /usr/share/keyrings/cloud.google.gpg
-
-  printf '%s\n' 'deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main' \
-    | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null \
-    || warn "Configure Google Cloud CLI apt source failed."
-}
-
-install_ubuntu_packages() {
-  log "Updating apt repositories."
-  run_or_warn "apt update" sudo apt-get update
-
-  apt_install_if_missing curl
-  apt_install_if_missing ca-certificates
-  apt_install_if_missing gnupg
-  install_github_cli_apt_repo
-  install_gcloud_apt_repo
-  log "Updating apt repositories after CLI repo setup."
-  run_or_warn "apt update after adding CLI repositories" sudo apt-get update
-
-  log "Ensuring core packages are installed with apt."
-  local package
-  for package in git gh tmux fish alacritty vim curl gnupg lsb-release nodejs npm google-cloud-cli; do
-    apt_install_if_missing "$package"
-  done
-
-  # Ghostty has no official apt package; the config is still installed for a manual/snap build.
-  has_command ghostty || warn "Ghostty not installed: no official apt package, see https://ghostty.org/docs/install/binary"
-
-  install_rtk_official
-  verify_rtk
-  install_pi
-
-  if has_command lspci && lspci | grep -Eq "Intel.*(Graphics|VGA)"; then
-    apt_install_if_missing mesa-vulkan-drivers
-  fi
-
-  install_zed_linux
-  install_1password_apt_repo
-
-  log "Updating apt repositories after 1Password repo setup."
-  run_or_warn "apt update after adding 1Password repository" sudo apt-get update
-  for package in 1password 1password-cli; do
-    apt_install_if_missing "$package"
-  done
-
-  install_personal_dev_tools
-}
+# --- Arch / Omarchy ---------------------------------------------------------
 
 pacman_package_installed() {
   pacman -Q "$1" >/dev/null 2>&1
@@ -244,15 +114,13 @@ pacman_install_if_missing() {
   run_or_warn "pacman install ${package}" sudo pacman -S --needed --noconfirm "$package"
 }
 
+# Installs from the repos when possible, otherwise from the AUR via yay.
 arch_install_if_missing() {
   local package="$1"
 
   if pacman_package_installed "$package"; then
     log "${package} is already installed."
-    return 0
-  fi
-
-  if pacman -Si "$package" >/dev/null 2>&1; then
+  elif pacman -Si "$package" >/dev/null 2>&1; then
     pacman_install_if_missing "$package"
   elif has_command yay; then
     run_or_warn "yay install ${package}" yay -S --needed --noconfirm "$package"
@@ -261,47 +129,52 @@ arch_install_if_missing() {
   fi
 }
 
-arch_remove_if_installed() {
-  local package="$1"
-
-  if ! pacman_package_installed "$package"; then
-    log "${package} is not installed; skipping removal."
-    return 0
-  fi
-
-  run_or_warn "pacman remove ${package}" sudo pacman -Rns --noconfirm "$package"
-}
-
 remove_stock_omarchy_apps() {
   log "Removing stock Omarchy apps not wanted on this laptop config."
 
   local package
   for package in signal-desktop obsidian xournalpp typora aether cliamp kdenlive spotify pinta; do
-    arch_remove_if_installed "$package"
+    if pacman_package_installed "$package"; then
+      run_or_warn "pacman remove ${package}" sudo pacman -Rns --noconfirm "$package"
+    fi
   done
 }
 
-install_arch_zen_browser() {
-  if has_command omarchy; then
-    run_or_warn "omarchy install browser zen" omarchy install browser zen
-    return 0
+install_arch_1password() {
+  if pacman_package_installed 1password || pacman_package_installed 1password-beta; then
+    log "1Password is already installed."
+  else
+    arch_install_if_missing 1password-beta
   fi
 
-  if has_command omarchy-install-browser; then
-    run_or_warn "omarchy install browser zen" omarchy-install-browser zen
-    return 0
-  fi
-
-  arch_install_if_missing zen-browser-bin
+  arch_install_if_missing 1password-cli
 }
 
-install_arch_laptop_packages() {
-  log "Ensuring laptop-specific packages are installed with pacman/yay."
+install_arch_packages() {
+  log "Refreshing pacman repositories."
+  run_or_warn "pacman refresh" sudo pacman -Syu --noconfirm
 
+  remove_stock_omarchy_apps
+
+  log "Ensuring packages are installed with pacman/yay."
   local package
   for package in \
+    git \
+    github-cli \
+    tmux \
+    fish \
+    alacritty \
+    ghostty \
+    vim \
+    curl \
+    gnupg \
+    openssh \
+    nodejs \
+    npm \
+    zed \
     terraform \
     aws-cli-v2 \
+    google-cloud-cli \
     bind \
     fwupd \
     cmatrix \
@@ -319,75 +192,19 @@ install_arch_laptop_packages() {
     arch_install_if_missing "$package"
   done
 
-  install_arch_zen_browser
-}
-
-install_arch_gcloud() {
-  if has_command gcloud; then
-    log "Google Cloud CLI is already installed."
-    return 0
-  fi
-
-  if pacman -Si google-cloud-cli >/dev/null 2>&1; then
-    pacman_install_if_missing google-cloud-cli
-  elif has_command yay; then
-    run_or_warn "yay install google-cloud-cli" yay -S --needed --noconfirm google-cloud-cli
-  else
-    warn "Cannot install Google Cloud CLI: package unavailable and yay not found."
-  fi
-}
-
-install_arch_1password() {
-  if pacman_package_installed 1password || pacman_package_installed 1password-beta; then
-    log "1Password is already installed."
-  elif pacman -Si 1password-beta >/dev/null 2>&1; then
-    pacman_install_if_missing 1password-beta
-  elif pacman -Si 1password >/dev/null 2>&1; then
-    pacman_install_if_missing 1password
-  elif has_command yay; then
-    run_or_warn "yay install 1password" yay -S --needed --noconfirm 1password
-  else
-    warn "Cannot install 1Password: package unavailable and yay not found."
-  fi
-
-  if pacman_package_installed 1password-cli; then
-    log "1password-cli is already installed."
-  elif pacman -Si 1password-cli >/dev/null 2>&1; then
-    pacman_install_if_missing 1password-cli
-  elif has_command yay; then
-    run_or_warn "yay install 1password-cli" yay -S --needed --noconfirm 1password-cli
-  else
-    warn "Cannot install 1Password CLI: package unavailable and yay not found."
-  fi
-}
-
-install_arch_packages() {
-  log "Refreshing pacman repositories."
-  run_or_warn "pacman refresh" sudo pacman -Syu --noconfirm
-
-  log "Ensuring core packages are installed with pacman."
-  local package
-  for package in git github-cli tmux fish alacritty ghostty vim curl gnupg openssh nodejs npm; do
-    pacman_install_if_missing "$package"
-  done
-
-  remove_stock_omarchy_apps
-  install_arch_laptop_packages
-
-  install_arch_gcloud
-
-  install_rtk_official
-  verify_rtk
-  install_pi
-
   if has_command lspci && lspci | grep -Eq "Intel.*(Graphics|VGA)"; then
-    pacman_install_if_missing vulkan-intel
+    arch_install_if_missing vulkan-intel
   fi
 
-  install_zed_linux
+  run_or_warn "omarchy install browser zen" omarchy install browser zen
+
   install_arch_1password
+  install_rtk
+  install_pi
   install_personal_dev_tools
 }
+
+# --- macOS ------------------------------------------------------------------
 
 ensure_homebrew() {
   if has_command brew; then
@@ -410,49 +227,33 @@ ensure_homebrew() {
   has_command brew || { warn "Homebrew installed but brew command not found in PATH."; return 1; }
 }
 
-brew_formula_installed() {
-  "$BREW_BIN" list --formula "$1" >/dev/null 2>&1
-}
-
-brew_cask_installed() {
-  "$BREW_BIN" list --cask "$1" >/dev/null 2>&1
-}
-
-app_installed() {
-  local app_name="$1"
-  [ -d "/Applications/${app_name}.app" ]
-}
-
 brew_install_formula_if_missing() {
   local package="$1"
 
-  if brew_formula_installed "$package"; then
+  if brew list --formula "$package" >/dev/null 2>&1; then
     log "${package} is already installed."
     return 0
   fi
 
-  run_or_warn "Homebrew install ${package}" "$BREW_BIN" install "$package"
+  run_or_warn "Homebrew install ${package}" brew install "$package"
 }
 
 brew_install_cask_if_missing() {
   local cask="$1"
   shift
-  local install_args=("$@")
 
-  if brew_cask_installed "$cask"; then
+  if brew list --cask "$cask" >/dev/null 2>&1; then
     log "${cask} is already installed."
     return 0
   fi
 
-  run_or_warn "Homebrew cask install ${cask}" "$BREW_BIN" install --cask "${install_args[@]}"
+  run_or_warn "Homebrew cask install ${cask}" brew install --cask "$@"
 }
 
 configure_homebrew_node24() {
   local node24_prefix=""
-  local node_version=""
-  local npm_version=""
 
-  node24_prefix="$("$BREW_BIN" --prefix node@24 2>/dev/null || true)"
+  node24_prefix="$(brew --prefix node@24 2>/dev/null || true)"
   if [ -z "$node24_prefix" ]; then
     warn "Homebrew node@24 prefix not found."
     return 0
@@ -460,55 +261,15 @@ configure_homebrew_node24() {
 
   export PATH="${node24_prefix}/bin:${PATH}"
 
-  if has_command node; then
-    node_version="$(node -v 2>/dev/null || true)"
-    if [ "$node_version" = "v24.15.0" ]; then
-      log "Node.js version verified: ${node_version}."
-    else
-      warn "Expected Node.js v24.15.0 from Homebrew node@24, found ${node_version:-unknown}."
-    fi
-  else
-    warn "node not found after installing Homebrew node@24. Add ${node24_prefix}/bin to PATH."
-  fi
-
-  if has_command npm; then
-    npm_version="$(npm -v 2>/dev/null || true)"
-    if [ "$npm_version" = "11.12.1" ]; then
-      log "npm version verified: ${npm_version}."
-    else
-      warn "Expected npm 11.12.1 from Homebrew node@24, found ${npm_version:-unknown}."
-    fi
-  else
-    warn "npm not found after installing Homebrew node@24. Add ${node24_prefix}/bin to PATH."
-  fi
-}
-
-install_windows_gcloud() {
-  if has_command gcloud || has_command gcloud.cmd; then
-    log "Google Cloud CLI is already installed."
-    return 0
-  fi
-
-  if has_command winget.exe; then
-    run_or_warn "winget install Google Cloud CLI" winget.exe install --id Google.CloudSDK --exact --silent --accept-package-agreements --accept-source-agreements
-  elif has_command powershell.exe; then
-    run_or_warn "Google Cloud CLI Windows installer" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \$installer = Join-Path \$env:TEMP 'GoogleCloudSDKInstaller.exe'; Invoke-WebRequest -Uri 'https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe' -OutFile \$installer; Start-Process -FilePath \$installer -ArgumentList '/S' -Wait"
-  else
-    warn "Cannot install Google Cloud CLI on Windows: winget.exe and powershell.exe not found."
-  fi
-}
-
-install_windows_packages() {
-  install_windows_gcloud
+  has_command node || warn "node not found after installing Homebrew node@24. Add ${node24_prefix}/bin to PATH."
+  has_command npm || warn "npm not found after installing Homebrew node@24. Add ${node24_prefix}/bin to PATH."
 }
 
 install_macos_packages() {
   ensure_homebrew || return 0
 
-  BREW_BIN="$(command -v brew)"
-
   log "Updating Homebrew."
-  run_or_warn "Homebrew update" "$BREW_BIN" update
+  run_or_warn "Homebrew update" brew update
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
@@ -517,7 +278,7 @@ install_macos_packages() {
   done
 
   configure_homebrew_node24
-  verify_rtk
+  install_rtk
   install_pi
 
   log "Ensuring applications are installed with Homebrew Cask."
@@ -527,21 +288,17 @@ install_macos_packages() {
   done
   brew_install_cask_if_missing aerospace nikitabobko/tap/aerospace
 
-  # Check 1Password more carefully - only install via brew if not already in /Applications
-  if brew_cask_installed 1password; then
-    log "1Password is already installed via Homebrew Cask."
-  elif app_installed "1Password"; then
-    log "1Password app already exists in /Applications (installed outside Homebrew)."
+  # 1Password is often installed outside Homebrew; do not install a second copy.
+  if [ -d "/Applications/1Password.app" ]; then
+    log "1Password app already exists in /Applications."
   else
-    run_or_warn "Homebrew cask install 1password" "$BREW_BIN" install --cask 1password
+    brew_install_cask_if_missing 1password 1password
   fi
 
-  # Remove quarantine attribute from Alacritty to allow it to open without prompts
-  # Only remove if the quarantine attribute is currently present (idempotent)
-  if [ -d "/Applications/Alacritty.app" ]; then
-    if xattr -p com.apple.quarantine /Applications/Alacritty.app >/dev/null 2>&1; then
-      run_or_warn "Remove quarantine from Alacritty.app" sudo xattr -r -d com.apple.quarantine /Applications/Alacritty.app
-    fi
+  # Alacritty is quarantined on first install and prompts on launch. Idempotent:
+  # only strip the attribute while it is still present.
+  if [ -d "/Applications/Alacritty.app" ] && xattr -p com.apple.quarantine /Applications/Alacritty.app >/dev/null 2>&1; then
+    run_or_warn "Remove quarantine from Alacritty.app" sudo xattr -r -d com.apple.quarantine /Applications/Alacritty.app
   fi
 
   install_personal_dev_tools
@@ -561,43 +318,23 @@ print_summary() {
 }
 
 main() {
-  local uname_s=""
-  local os_id=""
-  local os_like=""
+  if ! has_command curl; then
+    warn "curl not found; it is required by every installer here."
+  fi
 
-  uname_s="$(uname -s 2>/dev/null || true)"
-
-  case "$uname_s" in
+  case "$(uname -s 2>/dev/null || true)" in
     Darwin)
       install_macos_packages
       ;;
-    MINGW*|MSYS*|CYGWIN*)
-      install_windows_packages
-      ;;
     Linux)
-      if [ -f /etc/os-release ]; then
-        # shellcheck disable=SC1091
-        . /etc/os-release
-        os_id="${ID:-}"
-        os_like="${ID_LIKE:-}"
+      if has_command pacman; then
+        install_arch_packages
       else
-        warn "Unable to detect Linux distribution."
+        warn "Unsupported Linux distribution. This repo configures Omarchy/Arch only."
       fi
-
-      case " ${os_id} ${os_like} " in
-        *" ubuntu "*|*" debian "*)
-          install_ubuntu_packages
-          ;;
-        *" arch "*)
-          install_arch_packages
-          ;;
-        *)
-          warn "Unsupported Linux distribution: ${os_id:-unknown}."
-          ;;
-      esac
       ;;
     *)
-      warn "Unsupported operating system: ${uname_s:-unknown}."
+      warn "Unsupported operating system. This repo configures macOS and Omarchy/Arch only."
       ;;
   esac
 

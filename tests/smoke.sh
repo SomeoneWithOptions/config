@@ -26,12 +26,14 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
   done
   rm -rf "$framed_panels_tmp"
 fi
-for plugin in andres.desktop-frame andres.workspaces andres.menu andres.notifications andres.tray andres.idle andres.pill; do
-  python -m json.tool "$ROOT/omarchy/plugins/$plugin/manifest.json" >/dev/null
-  grep -q "\"id\": \"$plugin\"" "$ROOT/omarchy/shell.json"
-  grep -q "omarchy/plugins/$plugin" "$ROOT/4 ConfigFiles.sh"
+# Every plugin folder is installed by one glob in the installer, so the only
+# per-plugin risk left is a plugin that is shipped but never enabled in shell.json.
+grep -q 'omarchy/plugins/andres\.\*' "$ROOT/4 ConfigFiles.sh"
+for plugin in "$ROOT"/omarchy/plugins/andres.*; do
+  python -m json.tool "$plugin/manifest.json" >/dev/null
+  grep -q "\"id\": \"$(basename "$plugin")\"" "$ROOT/omarchy/shell.json"
   if command -v omarchy-plugin-validate >/dev/null 2>&1; then
-    omarchy-plugin-validate "$ROOT/omarchy/plugins/$plugin"
+    omarchy-plugin-validate "$plugin"
   fi
 done
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
@@ -63,7 +65,7 @@ command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found i
 # hook reapplying this repo is the only thing keeping customizations. Its missing-repo
 # guard must fail loudly rather than run the installer from a bad path.
 test -x "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
-grep -q 'post-update.d/reapply-user-config' "$ROOT/4 ConfigFiles.sh"
+grep -q 'omarchy/hooks/post-update.d/\*' "$ROOT/4 ConfigFiles.sh"
 # A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go
 # unprotected without ever saying so. notify-send is stubbed: the guard's whole job is
 # to shout, and unstubbed it shouts at the real desktop on every test run.
@@ -77,7 +79,7 @@ rm -rf "$notify_stub"
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
-grep -q '\[\[ ! -d "\$HOME/.pi/agent/skills/a-front" \]\]' "$ROOT/4 ConfigFiles.sh"
+grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"

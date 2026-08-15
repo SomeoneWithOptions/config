@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FONT_ROOT="$SCRIPT_DIR/fonts"
 FONTS_CHANGED=0
-OMARCHY_FONT="DM Sans"
 
 copy_fonts() {
   local source_dir="$1"
@@ -48,40 +47,17 @@ install_font_set() {
   copy_fonts "$FONT_ROOT/material-symbols-rounded" "$install_dir"
 }
 
-OS="$(uname)"
-INSTALL_DIR=""
-
-case "$OS" in
-  Linux)
-    INSTALL_DIR="$HOME/.local/share/fonts"
-    install_font_set "$INSTALL_DIR"
-    if [ "$FONTS_CHANGED" -eq 1 ]; then
-      if command -v fc-cache >/dev/null 2>&1; then
-        fc-cache -fv "$INSTALL_DIR"
-      else
-        echo "fc-cache not found. Please install fontconfig to refresh the font cache."
-      fi
-    fi
-    ;;
-  Darwin)
-    INSTALL_DIR="$HOME/Library/Fonts"
-    install_font_set "$INSTALL_DIR"
-    ;;
-  *)
-    echo "Unsupported operating system for font installation: $OS; skipping."
-    exit 0
-    ;;
-esac
-
-if command -v omarchy-font-set >/dev/null 2>&1; then
-  if command -v omarchy-font-current >/dev/null 2>&1; then
-    CURRENT_FONT="$(omarchy-font-current 2>/dev/null || true)"
-    if [ "$CURRENT_FONT" != "$OMARCHY_FONT" ]; then
-      omarchy-font-set "$OMARCHY_FONT"
-    fi
-  elif [ "$FONTS_CHANGED" -eq 1 ]; then
-    omarchy-font-set "$OMARCHY_FONT"
+if [ "$(uname)" = "Darwin" ]; then
+  INSTALL_DIR="$HOME/Library/Fonts"
+  install_font_set "$INSTALL_DIR"
+else
+  INSTALL_DIR="$HOME/.local/share/fonts"
+  install_font_set "$INSTALL_DIR"
+  if [ "$FONTS_CHANGED" -eq 1 ]; then
+    fc-cache -fv "$INSTALL_DIR"
   fi
 fi
 
+# No `omarchy font set` here: it only handles monospace, and the terminal font is
+# already pinned by alacritty/ghostty config in this repo.
 echo "Fonts installed to $INSTALL_DIR"

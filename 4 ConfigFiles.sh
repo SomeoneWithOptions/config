@@ -83,91 +83,36 @@ append_line_once() {
 }
 
 current_login_shell() {
-    if command -v getent >/dev/null 2>&1; then
-        getent passwd "$USER" | awk -F: '{print $7}'
-        return
-    fi
-
-    if [[ "$OS_NAME" == "Darwin" ]] && command -v dscl >/dev/null 2>&1; then
+    if [[ "$OS_NAME" == "Darwin" ]]; then
         dscl . -read "/Users/$USER" UserShell 2>/dev/null | awk '{print $2}'
-        return
-    fi
-
-    printf '%s\n' "${SHELL:-}"
-}
-
-is_arch_like() {
-    if [[ ! -f /etc/os-release ]]; then
-        return 1
-    fi
-
-    # shellcheck disable=SC1091
-    . /etc/os-release
-    [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" == *"arch"* ]]
-}
-
-user_systemctl() {
-    if command -v systemctl >/dev/null 2>&1; then
-        systemctl --user "$@" || true
-    fi
-}
-
-restart_if_present() {
-    local command_name="$1"
-
-    if command -v "$command_name" >/dev/null 2>&1; then
-        "$command_name" || true
+    else
+        getent passwd "$USER" | awk -F: '{print $7}'
     fi
 }
 
 # Pi Configuration
-mkdir -p "$HOME/.pi/agent/extensions"
-mkdir -p "$HOME/.pi/agent/skills"
 mkdir -p "$HOME/code/worktrees" # /worktree extension creates worktrees here
 copy_required "$SCRIPT_DIR/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/rtk-bash-rewrite.ts" "$HOME/.pi/agent/extensions/rtk-bash-rewrite.ts"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/ask-user.ts" "$HOME/.pi/agent/extensions/ask-user.ts"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/exit-command.ts" "$HOME/.pi/agent/extensions/exit-command.ts"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/web-research.ts" "$HOME/.pi/agent/extensions/web-research.ts"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/omarchy-system-theme.ts" "$HOME/.pi/agent/extensions/omarchy-system-theme.ts"
-copy_required "$SCRIPT_DIR/pi/agent/extensions/worktree.ts" "$HOME/.pi/agent/extensions/worktree.ts"
+for extension in "$SCRIPT_DIR"/pi/agent/extensions/*.ts; do
+    copy_required "$extension" "$HOME/.pi/agent/extensions/$(basename "$extension")"
+done
 # Seed only: pi writes this file itself (lastChangelogVersion, model picks made in
 # the TUI). Overwriting it on every update replayed the changelog and reset models.
 copy_required_if_missing "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
-# Seed only: local skill updates must survive the post-update config replay.
-if [[ ! -d "$HOME/.pi/agent/skills/a-front" ]]; then
-    copy_dir_required "$SCRIPT_DIR/pi/agent/skills/a-front" "$HOME/.pi/agent/skills/a-front"
-fi
-copy_dir_required "$SCRIPT_DIR/pi/agent/skills/caveman" "$HOME/.pi/agent/skills/caveman"
-copy_dir_required "$SCRIPT_DIR/pi/agent/skills/o-front" "$HOME/.pi/agent/skills/o-front"
-copy_dir_required "$SCRIPT_DIR/pi/agent/skills/grill-me" "$HOME/.pi/agent/skills/grill-me"
-copy_dir_required "$SCRIPT_DIR/pi/agent/skills/impeccable" "$HOME/.pi/agent/skills/impeccable"
+for skill in "$SCRIPT_DIR"/pi/agent/skills/*; do
+    skill_name="$(basename "$skill")"
+    # a-front is user-updatable: seed it once, never overwrite local edits on replay.
+    [[ "$skill_name" == "a-front" && -d "$HOME/.pi/agent/skills/a-front" ]] && continue
+    copy_dir_required "$skill" "$HOME/.pi/agent/skills/$skill_name"
+done
 
-# Local Helper Scripts
-mkdir -p "$HOME/.local/bin"
-for helper in \
-    alt-edit-shortcut \
-    battery-power-mode \
-    copy-file-to-clipboard \
-    ghui \
-    hunk \
-    hyprsunset-gamma-display \
-    loom \
-    loom-cam \
-    loom-pause \
-    loom-status \
-    matrix-launch-screensaver \
-    matrix-screensaver \
-    omarchy-screenshot-file-clipboard; do
+# Local Helper Scripts. Only these two are cross-platform; every other bin/ helper
+# needs Hyprland/Omarchy and is installed in the Linux section below.
+for helper in ghui hunk; do
     copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
 done
 
 # Fish Configuration
-mkdir -p "$HOME/.config/fish"
-mkdir -p "$HOME/.config/fish/conf.d"
-mkdir -p "$HOME/.config/fish/functions"
-mkdir -p "$HOME/.local/share/fish"
-
 FISH_CONFIG_SOURCE="$SCRIPT_DIR/fish/config.fish"
 FISH_CONFIG_DEST="$HOME/.config/fish/config.fish"
 if [[ ! -f "$FISH_CONFIG_SOURCE" ]]; then
@@ -202,9 +147,6 @@ copy_required "$SCRIPT_DIR/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/th
 copy_required "$SCRIPT_DIR/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
 copy_required "$SCRIPT_DIR/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
 copy_required "$SCRIPT_DIR/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
-if [[ -f "$SCRIPT_DIR/fish/fish_history" ]]; then
-    copy_required_if_missing "$SCRIPT_DIR/fish/fish_history" "$HOME/.local/share/fish/fish_history"
-fi
 
 FISH_PATH=$(command -v fish || true)
 if [[ -n "${FISH_PATH:-}" ]]; then
@@ -237,29 +179,23 @@ copy_required "$SCRIPT_DIR/mise/config.toml" "$HOME/.config/mise/config.toml"
 copy_required "$SCRIPT_DIR/git/ignore" "$HOME/.config/git/ignore"
 
 # Alacritty Configuration
-mkdir -p "$HOME/.config/alacritty"
 copy_required "$SCRIPT_DIR/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
-
-# Disable font smoothing for crisp text rendering (macOS only)
-if [[ "$OS_NAME" == "Darwin" ]]; then
-    current_smoothing=$(defaults read org.alacritty AppleFontSmoothing 2>/dev/null || true)
-    if [[ "$current_smoothing" != "0" ]]; then
-        defaults write org.alacritty AppleFontSmoothing -int 0
-    fi
-fi
 
 # Ghostty Configuration
 copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
 
 # Zed Configuration
-mkdir -p "$HOME/.config/zed"
 copy_required "$SCRIPT_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
 copy_required "$SCRIPT_DIR/zed/keymap.json" "$HOME/.config/zed/keymap.json"
 
-# AeroSpace Configuration (macOS only)
+# macOS Configuration
 if [[ "$OS_NAME" == "Darwin" ]]; then
-    mkdir -p "$HOME/.config/aerospace"
     copy_required "$SCRIPT_DIR/aerospace/aerospace.toml" "$HOME/.config/aerospace/aerospace.toml"
+
+    # Disable font smoothing for crisp text rendering in Alacritty.
+    if [[ "$(defaults read org.alacritty AppleFontSmoothing 2>/dev/null || true)" != "0" ]]; then
+        defaults write org.alacritty AppleFontSmoothing -int 0
+    fi
 fi
 
 # Vim Configuration
@@ -271,42 +207,35 @@ append_line_once "set relativenumber" "$VIMRC"
 # Neovim Configuration
 copy_dir_required "$SCRIPT_DIR/nvim" "$HOME/.config/nvim"
 
-# Hyprland Configuration
+# Omarchy/Arch Configuration (the only Linux this repo configures)
 if [[ "$OS_NAME" == "Linux" ]]; then
-    mkdir -p "$HOME/.config/hypr"
-    for hypr_file in \
-        autostart.lua \
-        bindings.lua \
-        hyprland.lua \
-        input.lua \
-        looknfeel.lua \
-        monitors.lua \
-        windows.lua \
-        xdph.conf; do
-        copy_required "$SCRIPT_DIR/hypr/$hypr_file" "$HOME/.config/hypr/$hypr_file"
+    # Hyprland
+    for hypr_file in "$SCRIPT_DIR"/hypr/*; do
+        copy_required "$hypr_file" "$HOME/.config/hypr/$(basename "$hypr_file")"
     done
 
     if command -v hyprctl >/dev/null 2>&1; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
     fi
-    restart_if_present omarchy-restart-hyprsunset
-fi
+    omarchy restart hyprsunset || true
 
-# Arch/Omarchy Specific Configuration
-if is_arch_like; then
+    # Hyprland/Omarchy helper scripts.
+    for helper in "$SCRIPT_DIR"/bin/*; do
+        helper_name="$(basename "$helper")"
+        # ghui/hunk are already installed above; flicko-slurp goes to a scoped dir below.
+        [[ "$helper_name" == ghui || "$helper_name" == hunk || "$helper_name" == flicko-slurp ]] && continue
+        copy_executable_required "$helper" "$HOME/.local/bin/$helper_name"
+    done
+
     # Animated screenshot selector. Adapter is named `slurp` only inside the
     # screenshot wrapper's scoped PATH, leaving the system slurp untouched.
     copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
 
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.desktop-frame" "$HOME/.config/omarchy/plugins/andres.desktop-frame"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.workspaces" "$HOME/.config/omarchy/plugins/andres.workspaces"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.menu" "$HOME/.config/omarchy/plugins/andres.menu"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.notifications" "$HOME/.config/omarchy/plugins/andres.notifications"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.tray" "$HOME/.config/omarchy/plugins/andres.tray"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.pill" "$HOME/.config/omarchy/plugins/andres.pill"
-    copy_dir_required "$SCRIPT_DIR/omarchy/plugins/andres.idle" "$HOME/.config/omarchy/plugins/andres.idle"
+    for plugin in "$SCRIPT_DIR"/omarchy/plugins/andres.*; do
+        copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"
+    done
     copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
     framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
     copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
@@ -327,32 +256,27 @@ if is_arch_like; then
         xdg-settings set default-web-browser zen.desktop || true
     fi
 
-    # Zen prefs + chrome CSS. Omarchy laptops only: the CSS hides native window
-    # controls and assumes the Omarchy/Hyprland shell, so it is wrong elsewhere.
-    # Profile dirs are randomly named, so fan out over all of them. Zen only
-    # creates a profile on first launch: if none exists yet, launch Zen once and
-    # re-run this script.
-    if command -v omarchy >/dev/null 2>&1; then
-        zen_profiles_found=0
-        for zen_profile in "$HOME"/.config/zen/*/; do
-            [[ -f "$zen_profile/times.json" || -f "$zen_profile/prefs.js" ]] || continue
-            copy_required "$SCRIPT_DIR/zen/user.js" "$zen_profile/user.js"
-            copy_required "$SCRIPT_DIR/zen/userChrome.css" "$zen_profile/chrome/userChrome.css"
-            zen_profiles_found=1
-        done
-        if [[ $zen_profiles_found -eq 0 ]]; then
-            printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
-        fi
+    # Zen prefs + chrome CSS. The CSS hides native window controls and assumes the
+    # Omarchy/Hyprland shell. Profile dirs are randomly named, so fan out over all
+    # of them. Zen only creates a profile on first launch: if none exists yet,
+    # launch Zen once and re-run this script.
+    zen_profiles_found=0
+    for zen_profile in "$HOME"/.config/zen/*/; do
+        [[ -f "$zen_profile/times.json" || -f "$zen_profile/prefs.js" ]] || continue
+        copy_required "$SCRIPT_DIR/zen/user.js" "$zen_profile/user.js"
+        copy_required "$SCRIPT_DIR/zen/userChrome.css" "$zen_profile/chrome/userChrome.css"
+        zen_profiles_found=1
+    done
+    if [[ $zen_profiles_found -eq 0 ]]; then
+        printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
     fi
 
     # Omarchy theme, branding, and hooks
-    mkdir -p "$HOME/.config/omarchy/branding"
-    mkdir -p "$HOME/.config/omarchy/hooks/post-update.d"
     copy_required "$SCRIPT_DIR/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
     copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
-    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-go-with-mise" "$HOME/.config/omarchy/hooks/post-update.d/update-go-with-mise"
-    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/reapply-user-config" "$HOME/.config/omarchy/hooks/post-update.d/reapply-user-config"
-    copy_executable_required "$SCRIPT_DIR/omarchy/hooks/post-update.d/update-mise-and-npm" "$HOME/.config/omarchy/hooks/post-update.d/update-mise-and-npm"
+    for hook in "$SCRIPT_DIR"/omarchy/hooks/post-update.d/*; do
+        copy_executable_required "$hook" "$HOME/.config/omarchy/hooks/post-update.d/$(basename "$hook")"
+    done
 
     # The hook above reapplies this repo after `omarchy update` runs its migrations,
     # so it needs a checkout that outlives the update. `bootstrap.sh` deliberately
@@ -374,24 +298,14 @@ if is_arch_like; then
         fi
     fi
 
-    if command -v omarchy-theme-current >/dev/null 2>&1; then
-        CURRENT_THEME=$(omarchy-theme-current 2>/dev/null || true)
-        if [[ "$CURRENT_THEME" != "Catppuccin" && "$CURRENT_THEME" != "catppuccin" ]]; then
-            if command -v omarchy >/dev/null 2>&1; then
-                omarchy theme set Catppuccin || true
-            elif command -v omarchy-theme-set >/dev/null 2>&1; then
-                omarchy-theme-set catppuccin || true
-            fi
-        fi
+    if [[ "$(omarchy theme current 2>/dev/null || true)" != "Catppuccin" ]]; then
+        omarchy theme set Catppuccin || true
     fi
 
     # Custom user systemd units/timers
-    mkdir -p "$HOME/.config/systemd/user"
-    copy_required "$SCRIPT_DIR/systemd/user/battery-power-mode.service" "$HOME/.config/systemd/user/battery-power-mode.service"
-    copy_required "$SCRIPT_DIR/systemd/user/battery-power-mode.timer" "$HOME/.config/systemd/user/battery-power-mode.timer"
-    copy_required "$SCRIPT_DIR/systemd/user/mise-go-upgrade.service" "$HOME/.config/systemd/user/mise-go-upgrade.service"
-    copy_required "$SCRIPT_DIR/systemd/user/mise-go-upgrade.timer" "$HOME/.config/systemd/user/mise-go-upgrade.timer"
-    user_systemctl daemon-reload
-    user_systemctl enable --now battery-power-mode.timer
-    user_systemctl enable --now mise-go-upgrade.timer
+    for unit in "$SCRIPT_DIR"/systemd/user/*; do
+        copy_required "$unit" "$HOME/.config/systemd/user/$(basename "$unit")"
+    done
+    systemctl --user daemon-reload || true
+    systemctl --user enable --now battery-power-mode.timer mise-go-upgrade.timer || true
 fi

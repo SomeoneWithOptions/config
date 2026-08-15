@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-# Bootstrap this laptop config repo from a fresh archive extracted under /tmp.
+# Bootstrap this laptop config repo (macOS or Omarchy/Arch) from a fresh archive
+# extracted under /tmp.
 # This intentionally avoids using any existing /code or local clone, which may
 # not exist on a new laptop or may be stale on an already configured laptop.
 #
@@ -118,7 +119,6 @@ main() {
 
   start_sudo_keepalive
 
-  export DEBIAN_FRONTEND="${DEBIAN_FRONTEND:-noninteractive}"
   export HOMEBREW_NO_ANALYTICS="${HOMEBREW_NO_ANALYTICS:-1}"
   export HOMEBREW_NO_ENV_HINTS="${HOMEBREW_NO_ENV_HINTS:-1}"
   export NONINTERACTIVE="${NONINTERACTIVE:-1}"

@@ -23,7 +23,7 @@
         { "id": "andres.network" },
         { "id": "andres.audio" },
         { "id": "andres.monitor" },
-        { "id": "andres.power" },
+        { "id": "andres.power", "showPercentage": true },
         { "id": "andres.pill" },
         {
           "id": "andres.clock",

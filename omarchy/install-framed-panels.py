@@ -24,6 +24,134 @@ def same_tree(left, right):
     return left_files == right_files
 
 
+def patch_power_model(text, source):
+    """Add the pre-Quattro Material Symbols battery ladder next to the Nerd Font one."""
+    text = replace_once(
+        text,
+        "function modeLabel(device, onBattery, states) {",
+        """// Bar glyph: Material Symbols ligature names (pre-Quattro battery_android set).
+// Kept separate from batteryIcon() because the panel hero still paints in the
+// bar's Nerd Font.
+function batteryGlyph(device, onBattery, states) {
+  var d = device || {}
+  if (!d.isPresent) return ""
+
+  var percent = Math.round((d.percentage || 0) * 100)
+  if (!onBattery && !chargeThresholdActive(d, onBattery, states)) return "battery_android_frame_bolt"
+  if (percent >= 95) return "battery_android_full"
+  if (percent >= 80) return "battery_android_6"
+  if (percent >= 65) return "battery_android_5"
+  if (percent >= 50) return "battery_android_4"
+  if (percent >= 35) return "battery_android_3"
+  if (percent >= 20) return "battery_android_2"
+  if (percent >= 10) return "battery_android_1"
+  return "battery_android_0"
+}
+
+function modeLabel(device, onBattery, states) {""",
+        source,
+    )
+    return replace_once(
+        text,
+        "    batteryIcon: batteryIcon,",
+        "    batteryIcon: batteryIcon,\n    batteryGlyph: batteryGlyph,",
+        source,
+    )
+
+
+def patch_power_panel(text, source):
+    """Bar widget paints the Material Symbols glyph plus the percentage, as before Quattro."""
+    text = replace_once(
+        text,
+        """  // With the percentage shown the button paints a text block wider than an
+  // icon, so the open-panel mark takes the painted width instead of the
+  // icon-sized fraction of the slot the fallback assumes.
+  readonly property real openPanelIndicatorWidth: showPercentage && !button.vertical ? button.glyphPaintedWidth : 0""",
+        """  // The button paints a glyph + label block wider than an icon, so the
+  // open-panel mark takes the painted width instead of the icon-sized
+  // fraction of the slot the fallback assumes.
+  readonly property real openPanelIndicatorWidth: button.vertical ? 0 : content.implicitWidth
+  readonly property bool batteryAlert: discharging && batteryFraction <= 0.15""",
+        source,
+    )
+    text = replace_once(
+        text,
+        "  function modeLabel() {",
+        """  function batteryGlyph() {
+    return Model.batteryGlyph(UPower.displayDevice, root.discharging, upowerStates())
+  }
+
+  function modeLabel() {""",
+        source,
+    )
+    return replace_once(
+        text,
+        """  BarIconButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    text: root.showPercentage && !vertical
+      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
+      : root.batteryIcon()
+    slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
+    tooltipText: ""
+    onPressed: function(b) {
+      if (!root.batteryPresent) return
+      if (b === Qt.RightButton) root.togglePercentage()
+      else root.toggle()
+    }
+  }""",
+        """  WidgetButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    labelVisible: false
+    hasVisualContent: root.batteryPresent
+    fixedWidth: vertical ? -1 : content.implicitWidth + Style.spaceReal(9) * 2
+    fixedHeight: vertical ? Style.bar.iconSlot : -1
+    tooltipText: ""
+    onPressed: function(b) {
+      if (!root.batteryPresent) return
+      if (b === Qt.RightButton) root.togglePercentage()
+      else root.toggle()
+    }
+
+    Row {
+      id: content
+      anchors.centerIn: parent
+      spacing: Style.space(3)
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.batteryGlyph()
+        color: root.batteryAlert ? Color.urgent : button.foreground
+        // Material Symbols paint smaller than the Nerd Font glyphs the other
+        // widgets use, so the icon runs a few px larger to match them.
+        font.family: "Material Symbols Rounded"
+        font.pixelSize: Style.bar.iconFont + 4
+        font.variableAxes: ({ "FILL": 1 })
+        renderType: Text.NativeRendering
+
+        Behavior on color { ColorAnimation { duration: 160 } }
+      }
+
+      Text {
+        visible: root.showPercentage && !button.vertical
+        anchors.verticalCenter: parent.verticalCenter
+        text: Math.round(root.batteryFraction * 100) + "%"
+        color: root.batteryAlert ? Color.urgent : button.foreground
+        font.family: button.fontFamily
+        font.pixelSize: Style.font.body
+        renderType: Text.NativeRendering
+
+        Behavior on color { ColorAnimation { duration: 160 } }
+      }
+    }
+  }""",
+        source,
+    )
+
+
 def install():
     shell_root = Path(os.environ.get("OMARCHY_SHELL_ROOT", "/usr/share/omarchy/shell"))
     config_root = Path(os.environ.get("OMARCHY_CONFIG_ROOT", Path.home() / ".config/omarchy"))
@@ -190,6 +318,10 @@ def install():
             panel = replace_once(
                 panel_path.read_text(), "  KeyboardPanel {", "  FramePanel {", panel_path
             )
+            if panel_id == "power":
+                panel = patch_power_panel(panel, panel_path)
+                model_path = staged / "Model.js"
+                model_path.write_text(patch_power_model(model_path.read_text(), model_path))
             panel_path.write_text(panel)
             (staged / "FramePanel.qml").write_text(keyboard)
             shutil.copy2(frame_join, staged / "FrameJoin.qml")

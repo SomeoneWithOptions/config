@@ -1,8 +1,20 @@
 #!/bin/bash
 
+# Quattro no longer autostarts hyprsunset; it comes up on first use.
+if ! pgrep -x hyprsunset >/dev/null; then
+  setsid uwsm-app -- hyprsunset &
+  for _ in {1..30}; do
+    hyprctl hyprsunset temperature >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+fi
+
 hyprctl hyprsunset gamma "${1:?gamma adjustment required}" >/dev/null || exit
 percent="$(hyprctl hyprsunset gamma)"
 percent="$(awk -v p="$percent" 'BEGIN{printf "%.0f", p}')"
 
 # Quattro's OSD takes whole percents; the old swayosd client took a 0-1 fraction.
-omarchy-osd --icon brightness --message Gamma --progress "$percent"
+# A --message suppresses the bar and readout, so the percent goes in alone.
+# Unknown icon names pass through as literal glyphs; this half-filled circle
+# separates gamma from the monitor glyph the real brightness keys use.
+omarchy-osd --icon 󰔎 --progress "$percent"

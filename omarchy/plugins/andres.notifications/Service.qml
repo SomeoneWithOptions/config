@@ -985,9 +985,14 @@ Item {
         frameColor: "#000000"
       }
 
+      // Tucked 1px up into the drawer, the same trick drawerTop plays against
+      // the bar strip. At fractional scale the drawer's bottom logical row
+      // lands mid physical pixel; a fillet starting exactly there leaves that
+      // half-covered row showing the wallpaper behind it as a hairline. The
+      // fillet's top row is solid, so the overlap costs nothing.
       FrameJoin {
         x: popupWindow.width - width
-        y: drawer.y + drawer.height
+        y: drawer.y + drawer.height - 1
         cornerRadius: service.cornerRadius
         frameColor: "#000000"
       }

@@ -17,6 +17,7 @@ Item {
     readonly property int topHeight: shell && shell.bar && shell.bar.barSize
         ? shell.bar.barSize : style.topBarHeight
     readonly property color frameColor: style.frameColor
+    readonly property int cornerRadius: style.screenCornerRadius
     readonly property bool quattro: Quickshell.env("OMARCHY_PATH").startsWith("/usr/share/omarchy")
 
     // hypridle retires in Quattro. Preserve this laptop's battery-only
@@ -55,5 +56,48 @@ Item {
             WlrLayershell.layer: WlrLayer.Bottom
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         }
+    }
+
+    // Black nooks at the four desktop corners: under the top strip and at the
+    // screen's bottom edge. Only the gap rows are painted, so windows keep
+    // their own rounding and the frame reads as one continuous curve.
+    Variants {
+        model: root.enabled && style.screenCornerRadius > 0 ? Quickshell.screens : []
+
+        PanelWindow {
+            id: cornerPanel
+            required property var modelData
+            readonly property var hyprMonitor: Hyprland.monitorFor(modelData)
+            readonly property bool fullscreen: hyprMonitor && hyprMonitor.activeWorkspace
+                ? hyprMonitor.activeWorkspace.hasFullscreen : false
+            readonly property int corner: root.cornerRadius
+
+            screen: modelData
+            visible: root.enabled && !fullscreen
+            color: "transparent"
+            surfaceFormat.opaque: false
+            mask: Region {}
+            anchors { top: true; right: true; bottom: true; left: true }
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: "andres-desktop-frame-corners"
+            WlrLayershell.layer: WlrLayer.Bottom
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            // Same 1px tuck the drawers use, so no seam shows between the strip
+            // and the nook on fractional scale. The nook's top row is solid.
+            Fillet { x: 0; y: root.topHeight - 1; rotation: 270 }
+            Fillet { x: cornerPanel.width - cornerPanel.corner; y: root.topHeight - 1; rotation: 0 }
+            Fillet { x: 0; y: cornerPanel.height - cornerPanel.corner; rotation: 180 }
+            Fillet {
+                x: cornerPanel.width - cornerPanel.corner
+                y: cornerPanel.height - cornerPanel.corner
+                rotation: 90
+            }
+        }
+    }
+
+    component Fillet: FrameJoin {
+        width: root.cornerRadius
+        height: root.cornerRadius
     }
 }

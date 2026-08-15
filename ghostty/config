@@ -2,6 +2,9 @@
 font-family = "Azeret Mono"
 font-style = Regular
 font-size = 13
+font-feature = -liga
+font-feature = -calt
+font-feature = -dlig
 
 # Window
 background = #282c34

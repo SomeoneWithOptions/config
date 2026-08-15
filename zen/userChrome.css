@@ -28,6 +28,8 @@ tooltip :is(code, pre, kbd, samp),
 #urlbar.mono,
 #searchbar.mono {
   font-family: "Azeret Mono", monospace !important;
+  /* Gecko ignores fontconfig font features, so kill ligatures here too. */
+  font-variant-ligatures: none !important;
 }
 
 /* Hide Zen/Firefox native window controls/titlebar button strip on Linux. */

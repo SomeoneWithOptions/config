@@ -26,6 +26,8 @@
   "relative_line_numbers": "enabled",
   "ui_font_family": "Azeret Mono",
   "buffer_font_family": "Azeret Mono",
+  "ui_font_features": { "liga": false, "calt": false, "dlig": false },
+  "buffer_font_features": { "liga": false, "calt": false, "dlig": false },
   "ensure_final_newline_on_save": false,
   "format_on_save": "on",
   "tab_bar": {

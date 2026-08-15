@@ -184,6 +184,9 @@ copy_required "$SCRIPT_DIR/alacritty/alacritty.toml" "$HOME/.config/alacritty/al
 # Ghostty Configuration
 copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
 
+# Foot Configuration (default terminal on Linux; see xdg-terminals.list below)
+copy_required "$SCRIPT_DIR/foot/foot.ini" "$HOME/.config/foot/foot.ini"
+
 # Zed Configuration
 copy_required "$SCRIPT_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
 copy_required "$SCRIPT_DIR/zed/keymap.json" "$HOME/.config/zed/keymap.json"

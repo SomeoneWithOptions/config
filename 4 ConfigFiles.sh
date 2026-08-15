@@ -298,8 +298,8 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         fi
     fi
 
-    if [[ "$(omarchy theme current 2>/dev/null || true)" != "Catppuccin" ]]; then
-        omarchy theme set Catppuccin || true
+    if [[ "$(omarchy theme current 2>/dev/null || true)" != "Solitude" ]]; then
+        omarchy theme set Solitude || true
     fi
 
     # Custom user systemd units/timers

@@ -1,16 +1,19 @@
 #!/bin/bash
 
 # Matrix-style screensaver for Omarchy/Hyprland.
-# Uses cmatrix when installed; falls back to TTE's matrix effect.
+# Uses cmatrix when installed; falls back to ttfx's matrix effect.
 
 screensaver_in_focus() {
   hyprctl activewindow -j | jq -e '.class == "org.omarchy.screensaver"' >/dev/null 2>&1
 }
 
 exit_screensaver() {
-  hyprctl keyword cursor:invisible false &>/dev/null || true
+  # Quattro's non-legacy parser rejects `hyprctl keyword`; eval is the live path,
+  # keyword stays only as a fallback for older Hyprland.
+  hyprctl eval 'hl.config({ cursor = { invisible = false } })' &>/dev/null ||
+    hyprctl keyword cursor:invisible false &>/dev/null || true
   pkill -x cmatrix 2>/dev/null
-  pkill -x tte 2>/dev/null
+  pkill -x ttfx 2>/dev/null
   pkill -f org.omarchy.screensaver 2>/dev/null
   exit 0
 }
@@ -18,7 +21,8 @@ exit_screensaver() {
 trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
 
 printf '\033]11;rgb:00/00/00\007'
-hyprctl keyword cursor:invisible true &>/dev/null
+hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null ||
+  hyprctl keyword cursor:invisible true &>/dev/null
 
 tty_name=$(tty 2>/dev/null)
 
@@ -37,7 +41,7 @@ clear
 if command -v cmatrix &>/dev/null; then
   cmatrix -abC white &
 else
-  tte -i ~/.config/omarchy/branding/screensaver.txt \
+  ttfx -i ~/.config/omarchy/branding/screensaver.txt \
     --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas \
     --anchor-canvas c --anchor-text c --no-eol --no-restore-cursor matrix &
 fi
@@ -47,7 +51,7 @@ while true; do
     exit_screensaver
   fi
 
-  if [[ -n "$tty_name" ]] && ! pgrep -t "${tty_name#/dev/}" -x cmatrix >/dev/null 2>&1 && ! pgrep -t "${tty_name#/dev/}" -x tte >/dev/null 2>&1; then
+  if [[ -n "$tty_name" ]] && ! pgrep -t "${tty_name#/dev/}" -x cmatrix >/dev/null 2>&1 && ! pgrep -t "${tty_name#/dev/}" -x ttfx >/dev/null 2>&1; then
     exit_screensaver
   fi
 done

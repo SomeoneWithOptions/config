@@ -4,9 +4,7 @@
 -- so there is only one way in.
 hl.unbind("SUPER + ALT + SPACE")
 
--- Preserve Typora and btop shortcuts.
-hl.unbind("SUPER + SHIFT + W")
-o.bind("SUPER + SHIFT + W", "Typora", "uwsm-app -- typora --enable-wayland-ime")
+-- SUPER+SHIFT+W stays on Quattro's default (Omawrite); typora is uninstalled here.
 o.bind(
   "SUPER + SHIFT + H",
   "System monitor (btop)",

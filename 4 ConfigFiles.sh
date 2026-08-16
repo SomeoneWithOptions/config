@@ -106,12 +106,6 @@ for skill in "$SCRIPT_DIR"/pi/agent/skills/*; do
     copy_dir_required "$skill" "$HOME/.pi/agent/skills/$skill_name"
 done
 
-# Local Helper Scripts. Only these two are cross-platform; every other bin/ helper
-# needs Hyprland/Omarchy and is installed in the Linux section below.
-for helper in ghui hunk; do
-    copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
-done
-
 # Fish Configuration
 FISH_CONFIG_SOURCE="$SCRIPT_DIR/fish/config.fish"
 FISH_CONFIG_DEST="$HOME/.config/fish/config.fish"
@@ -199,6 +193,12 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
     if [[ "$(defaults read org.alacritty AppleFontSmoothing 2>/dev/null || true)" != "0" ]]; then
         defaults write org.alacritty AppleFontSmoothing -int 0
     fi
+
+    # macOS only: on Linux, Omarchy's install/user/mise.sh generates byte-identical
+    # wrappers for these two via omarchy-mise-install.
+    for helper in ghui hunk; do
+        copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
+    done
 fi
 
 # Vim Configuration
@@ -226,7 +226,8 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     # Hyprland/Omarchy helper scripts.
     for helper in "$SCRIPT_DIR"/bin/*; do
         helper_name="$(basename "$helper")"
-        # ghui/hunk are already installed above; flicko-slurp goes to a scoped dir below.
+        # ghui/hunk are macOS-only here (Omarchy generates them on Linux); flicko-slurp
+        # goes to a scoped dir below.
         [[ "$helper_name" == ghui || "$helper_name" == hunk || "$helper_name" == flicko-slurp ]] && continue
         copy_executable_required "$helper" "$HOME/.local/bin/$helper_name"
     done
@@ -310,5 +311,5 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_required "$unit" "$HOME/.config/systemd/user/$(basename "$unit")"
     done
     systemctl --user daemon-reload || true
-    systemctl --user enable --now battery-power-mode.timer mise-go-upgrade.timer || true
+    systemctl --user enable --now mise-go-upgrade.timer || true
 fi

@@ -7,7 +7,6 @@
   "bar": {
     "position": "top",
     "transparent": false,
-    "centerAnchor": "andres.clock",
     "layout": {
       "left": [
         { "id": "omarchy.spacer", "size": 3 },

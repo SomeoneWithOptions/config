@@ -15,7 +15,7 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
   framed_panels_tmp="$(mktemp -d)"
   OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py"
   test -z "$(OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py")"
-  for panel in audio bluetooth clock monitor network power; do
+  for panel in audio bluetooth clock monitor network power tailscale; do
     python -m json.tool "$framed_panels_tmp/plugins/andres.$panel/manifest.json" >/dev/null
     grep -q '  FramePanel {' "$framed_panels_tmp/plugins/andres.$panel/Panel.qml"
     grep -q 'property int gap: -1' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
@@ -91,30 +91,5 @@ grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$RO
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"
 grep -q '#zen-appcontent-navbar-wrapper' "$ROOT/zen/userChrome.css"
-
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/bin" "$tmp/power/AC0" "$tmp/runtime"
-printf 'Mains\n' >"$tmp/power/AC0/type"
-printf '0\n' >"$tmp/power/AC0/online"
-cat >"$tmp/bin/powerprofilesctl" <<'EOF'
-#!/usr/bin/env bash
-printf '%s\n' "$*" >>"$CALLS"
-EOF
-chmod +x "$tmp/bin/powerprofilesctl"
-export CALLS="$tmp/calls"
-
-run_battery_mode() {
-  POWER_SUPPLY_ROOT="$tmp/power" XDG_RUNTIME_DIR="$tmp/runtime" \
-    PATH="$tmp/bin:$PATH" "$ROOT/bin/battery-power-mode"
-}
-
-run_battery_mode
-run_battery_mode
-[ "$(wc -l <"$CALLS")" -eq 1 ]
-grep -qx 'set power-saver' "$CALLS"
-printf '1\n' >"$tmp/power/AC0/online"
-run_battery_mode
-tail -n 1 "$CALLS" | grep -qx 'set balanced'
 
 printf 'smoke tests passed\n'

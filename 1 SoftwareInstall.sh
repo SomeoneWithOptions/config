@@ -158,17 +158,19 @@ install_arch_packages() {
 
   log "Ensuring packages are installed with pacman/yay."
   local package
+  # Omarchy's own base/hardware installs already cover git, tmux, quickshell(-git)
+  # and vulkan-{intel,radeon,asahi} for the detected GPU; curl/gnupg/openssh arrive
+  # as dependencies. Listing them here was a no-op.
+  #
+  # libfprint here is `libfprint`, never `libfprint-git`: the AUR build
+  # provides+conflicts libfprint, so `pacman -S --noconfirm` answers the conflict
+  # prompt N and aborts the whole step -- and it is a downgrade besides.
   for package in \
-    git \
     github-cli \
-    tmux \
     fish \
     alacritty \
     ghostty \
     vim \
-    curl \
-    gnupg \
-    openssh \
     nodejs \
     npm \
     zed \
@@ -178,9 +180,8 @@ install_arch_packages() {
     bind \
     fwupd \
     cmatrix \
-    quickshell \
     vlc \
-    libfprint-git \
+    libfprint \
     fprintd \
     usbutils \
     libcamera \
@@ -192,15 +193,18 @@ install_arch_packages() {
     arch_install_if_missing "$package"
   done
 
-  if has_command lspci && lspci | grep -Eq "Intel.*(Graphics|VGA)"; then
-    arch_install_if_missing vulkan-intel
-  fi
-
   run_or_warn "omarchy install browser zen" omarchy install browser zen
+
+  # The bar ships an `andres.tailscale` widget, so the binary has to exist on a
+  # fresh laptop. This also enables tailscaled and Taildrop.
+  if ! has_command tailscale; then
+    run_or_warn "omarchy install service tailscale" omarchy install service tailscale
+  fi
 
   install_arch_1password
   install_rtk
-  install_pi
+  # No install_pi here: Omarchy mise-installs `pi` during setup (install/user/mise.sh).
+  # The macOS branch still needs the upstream installer.
   install_personal_dev_tools
 }
 

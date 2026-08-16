@@ -38,7 +38,6 @@ read_color() {
 }
 
 export FLICKO_OUTPUT="$output"
-export FLICKO_ACCENT="$(read_color accent)"
 export FLICKO_BACKGROUND="$(read_color background)"
 export FLICKO_SCREEN="$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused).name' | head -1)"
 export QS_NO_RELOAD_POPUP=1

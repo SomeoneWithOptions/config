@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+colors="$HOME/.local/state/omarchy/current/theme/colors.toml"
+appearance=dark
+grep -qE '^\s*mode\s*=\s*"light"' "$colors" && appearance=light
+
+mkdir -p "$HOME/.config/zed/themes"
+/usr/bin/omazed-generator.sh "$colors" "$HOME/.config/zed/themes" /usr/bin/omazed-theme.tpl "$appearance"

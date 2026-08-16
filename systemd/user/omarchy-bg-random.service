@@ -1,0 +1,6 @@
+[Unit]
+Description=Set next Omarchy background
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/omarchy theme bg next

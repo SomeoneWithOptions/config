@@ -61,14 +61,15 @@ install_npm_cli() {
   local package="$1"
   local command_name="$2"
 
-  if has_command "$command_name"; then
+  if [ "$(uname -s)" = "Linux" ]; then
+    run_or_warn "omarchy mise install ${package}" \
+      omarchy-mise-install "npm:${package}" "$command_name"
+  elif has_command "$command_name"; then
     log "${command_name} is already installed."
-  elif ! has_command npm; then
-    warn "npm not found; cannot install ${command_name}."
-  elif [ "$(uname -s)" = "Linux" ]; then
-    run_or_warn "npm install ${package}" sudo npm install --global "$package"
-  else
+  elif has_command npm; then
     run_or_warn "npm install ${package}" npm install --global "$package"
+  else
+    warn "npm not found; cannot install ${command_name}."
   fi
 }
 
@@ -132,22 +133,15 @@ arch_install_if_missing() {
 remove_stock_omarchy_apps() {
   log "Removing stock Omarchy apps not wanted on this laptop config."
 
-  local package
-  for package in signal-desktop obsidian xournalpp typora aether cliamp kdenlive spotify pinta; do
-    if pacman_package_installed "$package"; then
-      run_or_warn "pacman remove ${package}" sudo pacman -Rns --noconfirm "$package"
-    fi
-  done
+  # omarchy-launch-editor otherwise falls back to nvim after it is removed.
+  run_or_warn "set Vim as default editor" omarchy default editor vim
+  run_or_warn "remove unwanted Omarchy packages" omarchy pkg drop \
+    omarchy-nvim neovim \
+    obsidian xournalpp aether cliamp kdenlive pinta
 }
 
 install_arch_1password() {
-  if pacman_package_installed 1password || pacman_package_installed 1password-beta; then
-    log "1Password is already installed."
-  else
-    arch_install_if_missing 1password-beta
-  fi
-
-  arch_install_if_missing 1password-cli
+  run_or_warn "omarchy install service 1password" omarchy install service 1password
 }
 
 install_arch_packages() {
@@ -166,14 +160,10 @@ install_arch_packages() {
   # provides+conflicts libfprint, so `pacman -S --noconfirm` answers the conflict
   # prompt N and aborts the whole step -- and it is a downgrade besides.
   for package in \
-    github-cli \
     fish \
     alacritty \
     ghostty \
     vim \
-    nodejs \
-    npm \
-    zed \
     terraform \
     aws-cli-v2 \
     google-cloud-cli \
@@ -181,6 +171,8 @@ install_arch_packages() {
     fwupd \
     cmatrix \
     vlc \
+    gsfonts \
+    ttf-liberation \
     libfprint \
     fprintd \
     usbutils \
@@ -193,6 +185,12 @@ install_arch_packages() {
     arch_install_if_missing "$package"
   done
 
+  # Use Omarchy's mise config instead of owning ~/.config/mise/config.toml.
+  run_or_warn "omarchy install dev-env node" omarchy install dev-env node
+  run_or_warn "omarchy install dev-env go" omarchy install dev-env go
+  # omazed 2.0.1's setup still reads pre-Quattro paths; ConfigFiles installs
+  # the compatible theme hook instead.
+  run_or_warn "omarchy install Zed packages" omarchy pkg add zed omazed
   run_or_warn "omarchy install browser zen" omarchy install browser zen
 
   # The bar ships an `andres.tailscale` widget, so the binary has to exist on a
@@ -277,11 +275,12 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git gh tmux fish vim 1password-cli rtk node@24 google-cloud-sdk; do
+  for package in git gh tmux fish vim mise 1password-cli rtk node@24 google-cloud-sdk; do
     brew_install_formula_if_missing "$package"
   done
 
   configure_homebrew_node24
+  run_or_warn "mise install Go" mise use -g go@latest
   install_rtk
   install_pi
 

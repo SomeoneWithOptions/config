@@ -31,8 +31,8 @@ and clones the repo to `~/code/config` for the post-update hook.
 
 Shared by both platforms:
 
-- `fish/`, `nvim/`, `zed/`, `ghostty/`, `alacritty/`, `fontconfig/`, `gtk-*`,
-  `mise/`, `git/` — app config
+- `fish/`, `zed/`, `foot/`, `ghostty/`, `alacritty/`, `fontconfig/`, `gtk-*`,
+  `git/` — app config
 - `bin/ghui`, `bin/hunk` — helpers installed to `~/.local/bin` everywhere
 - `pi/agent/` — pi agent extensions and skills
 
@@ -49,10 +49,10 @@ Omarchy/Arch only:
   by cloning the stock panels and attaching them to the desktop frame. Generated,
   so those seven are not tracked here
 - `omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
-- `omarchy/hooks/post-update.d/` — reapply this repo after `omarchy update`
+- `omarchy/hooks/` — post-update replay and Zed theme sync
 - `quickshell/flicko-picker/` — animated screenshot region picker
 - the rest of `bin/` — Hyprland/Omarchy helpers
-- `systemd/user/` — battery power-profile and mise Go update timers
+- `systemd/user/` — mise Go upgrades and random-background timers
 - `zen/`, `xdg/` — browser prefs and default-app associations
 
 `terraform/` is unrelated to laptops: it provisions a personal AWS box.

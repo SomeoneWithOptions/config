@@ -139,6 +139,7 @@ rm -f "$FISH_CONFIG_TMP"
 
 copy_required "$SCRIPT_DIR/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/theme.fish"
 copy_required "$SCRIPT_DIR/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
+copy_required "$SCRIPT_DIR/fish/conf.d/turso.fish" "$HOME/.config/fish/conf.d/turso.fish"
 copy_required "$SCRIPT_DIR/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
 copy_required "$SCRIPT_DIR/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
 
@@ -165,11 +166,10 @@ if [[ -n "${FISH_PATH:-}" ]]; then
     fi
 fi
 
-# Fontconfig / GTK / Mise Configuration
+# Fontconfig / GTK Configuration
 copy_required "$SCRIPT_DIR/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"
 copy_required "$SCRIPT_DIR/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
 copy_required "$SCRIPT_DIR/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
-copy_required "$SCRIPT_DIR/mise/config.toml" "$HOME/.config/mise/config.toml"
 copy_required "$SCRIPT_DIR/git/ignore" "$HOME/.config/git/ignore"
 
 # Alacritty Configuration
@@ -207,9 +207,6 @@ touch "$VIMRC"
 append_line_once "set number" "$VIMRC"
 append_line_once "set relativenumber" "$VIMRC"
 
-# Neovim Configuration
-copy_dir_required "$SCRIPT_DIR/nvim" "$HOME/.config/nvim"
-
 # Omarchy/Arch Configuration (the only Linux this repo configures)
 if [[ "$OS_NAME" == "Linux" ]]; then
     # Hyprland
@@ -241,7 +238,13 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"
     done
     copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
-    framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py")
+    if ! framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py"); then
+        printf 'Framed panel generation FAILED (upstream panel source changed).\n' >&2
+        if command -v notify-send >/dev/null 2>&1; then
+            notify-send -u critical "Config replay" "Framed panels failed to regenerate" || true
+        fi
+        framed_panels_changed=""
+    fi
     copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
     copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
     if [[ -n "$framed_panels_changed" ]]; then
@@ -278,8 +281,11 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     # Omarchy theme, branding, and hooks
     copy_required "$SCRIPT_DIR/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
     copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
-    for hook in "$SCRIPT_DIR"/omarchy/hooks/post-update.d/*; do
-        copy_executable_required "$hook" "$HOME/.config/omarchy/hooks/post-update.d/$(basename "$hook")"
+    for hook_dir in "$SCRIPT_DIR"/omarchy/hooks/*.d; do
+        event="$(basename "$hook_dir")"
+        for hook in "$hook_dir"/*; do
+            copy_executable_required "$hook" "$HOME/.config/omarchy/hooks/$event/$(basename "$hook")"
+        done
     done
 
     # The hook above reapplies this repo after `omarchy update` runs its migrations,
@@ -311,5 +317,5 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_required "$unit" "$HOME/.config/systemd/user/$(basename "$unit")"
     done
     systemctl --user daemon-reload || true
-    systemctl --user enable --now mise-go-upgrade.timer || true
+    systemctl --user enable --now mise-go-upgrade.timer omarchy-bg-random.timer || true
 fi

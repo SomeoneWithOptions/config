@@ -46,6 +46,32 @@ test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
+node --input-type=module - "$ROOT/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const { themeMode } = await import(pathToFileURL(process.argv[2]));
+assert.equal(themeMode('mode = "light"\nbackground = "#fff"'), "light");
+assert.equal(themeMode('mode = "dark"'), "dark");
+JS
+
+if [[ -d /usr/share/omarchy/shell/plugins ]]; then
+  (cd /usr/share/omarchy/shell/plugins &&
+    sha256sum --quiet -c "$ROOT/omarchy/plugins/UPSTREAM.sha256")
+fi
+if [[ -x /usr/bin/omazed-generator.sh ]]; then
+  omazed_tmp="$(mktemp -d)"
+  mkdir -p "$omazed_tmp/.local/state/omarchy/current/theme"
+  cp "$HOME/.local/state/omarchy/current/theme/colors.toml" "$omazed_tmp/.local/state/omarchy/current/theme/"
+  colors="$omazed_tmp/.local/state/omarchy/current/theme/colors.toml"
+  sed -i -E 's/^mode[[:space:]]*=.*/mode = "dark"/' "$colors"
+  HOME="$omazed_tmp" bash "$ROOT/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
+  grep -q '"appearance": "dark"' "$omazed_tmp/.config/zed/themes/omazed.json"
+  sed -i -E 's/^mode[[:space:]]*=.*/mode = "light"/' "$colors"
+  HOME="$omazed_tmp" bash "$ROOT/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
+  grep -q '"appearance": "light"' "$omazed_tmp/.config/zed/themes/omazed.json"
+  python -m json.tool "$omazed_tmp/.config/zed/themes/omazed.json" >/dev/null
+  rm -rf "$omazed_tmp"
+fi
 if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
@@ -72,7 +98,7 @@ command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found i
 # hook reapplying this repo is the only thing keeping customizations. Its missing-repo
 # guard must fail loudly rather than run the installer from a bad path.
 test -x "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
-grep -q 'omarchy/hooks/post-update.d/\*' "$ROOT/4 ConfigFiles.sh"
+grep -q 'omarchy/hooks/\*\.d' "$ROOT/4 ConfigFiles.sh"
 # A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go
 # unprotected without ever saying so. notify-send is stubbed: the guard's whole job is
 # to shout, and unstubbed it shouts at the real desktop on every test run.

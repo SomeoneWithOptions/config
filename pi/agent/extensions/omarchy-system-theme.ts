@@ -1,19 +1,22 @@
-/**
- * Syncs pi's light/dark theme with the active Omarchy theme.
- *
- * Omarchy light themes include:
- *   ~/.config/omarchy/current/theme/light.mode
- */
+/** Syncs pi's light/dark theme with Omarchy's generated colors.toml. */
 
-import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const home = process.env.HOME ?? "";
-const lightModePath = join(home, ".config/omarchy/current/theme/light.mode");
+const colorsPath = join(home, ".local/state/omarchy/current/theme/colors.toml");
+
+export function themeMode(colors: string): "light" | "dark" {
+	return /^\s*mode\s*=\s*"light"/m.test(colors) ? "light" : "dark";
+}
 
 function omarchyPiTheme(): "light" | "dark" {
-	return existsSync(lightModePath) ? "light" : "dark";
+	try {
+		return themeMode(readFileSync(colorsPath, "utf8"));
+	} catch {
+		return "dark";
+	}
 }
 
 export default function (pi: ExtensionAPI) {

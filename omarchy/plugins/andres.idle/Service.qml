@@ -26,6 +26,7 @@ Item {
   readonly property string screensaverClass: "org.omarchy.screensaver"
 
   property bool stayAwake: false
+  property bool audioPlaying: false
   property bool stayAwakeStateLoaded: false
   property bool hasPendingStayAwakePersist: false
   property bool pendingStayAwakePersist: false
@@ -169,12 +170,23 @@ Item {
     cancelIdleCycle("activity")
   }
 
+  // Firefox-family browsers publish their media wake lock over the
+  // org.freedesktop.ScreenSaver D-Bus name, which nothing owns here, so playing
+  // video never reaches the compositor as an idle inhibitor. Treat an uncorked
+  // audio stream as activity instead.
+  function probeAudio() {
+    if (!audioProbe.running) audioProbe.running = true
+  }
+
   function handleIdleChanged() {
     logEvent("idle-monitor", idleMonitor.isIdle ? "idle" : "active")
     if (!root.idleEnabled) return
 
-    if (idleMonitor.isIdle) startIdleCycle()
-    else handleActiveSignal()
+    if (idleMonitor.isIdle) probeAudio()
+    else {
+      audioRecheckTimer.stop()
+      handleActiveSignal()
+    }
   }
 
   function statusJson() {
@@ -184,6 +196,7 @@ Item {
       stayAwakeStateLoaded: root.stayAwakeStateLoaded,
       stayAwakeStatePath: root.stayAwakeStatePath,
       idle: idleMonitor.isIdle,
+      audioPlaying: root.audioPlaying,
       inIdleCycle: root.idledThisCycle,
       screensaverStarted: root.screensaverStartedThisCycle,
       screensaver: root.screensaverTimeoutSeconds,
@@ -270,6 +283,13 @@ Item {
   }
 
   Timer {
+    id: audioRecheckTimer
+    interval: 30000
+    repeat: false
+    onTriggered: root.probeAudio()
+  }
+
+  Timer {
     id: screensaverLaunchGraceTimer
     interval: 3000
     repeat: false
@@ -296,6 +316,23 @@ Item {
   Process {
     id: wakeProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "wake exitCode=" + exitCode + " status=" + exitStatus) }
+  }
+
+  Process {
+    id: audioProbe
+    command: ["bash", "-c", "pactl list sink-inputs | grep -q 'Corked: no'"]
+    onExited: function(exitCode) {
+      root.audioPlaying = exitCode === 0
+      if (!root.idleEnabled || !idleMonitor.isIdle || root.idledThisCycle) return
+
+      if (root.audioPlaying) {
+        root.logEvent("idle-hold", "audio playing")
+        audioRecheckTimer.restart()
+        return
+      }
+
+      root.startIdleCycle()
+    }
   }
 
   Process {

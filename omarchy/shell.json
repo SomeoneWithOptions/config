@@ -15,6 +15,7 @@
       ],
       "center": [],
       "right": [
+        { "id": "omarchy.indicators", "items": ["ScreenRecording"] },
         { "id": "andres.pill" },
         { "id": "andres.tray" },
         { "id": "omarchy.system-update" },

@@ -209,8 +209,13 @@ async function firecrawlPost(path: string, body: unknown, signal: AbortSignal | 
 }
 
 async function firecrawlGet(pathOrUrl: string, signal: AbortSignal | undefined, service: string) {
-	const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${FIRECRAWL_BASE}${pathOrUrl}`;
-	return fetchJson(url, { headers: firecrawlHeaders(), signal }, service, 1);
+	const url = new URL(pathOrUrl.startsWith("http") ? pathOrUrl : `${FIRECRAWL_BASE}${pathOrUrl}`);
+	if (url.origin !== new URL(FIRECRAWL_BASE).origin) throw new Error("Refusing to send Firecrawl credentials to a non-Firecrawl URL");
+	return fetchJson(url.toString(), { headers: firecrawlHeaders(), signal }, service, 1);
+}
+
+async function firecrawlDelete(path: string, signal: AbortSignal | undefined, service: string) {
+	return fetchJson(`${FIRECRAWL_BASE}${path}`, { method: "DELETE", headers: firecrawlHeaders(), signal }, service, 1);
 }
 
 async function truncateForTool(text: string, maxBytesInput?: number, label = "web-output") {
@@ -242,6 +247,7 @@ function compactMetadata(metadata: any = {}) {
 		cacheState: metadata.cacheState,
 		cachedAt: metadata.cachedAt,
 		creditsUsed: metadata.creditsUsed,
+		scrapeId: metadata.scrapeId,
 		proxyUsed: metadata.proxyUsed,
 		error: metadata.error,
 	});
@@ -302,6 +308,7 @@ function firecrawlSearchBuckets(data: any) {
 		web: root.web ?? [],
 		news: root.news ?? [],
 		images: root.images ?? [],
+		developer: root.developer ?? [],
 	};
 }
 
@@ -589,7 +596,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 		promptSnippet: "Fetch a URL with Firecrawl and return clean markdown, summary, links, answer, or highlights",
 		promptGuidelines: [
 			"Use web_fetch after web_search or web_context to read authoritative pages before answering with citations or implementation details.",
-			"Use web_fetch output=summary, question, highlights, or links when full markdown would waste context.",
+			"Prefer web_fetch output=summary, markdown, or links for routine reading; use question, highlights, or json only when targeted LLM extraction is worth higher credit cost.",
 		],
 		parameters: Type.Object({
 			url: Type.String({ description: "HTTP(S) URL to fetch. Bare domains are normalized to https://." }),
@@ -653,6 +660,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 				statusCode: metadata.statusCode,
 				cacheState: metadata.cacheState,
 				creditsUsed: metadata.creditsUsed,
+				scrapeId: metadata.scrapeId,
 				warning: data.warning ?? page.warning,
 			});
 			const fullText = `${Object.entries(header).map(([key, value]) => `${key}: ${value}`).join("\n")}\n\n${bodyText}`.trim();
@@ -665,12 +673,58 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerTool({
+		name: "web_interact",
+		label: "Web Interact",
+		description: "Run one read-only natural-language interaction against a page previously returned by web_fetch, then close the browser session. Use for content hidden behind clicks, tabs, public search/filter forms, or client-side navigation.",
+		promptSnippet: "Interact once with a previously fetched dynamic page using its scrapeId",
+		promptGuidelines: [
+			"Use web_interact only after web_fetch returns a scrapeId and needed information requires page interaction; prefer web_fetch for ordinary pages.",
+			"Give web_interact one complete, read-only extraction task because it closes the browser session after the interaction; never request login, sensitive-data entry, purchases, acceptance of terms, or external side effects.",
+		],
+		parameters: Type.Object({
+			scrapeId: Type.String({ description: "Scrape job id returned in web_fetch output." }),
+			prompt: Type.String({ description: "Complete natural-language task: navigation/actions plus information to return." }),
+			timeoutSeconds: Type.Optional(Type.Number({ description: "Interaction timeout in seconds, 1-300. Default 60." })),
+			maxChars: Type.Optional(Type.Number({ description: `Max output bytes/chars. Hard capped at ${formatSize(MAX_TOOL_BYTES)} / ${MAX_TOOL_LINES} lines.` })),
+		}),
+		async execute(_id, params, signal) {
+			const jobId = encodeURIComponent(params.scrapeId);
+			let stopWarning: string | undefined;
+			let data: any;
+			try {
+				data = await firecrawlPost(`/scrape/${jobId}/interact`, {
+					prompt: `Read-only research task. Do not authenticate, enter sensitive data, make purchases, accept terms, download files, or cause external side effects. Navigation and public search/filter controls are allowed.\n\n${params.prompt}`,
+					timeout: clampNumber(params.timeoutSeconds, 60, 1, 300),
+					origin: "pi-web-research",
+				}, signal, "Firecrawl interact");
+			} finally {
+				try {
+					await firecrawlDelete(`/scrape/${jobId}/interact`, undefined, "Firecrawl stop interact");
+				} catch (error) {
+					stopWarning = errorText(error);
+				}
+			}
+			const fullText = [
+				data.output ?? data.result ?? data.stdout ?? "Interaction completed without text output.",
+				data.stderr ? `stderr:\n${data.stderr}` : "",
+				data.error ? `Error: ${data.error}` : "",
+				stopWarning ? `Warning: browser session cleanup failed: ${stopWarning}` : "",
+			].filter(Boolean).join("\n\n");
+			const truncated = await truncateForTool(fullText, params.maxChars, "firecrawl-interact");
+			return {
+				content: [{ type: "text", text: truncated.text }],
+				details: cleanObject({ scrapeId: params.scrapeId, success: data.success, exitCode: data.exitCode, killed: data.killed, stopWarning, truncation: truncated.truncation, fullOutputPath: truncated.fullOutputPath }),
+			};
+		},
+	});
+
+	pi.registerTool({
 		name: "web_deep_search",
 		label: "Web Deep Search",
 		description: "Paid Firecrawl search. Can return just results, or search plus scraped summaries/markdown in one call. Use when Brave is rate-limited or you need Firecrawl categories/domain filters/content.",
 		promptSnippet: "Search with Firecrawl and optionally scrape result content in one paid call",
 		promptGuidelines: [
-			"Use web_deep_search (Firecrawl Standard) when Brave Search is rate-limited, when you need GitHub/research/PDF category filters, or when a single paid search+scrape call is more efficient than many fetches.",
+			"Use web_deep_search (Firecrawl Standard) when Brave Search is rate-limited, when you need GitHub/developer/research/PDF category filters, or when a single paid search+scrape call is more efficient than many fetches.",
 			"Use scrape=none for low-credit discovery; use scrape=summary/markdown when one search+scrape call is more efficient than many web_fetch calls.",
 		],
 		parameters: Type.Object({
@@ -680,7 +734,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			location: Type.Optional(Type.String({ description: "Geo location string, e.g. San Francisco,California,United States." })),
 			tbs: Type.Optional(Type.String({ description: "Time filter, e.g. qdr:d, qdr:w, qdr:m, qdr:y, sbd:1,qdr:w, or cdr:1,cd_min:MM/DD/YYYY,cd_max:MM/DD/YYYY." })),
 			sources: Type.Optional(Type.Array(StringEnum(["web", "news", "images"] as const), { description: "Firecrawl search sources. Default web." })),
-			categories: Type.Optional(Type.Array(StringEnum(["github", "research", "pdf"] as const), { description: "Optional Firecrawl category filters." })),
+			categories: Type.Optional(Type.Array(StringEnum(["github", "research", "pdf", "developer"] as const), { description: "Optional Firecrawl category filters. developer adds coding docs, issues, merged PRs, and READMEs; research searches academic websites, not the paper index." })),
 			includeDomains: Type.Optional(Type.Array(Type.String(), { description: "Only include these hostnames. Cannot be used with excludeDomains." })),
 			excludeDomains: Type.Optional(Type.Array(Type.String(), { description: "Exclude these hostnames. Cannot be used with includeDomains." })),
 			scrape: Type.Optional(StringEnum(["none", "summary", "markdown"] as const, { description: "Whether to scrape result content. Default none." })),
@@ -702,13 +756,14 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 				scrapeOptions: scrape === "none" ? undefined : { formats: [scrape], onlyMainContent: true },
 			});
 			const data: any = await firecrawlPost("/search", body, signal, "Firecrawl search");
-			const { web, news, images } = firecrawlSearchBuckets(data);
-			const all = [...web, ...news, ...images];
+			const { web, news, images, developer } = firecrawlSearchBuckets(data);
+			const all = [...web, ...news, ...images, ...developer];
 			const fullText = [
 				`Query: ${params.query}`,
 				renderFirecrawlResultSection("Web", web),
 				renderFirecrawlResultSection("News", news),
 				renderFirecrawlResultSection("Images", images),
+				renderFirecrawlResultSection("Developer", developer),
 				data.warning ? `Warning: ${data.warning}` : "",
 			].filter(Boolean).join("\n\n");
 			const truncated = await truncateForTool(fullText, params.maxChars, "firecrawl-search");
@@ -724,6 +779,121 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 					fullOutputPath: truncated.fullOutputPath,
 				},
 			};
+		},
+	});
+
+	pi.registerTool({
+		name: "web_developer_search",
+		label: "Developer Search",
+		description: "Search Firecrawl's Developer Index for matched passages from public docs, issues, merged pull requests, and READMEs. Best for API behavior, error messages, implementation history, and known bugs.",
+		promptSnippet: "Search primary coding sources with matched passages using Firecrawl Developer Index",
+		promptGuidelines: [
+			"Use web_developer_search for coding questions where docs, README passages, issues, or merged pull requests provide stronger evidence than general web results.",
+			"Check web_developer_search coverage when an expected result type is missing; degraded/unavailable means an index or filter gap.",
+		],
+		parameters: Type.Object({
+			query: Type.String({ description: "Natural-language coding question or search phrase." }),
+			limit: Type.Optional(Type.Number({ description: "Ranked results, 1-30. Default 10." })),
+			passages: Type.Optional(Type.Number({ description: "Matched passages per result, 1-5. Default 1." })),
+			types: Type.Optional(Type.Array(StringEnum(["doc", "issue", "pull_request", "readme"] as const), { description: "Result kinds. Default all." })),
+			repos: Type.Optional(Type.Array(Type.String(), { description: "Repository slugs such as owner/repo; scopes issue, pull_request, and readme results." })),
+			sources: Type.Optional(Type.Array(Type.String(), { description: "Documentation source ids; scopes doc results." })),
+			skillsOnly: Type.Optional(Type.Boolean({ description: "Search only indexed agent-skill files." })),
+			language: Type.Optional(Type.String({ description: "Repository primary language, e.g. Rust." })),
+			topic: Type.Optional(Type.String({ description: "Repository topic, e.g. async." })),
+			license: Type.Optional(Type.String({ description: "Repository license, e.g. MIT." })),
+			minStars: Type.Optional(Type.Number({ description: "Minimum repository stars." })),
+			maxStars: Type.Optional(Type.Number({ description: "Maximum repository stars." })),
+			archived: Type.Optional(Type.Boolean({ description: "Include or exclude archived repositories." })),
+			fork: Type.Optional(Type.Boolean({ description: "Include or exclude forks." })),
+			maxChars: Type.Optional(Type.Number({ description: `Max output bytes/chars. Hard capped at ${formatSize(MAX_TOOL_BYTES)} / ${MAX_TOOL_LINES} lines.` })),
+		}),
+		async execute(_id, params, signal) {
+			const data: any = await firecrawlPost("/search/developer", cleanObject({
+				query: params.query,
+				k: clampNumber(params.limit, 10, 1, 30),
+				passages: clampNumber(params.passages, 1, 1, 5),
+				types: params.types,
+				repos: params.repos,
+				sources: params.sources,
+				skills: params.skillsOnly ? "only" : undefined,
+				language: params.language,
+				topic: params.topic,
+				license: params.license,
+				min_stars: params.minStars,
+				max_stars: params.maxStars,
+				archived: params.archived,
+				fork: params.fork,
+			}), signal, "Firecrawl developer search");
+			const results = data.results ?? data.data?.results ?? [];
+			const lines = [`Query: ${params.query}`];
+			for (const [index, result] of results.entries()) {
+				lines.push(`\n## ${index + 1}. ${result.title ?? result.url ?? result.id ?? "(untitled)"}`);
+				if (result.type || result.id) lines.push(`Type: ${result.type ?? "unknown"}${result.id ? ` | ID: ${result.id}` : ""}`);
+				if (result.url) lines.push(`URL: ${result.url}`);
+				for (const passage of result.passages ?? []) lines.push(`\n${typeof passage === "string" ? passage : passage.text ?? stringifyValue(passage)}`);
+			}
+			if (data.coverage) lines.push(`\nCoverage: ${JSON.stringify(data.coverage)}`);
+			if (data.reranked !== undefined) lines.push(`Reranked: ${data.reranked}`);
+			const truncated = await truncateForTool(lines.join("\n"), params.maxChars, "firecrawl-developer-search");
+			return { content: [{ type: "text", text: truncated.text }], details: { results, coverage: data.coverage, reranked: data.reranked, repos: data.repos, sources: data.sources, truncation: truncated.truncation, fullOutputPath: truncated.fullOutputPath } };
+		},
+	});
+
+	pi.registerTool({
+		name: "web_research_papers",
+		label: "Research Papers",
+		description: "Search Firecrawl's scientific paper index, inspect/read one paper, or find related papers. Covers roughly 43M abstracts from PubMed, bioRxiv, medRxiv, and arXiv.",
+		promptSnippet: "Search, read, or expand scientific papers using Firecrawl Research Index",
+		promptGuidelines: [
+			"Use web_research_papers instead of web_deep_search category=research for literature work; the dedicated index returns paper records and can read full-text passages.",
+			"Use web_research_papers action=search first, then action=read with a primaryId and focused query to verify claims inside strong candidate papers.",
+		],
+		parameters: Type.Object({
+			action: StringEnum(["search", "read", "related"] as const, { description: "search papers; inspect/read one paper; or find related papers." }),
+			query: Type.Optional(Type.String({ description: "Search query, or focused full-text question for read. Omit in read to inspect metadata." })),
+			paperId: Type.Optional(Type.String({ description: "Canonical paperId or primaryId such as arxiv:1706.03762, pmid:..., pmcid:..., or doi:... Required for read/related." })),
+			intent: Type.Optional(Type.String({ description: "Ranking/filtering intent. Required for related." })),
+			limit: Type.Optional(Type.Number({ description: "Results/passages, 1-50. Default 10 for search/related, 4 for read." })),
+			authors: Type.Optional(Type.Array(Type.String(), { description: "Author substring filters for search; all must match." })),
+			categories: Type.Optional(Type.Array(Type.String(), { description: "Paper category filters for search, e.g. cs.LG; all must match." })),
+			from: Type.Optional(Type.String({ description: "Inclusive search date lower bound, YYYY-MM-DD." })),
+			to: Type.Optional(Type.String({ description: "Inclusive search date upper bound, YYYY-MM-DD." })),
+			mode: Type.Optional(StringEnum(["similar", "citers", "references"] as const, { description: "Related-paper expansion mode. Default similar." })),
+			rerank: Type.Optional(Type.Boolean({ description: "Apply additional reranking for related papers." })),
+			anchors: Type.Optional(Type.Array(Type.String(), { description: "Additional seed paper ids for related-paper expansion." })),
+			maxChars: Type.Optional(Type.Number({ description: `Max output bytes/chars. Hard capped at ${formatSize(MAX_TOOL_BYTES)} / ${MAX_TOOL_LINES} lines.` })),
+		}),
+		async execute(_id, params, signal) {
+			let url: URL;
+			if (params.action === "search") {
+				if (!params.query) throw new Error("web_research_papers action=search requires query");
+				url = new URL(`${FIRECRAWL_BASE}/search/research/papers`);
+				setSearchParam(url, "query", params.query);
+				setSearchParam(url, "k", clampNumber(params.limit, 10, 1, 50));
+				setSearchParam(url, "authors", params.authors?.join(","));
+				setSearchParam(url, "categories", params.categories?.join(","));
+				setSearchParam(url, "from", params.from);
+				setSearchParam(url, "to", params.to);
+			} else {
+				if (!params.paperId) throw new Error(`web_research_papers action=${params.action} requires paperId`);
+				const base = `${FIRECRAWL_BASE}/search/research/papers/${encodeURIComponent(params.paperId)}`;
+				url = new URL(params.action === "related" ? `${base}/similar` : base);
+				if (params.action === "related") {
+					if (!params.intent) throw new Error("web_research_papers action=related requires intent");
+					setSearchParam(url, "intent", params.intent);
+					setSearchParam(url, "mode", params.mode ?? "similar");
+					setSearchParam(url, "k", clampNumber(params.limit, 10, 1, 50));
+					setSearchParam(url, "rerank", params.rerank);
+					for (const anchor of params.anchors ?? []) url.searchParams.append("anchor", anchor);
+				} else if (params.query) {
+					setSearchParam(url, "query", params.query);
+					setSearchParam(url, "k", clampNumber(params.limit, 4, 1, 50));
+				}
+			}
+			const data: any = await firecrawlGet(url.toString(), signal, "Firecrawl research index");
+			const truncated = await truncateForTool(JSON.stringify(data, null, 2), params.maxChars, `firecrawl-research-${params.action}`);
+			return { content: [{ type: "text", text: truncated.text }], details: { action: params.action, paperId: params.paperId, data, truncation: truncated.truncation, fullOutputPath: truncated.fullOutputPath } };
 		},
 	});
 
@@ -784,7 +954,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 		label: "Web Map",
 		description: "Map a site/section with Firecrawl v2 and return URLs without scraping page content. Best before crawling docs or finding relevant pages cheaply.",
 		promptSnippet: "Map a website with Firecrawl to discover URLs before fetching or crawling",
-		promptGuidelines: ["Use web_map before web_crawl when you only need to discover relevant documentation URLs; then fetch the few pages that matter."],
+		promptGuidelines: ["Use web_map when URLs alone may solve the task or help select a few pages for web_fetch; skip mapping when a full web_crawl is clearly required."],
 		parameters: Type.Object({
 			url: Type.String({ description: "Starting HTTP(S) URL. Bare domains are normalized to https://." }),
 			search: Type.Optional(Type.String({ description: "Optional relevance query to order/filter URLs, e.g. auth, pricing, api reference." })),

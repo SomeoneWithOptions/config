@@ -36,8 +36,16 @@ read_color() {
   ' "$theme_file" 2>/dev/null
 }
 
+# Optional fixed accent. Any file holding a #rrggbb[aa] literal wins over the
+# theme accent; delete it to follow the Omarchy theme again.
+color_file=${FLICKO_COLOR_FILE:-$HOME/.config/quickshell/flicko-picker/color}
+accent=$(read_color accent)
+if [[ -r $color_file ]]; then
+  override=$(grep -m1 -oiE '#[0-9a-f]{8}|#[0-9a-f]{6}' "$color_file") && accent=$override
+fi
+
 export FLICKO_OUTPUT="$output"
-export FLICKO_ACCENT="$(read_color accent)"
+export FLICKO_ACCENT="$accent"
 export FLICKO_BACKGROUND="$(read_color background)"
 export FLICKO_SCREEN="$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused).name' | head -1)"
 export QS_NO_RELOAD_POPUP=1

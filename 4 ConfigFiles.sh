@@ -233,6 +233,11 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     # screenshot wrapper's scoped PATH, leaving the system slurp untouched.
     copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
+    # Optional fixed picker accent. Absent here, a machine-local color file is
+    # left alone; absent in both, the picker follows the theme accent.
+    if [[ -f "$SCRIPT_DIR/quickshell/flicko-picker/color" ]]; then
+        copy_required "$SCRIPT_DIR/quickshell/flicko-picker/color" "$HOME/.config/quickshell/flicko-picker/color"
+    fi
 
     for plugin in "$SCRIPT_DIR"/omarchy/plugins/andres.*; do
         copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"

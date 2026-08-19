@@ -18,6 +18,8 @@
         { "id": "andres.tray" },
         { "id": "omarchy.system-update" },
         { "id": "andres.pill" },
+        { "id": "loom.recording" },
+        { "id": "andres.idle" },
         { "id": "andres.tailscale" },
         { "id": "andres.bluetooth" },
         { "id": "andres.network" },
@@ -36,7 +38,6 @@
   },
   "plugins": [
     { "id": "andres.desktop-frame" },
-    { "id": "andres.idle" },
     { "id": "andres.menu" },
     { "id": "andres.notifications" }
   ],

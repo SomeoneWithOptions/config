@@ -18,19 +18,6 @@ Item {
         ? shell.bar.barSize : style.topBarHeight
     readonly property color frameColor: style.frameColor
     readonly property int cornerRadius: style.screenCornerRadius
-    readonly property bool quattro: Quickshell.env("OMARCHY_PATH").startsWith("/usr/share/omarchy")
-
-    // hypridle retires in Quattro. Preserve this laptop's battery-only
-    // 15-minute suspend without running a second legacy idle daemon.
-    IdleMonitor {
-        enabled: root.enabled && root.quattro
-        timeout: 900
-        respectInhibitors: true
-        onIsIdleChanged: if (isIdle) Quickshell.execDetached([
-            "sh", "-c",
-            "test \"$(cat /sys/class/power_supply/AC/online 2>/dev/null)\" = 0 && systemctl suspend"
-        ])
-    }
 
     // Only the top strip is painted. Left/right/bottom use Hyprland's normal
     // gaps_out, so windows sit in the same gap they use between each other.

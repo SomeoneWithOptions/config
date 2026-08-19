@@ -50,7 +50,8 @@ Omarchy/Arch only:
   so those seven are not tracked here
 - `omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
 - `omarchy/hooks/` — post-update replay and Zed theme sync
-- `quickshell/flicko-picker/` — animated screenshot region picker
+- `quickshell/flicko-picker/` — animated screenshot region picker; the optional
+  `color` file there pins its accent to a fixed hex, otherwise it follows the theme
 - the rest of `bin/` — Hyprland/Omarchy helpers
 - `systemd/user/` — mise Go upgrades and random-background timers
 - `zen/`, `xdg/` — browser prefs and default-app associations

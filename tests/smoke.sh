@@ -111,6 +111,8 @@ rm -rf "$notify_stub"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
+# Config replay owns shell.json, so Loom must stay in that source of truth.
+grep -q '"id": "loom.recording"' "$ROOT/omarchy/shell.json"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
 grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
 

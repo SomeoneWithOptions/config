@@ -170,10 +170,8 @@ Item {
     cancelIdleCycle("activity")
   }
 
-  // Firefox-family browsers publish their media wake lock over the
-  // org.freedesktop.ScreenSaver D-Bus name, which nothing owns here, so playing
-  // video never reaches the compositor as an idle inhibitor. Treat an uncorked
-  // audio stream as activity instead.
+  // Firefox-family browsers do not reach the compositor's idle inhibitor here.
+  // Treat MPRIS playback, including muted video, or uncorked audio as activity.
   function probeAudio() {
     if (!audioProbe.running) audioProbe.running = true
   }
@@ -320,13 +318,13 @@ Item {
 
   Process {
     id: audioProbe
-    command: ["bash", "-c", "pactl list sink-inputs | grep -q 'Corked: no'"]
+    command: ["bash", "-c", "for player in $(busctl --user --no-pager --no-legend list | awk '$1 ~ /^org[.]mpris[.]MediaPlayer2[.]/ { print $1 }'); do busctl --user get-property \"$player\" /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player PlaybackStatus 2>/dev/null | grep -qx 's \"Playing\"' && exit 0; done; pactl list sink-inputs | grep -q 'Corked: no'"]
     onExited: function(exitCode) {
       root.audioPlaying = exitCode === 0
       if (!root.idleEnabled || !idleMonitor.isIdle || root.idledThisCycle) return
 
       if (root.audioPlaying) {
-        root.logEvent("idle-hold", "audio playing")
+        root.logEvent("idle-hold", "media playing")
         audioRecheckTimer.restart()
         return
       }

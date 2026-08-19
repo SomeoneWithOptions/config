@@ -41,7 +41,7 @@ read_color() {
 color_file=${FLICKO_COLOR_FILE:-$HOME/.config/quickshell/flicko-picker/color}
 accent=$(read_color accent)
 if [[ -r $color_file ]]; then
-  override=$(grep -m1 -oiE '#[0-9a-f]{8}|#[0-9a-f]{6}' "$color_file") && accent=$override
+  override=$(grep -oiE '#[0-9a-f]{8}|#[0-9a-f]{6}' "$color_file" | shuf -n1) && accent=$override
 fi
 
 export FLICKO_OUTPUT="$output"

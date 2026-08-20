@@ -26,32 +26,93 @@ hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null ||
 
 tty_name=$(tty 2>/dev/null)
 
-# Hyprland applies the fullscreen window rule just after the terminal starts.
-# If cmatrix starts too early, it captures the small initial terminal size and
-# only paints the top-left area. Wait until the terminal looks fullscreen.
-for _ in {1..30}; do
-  read -r rows cols < <(stty size 2>/dev/null || echo "0 0")
-  if (( rows >= 35 && cols >= 100 )); then
-    break
-  fi
-  sleep 0.1
-done
-clear
+# Launching from the Omarchy menu, Hyprland skips both the fullscreen window
+# rule and focus for this window (the menu layer still holds keyboard focus as
+# it closes), which leaves a 700x500 unfocused box that the focus check below
+# kills after a second. Set both states explicitly instead of trusting the rule.
+force_fullscreen() {
+  # Class selectors are ambiguous here (and fullscreen_state was landing on the
+  # wrong window); the pty's parent is this window's terminal, so match its
+  # address exactly.
+  local addr
+  addr=$(hyprctl -j clients | jq -r --argjson pid "$PPID" 'first(.[]|select(.pid==$pid)|.address) // empty')
+  [[ -n $addr ]] || return
+  hyprctl dispatch "hl.dsp.window.fullscreen_state({ window = [[address:$addr]], internal = 2, client = 2 })" &>/dev/null
+  hyprctl dispatch "hl.dsp.focus({ window = [[address:$addr]] })" &>/dev/null
+}
 
-if command -v cmatrix &>/dev/null; then
-  cmatrix -abC white &
-else
-  ttfx -i ~/.config/omarchy/branding/screensaver.txt \
-    --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas \
-    --anchor-canvas c --anchor-text c --no-eol --no-restore-cursor matrix &
-fi
+# cmatrix measures the terminal once and only repaints cells as its columns
+# scroll past them, so starting it mid-resize leaves stale blocks on screen for
+# ~30s. Wait for a fullscreen size that holds across two samples instead.
+wait_for_stable_size() {
+  local prev="" now deadline=$((SECONDS + 4))
+  while ((SECONDS < deadline)); do
+    now=$(stty size 2>/dev/null)
+    read -r rows cols <<<"${now:-0 0}"
+    if ((rows >= 35 && cols >= 100)) && [[ $now == "$prev" ]]; then
+      return
+    fi
+    prev=$now
+    force_fullscreen
+    sleep 0.25
+  done
+}
+
+# Hard reset: wipes any cells the previous canvas left behind, then re-applies
+# the black background (the reset drops the OSC 11 override).
+reset_screen() {
+  printf '\033c\033]11;rgb:00/00/00\007'
+  clear
+}
+
+start_renderer() {
+  if command -v cmatrix &>/dev/null; then
+    cmatrix -abC white &
+    renderer_pid=$!
+  else
+    ttfx -i ~/.config/omarchy/branding/screensaver.txt \
+      --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas \
+      --anchor-canvas c --anchor-text c --no-eol --no-restore-cursor matrix &
+    renderer_pid=$!
+  fi
+}
+
+wait_for_stable_size
+reset_screen
+renderer_size=$(stty size 2>/dev/null)
+start_renderer
+
+# Launched from the Omarchy menu, Hyprland never applies the fullscreen window
+# rule to this window and something restores focus to the previous window right
+# after it maps -- so re-assert fullscreen and focus for the first few seconds,
+# and don't treat focus loss during that settling window as "user is back".
+grace_deadline=$((SECONDS + 5))
 
 while true; do
-  if read -n1 -t 1 || ! screensaver_in_focus; then
-    exit_screensaver
+  # Poll fast while settling so the re-assert lands quickly, slow afterwards.
+  ((SECONDS < grace_deadline)) && poll=0.25 || poll=1
+  if read -n1 -t "$poll"; then
+    exit_screensaver keypress
+  fi
+
+  if ((SECONDS < grace_deadline)); then
+    force_fullscreen
+  elif ! screensaver_in_focus; then
+    exit_screensaver focus-lost
+  fi
+
+  # A late resize needs the same treatment: stop, let the size settle, wipe,
+  # restart -- cmatrix cannot re-measure its canvas on its own.
+  if [[ $(stty size 2>/dev/null) != "$renderer_size" ]]; then
+    kill "$renderer_pid" 2>/dev/null
+    wait "$renderer_pid" 2>/dev/null
+    wait_for_stable_size
+    reset_screen
+    renderer_size=$(stty size 2>/dev/null)
+    start_renderer
   fi
 
   if [[ -n "$tty_name" ]] && ! pgrep -t "${tty_name#/dev/}" -x cmatrix >/dev/null 2>&1 && ! pgrep -t "${tty_name#/dev/}" -x ttfx >/dev/null 2>&1; then
-    exit_screensaver
+    exit_screensaver renderer-gone
   fi
 done

@@ -79,14 +79,16 @@ export default function (pi: ExtensionAPI) {
 					created = true;
 				}
 
-				const piArgs = ["+new-window", `--working-directory=${worktreePath}`, "-e", "pi", "--name", branch];
+				const piArgs = ["--name", branch];
 				if (ctx.model) piArgs.push("--model", `${ctx.model.provider}/${ctx.model.id}`, "--thinking", ctx.thinkingLevel);
 				const prompt = promptParts.join(" ");
 				if (prompt) piArgs.push(prompt);
 
-				const launched = await pi.exec("ghostty", piArgs, { timeout: 5000 });
+				const launched = await pi.exec("setsid", ["uwsm-app", "-t", "service", "--", "xdg-terminal-exec", `--dir=${worktreePath}`, "--", "pi", ...piArgs], {
+					timeout: 5000,
+				});
 				if (launched.code !== 0) {
-					throw new Error(launched.stderr.trim() || `Created worktree, but Ghostty failed. Run: cd ${worktreePath} && pi`);
+					throw new Error(launched.stderr.trim() || `Created worktree, but terminal failed. Run: cd ${worktreePath} && pi`);
 				}
 				ctx.ui.notify(`${created ? "Created" : "Opened"} ${worktreePath}`, "info");
 			} catch (error) {

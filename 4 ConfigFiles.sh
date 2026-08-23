@@ -218,7 +218,11 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         hyprctl reload >/dev/null 2>&1 || true
         hyprctl configerrors || true
     fi
-    omarchy restart hyprsunset || true
+    # `omarchy restart hyprsunset` spawns a daemon that outlives this update, and
+    # it inherits the update's flock fd -> the lock is held until reboot and every
+    # later `omarchy update` reports one already running. Close the fd for the child.
+    : "${OMARCHY_UPDATE_LOCK_FD:=9}"  # 9 is unused when we're not under the lock
+    omarchy restart hyprsunset {OMARCHY_UPDATE_LOCK_FD}>&- || true
 
     # Hyprland/Omarchy helper scripts.
     for helper in "$SCRIPT_DIR"/bin/*; do

@@ -36,8 +36,50 @@ end
 hl.unbind("PRINT")
 o.bind("PRINT", "Screenshot copied as file", "~/.local/bin/omarchy-screenshot-file-clipboard")
 
--- Mac-style editing shortcuts.
-o.bind("ALT + Z", "Undo", hl.dsp.send_shortcut({ mods = "CTRL", key = "Z" }))
-o.bind("ALT + X", "Cut", hl.dsp.send_shortcut({ mods = "CTRL", key = "X" }))
-o.bind("ALT + C", "Copy", "~/.local/bin/alt-edit-shortcut copy")
-o.bind("ALT + V", "Paste", "~/.local/bin/alt-edit-shortcut paste")
+-- Mac-style editing shortcuts, mirroring Omarchy's universal clipboard
+-- (default/hypr/bindings/clipboard.lua) on ALT instead of SUPER.
+--
+-- Explicit mods via send_key_state keep the physically-held ALT from merging
+-- into the injected chord at the seat, and the down/up split works around
+-- Hyprland leaving synthetic key state stuck/repeating.
+-- https://github.com/hyprwm/Hyprland/discussions/14099
+local function send_shortcut_once(mods, key)
+  return function()
+    hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down" }))
+
+    hl.timer(function()
+      hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up" }))
+    end, { timeout = 50, type = "oneshot" })
+  end
+end
+
+-- Lean on the `terminal` tag from default/hypr/apps/terminals.lua rather than a
+-- second hardcoded class list that drifts out of sync. Dynamic tags trail "*".
+local function active_window_is_terminal()
+  local window = hl.get_active_window()
+
+  for _, tag in ipairs(window and window.tags or {}) do
+    if tag:gsub("%*$", "") == "terminal" then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function clipboard_shortcut(mods, key, terminal_mods, terminal_key)
+  return function()
+    if active_window_is_terminal() then
+      send_shortcut_once(terminal_mods, terminal_key)()
+    else
+      send_shortcut_once(mods, key)()
+    end
+  end
+end
+
+-- CTRL/SHIFT+Insert is the copy/paste chord terminals and TUIs agree on;
+-- CTRL+SHIFT+C only works in the handful of terminals that bind it.
+o.bind("ALT + C", "Copy", clipboard_shortcut("CTRL", "C", "CTRL", "Insert"))
+o.bind("ALT + V", "Paste", clipboard_shortcut("CTRL", "V", "SHIFT", "Insert"))
+o.bind("ALT + X", "Cut", send_shortcut_once("CTRL", "X"))
+o.bind("ALT + Z", "Undo", send_shortcut_once("CTRL", "Z"))

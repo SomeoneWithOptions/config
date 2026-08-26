@@ -18,6 +18,8 @@ Item {
         ? shell.bar.barSize : style.topBarHeight
     readonly property color frameColor: style.frameColor
     readonly property int cornerRadius: style.screenCornerRadius
+    readonly property bool topTransparent: shell && shell.bar
+        ? shell.bar.transparent : false
 
     // Only the top strip is painted. Left/right/bottom use Hyprland's normal
     // gaps_out, so windows sit in the same gap they use between each other.
@@ -34,7 +36,8 @@ Item {
 
             screen: modelData
             visible: root.enabled && !fullscreen
-            color: root.frameColor
+            color: root.topTransparent ? "transparent" : root.frameColor
+            surfaceFormat.opaque: false
             mask: Region {}
             anchors { top: true; right: true; left: true }
             implicitHeight: root.topHeight
@@ -72,8 +75,8 @@ Item {
 
             // Same 1px tuck the drawers use, so no seam shows between the strip
             // and the nook on fractional scale. The nook's top row is solid.
-            Fillet { x: 0; y: root.topHeight - 1; rotation: 270 }
-            Fillet { x: cornerPanel.width - cornerPanel.corner; y: root.topHeight - 1; rotation: 0 }
+            Fillet { visible: !root.topTransparent; x: 0; y: root.topHeight - 1; rotation: 270 }
+            Fillet { visible: !root.topTransparent; x: cornerPanel.width - cornerPanel.corner; y: root.topHeight - 1; rotation: 0 }
             Fillet { x: 0; y: cornerPanel.height - cornerPanel.corner; rotation: 180 }
             Fillet {
                 x: cornerPanel.width - cornerPanel.corner

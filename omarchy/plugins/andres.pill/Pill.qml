@@ -12,8 +12,10 @@ BarWidget {
   readonly property int gap: Number(setting("gap", 9))          // between pills
   readonly property int pad: Number(setting("padding", 8))       // group to pill edge
   readonly property int thickness: Number(setting("height", 32))
-  readonly property color fill: Util.alpha(Color.bar.text, 0.14)
-  readonly property color stroke: Color.popups.border
+  readonly property color tint: root.bar ? root.bar.barForeground : Color.bar.text
+  readonly property color fill: Util.alpha(tint, 0.14)
+  readonly property color stroke: root.bar && root.bar.transparent
+    ? Util.alpha(tint, 0.24) : Color.popups.border
 
   // The bar wraps each widget in a ModuleSlot inside one Row/Column per
   // section; the group is every sibling slot after ours.

@@ -4,16 +4,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Widgets
+import qs.Commons
 import qs.Ui
 
 BarWidget {
   id: root
   moduleName: "omarchy.workspaces"
 
-  readonly property color pill: "#242528"
-  readonly property color pillHover: "#303135"
-  readonly property color foreground: "#f2f0e8"
-  readonly property color selected: "#dedfe3"
+  readonly property bool transparentBar: root.bar && root.bar.transparent
+  readonly property color adaptiveForeground: root.bar ? root.bar.barForeground : "#f2f0e8"
+  readonly property color pill: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.14) : "#242528"
+  readonly property color pillHover: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.22) : "#303135"
+  readonly property color foreground: root.transparentBar ? root.adaptiveForeground : "#f2f0e8"
+  readonly property color selected: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.30) : "#dedfe3"
   readonly property var monitor: {
     var window = root.QsWindow ? root.QsWindow.window : null
     return window ? Hyprland.monitorFor(window.screen) : Hyprland.focusedMonitor
@@ -87,7 +90,10 @@ BarWidget {
             : (workspace.isSelected ? root.selected : root.pill)
           border.width: 1
           border.color: workspace.modelData.urgent
-            ? "#c66b6b" : (workspace.isSelected ? "#f3f3f5" : "#35363a")
+            ? "#c66b6b"
+            : (root.transparentBar
+              ? Util.alpha(root.adaptiveForeground, workspace.isSelected ? 0.50 : 0.24)
+              : (workspace.isSelected ? "#f3f3f5" : "#35363a"))
 
           Behavior on color { ColorAnimation { duration: 150 } }
         }
@@ -100,7 +106,7 @@ BarWidget {
           Text {
             anchors.verticalCenter: parent.verticalCenter
             text: workspace.modelData.name
-            color: workspace.isSelected ? "#151517" : root.foreground
+            color: workspace.isSelected && !root.transparentBar ? "#151517" : root.foreground
             font.family: "DM Sans"
             font.pixelSize: 12
             font.weight: Font.DemiBold
@@ -153,7 +159,10 @@ BarWidget {
                 height: 22
                 radius: 6
                 color: appHover.hovered
-                  ? (workspace.isSelected ? "#c9cace" : "#393a3f") : "transparent"
+                  ? (root.transparentBar
+                    ? Util.alpha(root.adaptiveForeground, 0.18)
+                    : (workspace.isSelected ? "#c9cace" : "#393a3f"))
+                  : "transparent"
 
                 Behavior on color { ColorAnimation { duration: 120 } }
 

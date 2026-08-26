@@ -35,5 +35,5 @@ fi
 
 printf '%s\n' "$filepath"
 omarchy-notification-send "Screenshot copied" "Click to edit, or paste to attach it." \
-  --image "$filepath" \
-  --exec "$(printf '%q %q' "${OMARCHY_SCREENSHOT_EDITOR:-tensaku-edit}" "$filepath")" -t 3000
+  --image "$filepath" -t 3000 \
+  --exec "${OMARCHY_SCREENSHOT_EDITOR:-tensaku-edit}" "$filepath"

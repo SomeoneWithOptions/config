@@ -10,7 +10,6 @@
     "openrouter/moonshotai/kimi-k3"
   ],
   "packages": [
-    "git:github.com/DietrichGebert/ponytail",
     "npm:pi-caveman"
   ]
 }

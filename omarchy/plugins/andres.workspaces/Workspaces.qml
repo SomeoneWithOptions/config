@@ -174,10 +174,12 @@ BarWidget {
 
                 IconImage {
                   anchors.centerIn: parent
-                  width: 17
-                  height: 17
+                  width: 14
+                  height: 14
                   source: root.appIcon(app.modelData)
                   asynchronous: false
+                  smooth: true
+                  mipmap: true
                 }
               }
 

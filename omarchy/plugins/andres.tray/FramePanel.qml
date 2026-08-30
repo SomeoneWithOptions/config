@@ -57,7 +57,7 @@ PanelWindow {
 
   Behavior on reveal {
     NumberAnimation {
-      duration: root.reduceMotion ? 0 : (root.open ? 240 : 180)
+      duration: root.reduceMotion ? 0 : (root.open ? 220 : 160)
       easing.type: Easing.OutExpo
     }
   }
@@ -404,7 +404,7 @@ PanelWindow {
   FrameJoin {
     parent: revealClip
     visible: root.barPos === "top"
-    x: card.x - width
+    x: card.x - width + 2  // 2px overlap — 1px left visible hairline on fractional scale
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -415,7 +415,7 @@ PanelWindow {
     id: topRightFrameJoin
     parent: revealClip
     visible: root.barPos === "top" && !root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 2
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -428,9 +428,9 @@ PanelWindow {
   Rectangle {
     parent: revealClip
     visible: root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 2
     y: 0
-    width: root.frameInset
+    width: root.frameInset + 2
     height: card.height
     color: Color.popups.background
     opacity: card.opacity
@@ -440,7 +440,7 @@ PanelWindow {
     parent: revealClip
     visible: root.attachedRight
     x: root.screenW - width
-    y: card.height
+    y: card.height - 2
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
     frameColor: Color.popups.background
@@ -461,6 +461,7 @@ PanelWindow {
     topRightRadius: root.barPos === "top" ? 0 : Style.cornerRadius
     bottomRightRadius: root.attachedRight ? 0 : Style.cornerRadius
     opacity: 1
+    antialiasing: true
 
     // Swallow clicks on the card so they don't bubble to the dismissal
     // MouseArea behind us.

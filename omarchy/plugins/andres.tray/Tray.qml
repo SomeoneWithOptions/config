@@ -25,11 +25,11 @@ BarWidget {
   readonly property var allItems: bucket("all")
   readonly property int drawerCount: drawerItems.length
   readonly property int trayItemExtent: Style.bar.iconSlot
-  readonly property int trayItemGap: 0
-  readonly property int trayJoinGap: 0
+  readonly property int trayItemGap: Style.spacing.xs  // 3px breathing room
+  readonly property int trayJoinGap: Style.spacing.xs
   readonly property int drawerExtent: drawerCount > 0 ? drawerCount * trayItemExtent + (drawerCount - 1) * trayItemGap : 0
-  // Match Waybar's group/tray-expander drawer transition-duration.
-  readonly property int animationDuration: 600
+  // Snappier than Waybar's 600ms — Expo feels elastic, still readable.
+  readonly property int animationDuration: 380
   property real revealProgress: expanded ? 1 : 0
   readonly property real revealExtent: drawerExtent * revealProgress
 
@@ -216,7 +216,7 @@ BarWidget {
   implicitHeight: root.vertical ? trayContent.implicitHeight : root.barSize
 
   Behavior on revealProgress {
-    NumberAnimation { duration: root.animationDuration; easing.type: Easing.OutCubic }
+    NumberAnimation { duration: root.animationDuration; easing.type: Easing.OutExpo }
   }
 
   Loader {

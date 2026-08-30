@@ -1133,7 +1133,7 @@ Item {
     }
 
     FrameJoin {
-      x: card.x - width
+      x: card.x - width + 2
       y: card.y
       cornerRadius: root.cornerRadius
       frameColor: root.background
@@ -1142,7 +1142,7 @@ Item {
 
     FrameJoin {
       id: rightJoin
-      x: card.x + card.width
+      x: card.x + card.width - 2
       y: card.y
       cornerRadius: root.cornerRadius
       frameColor: root.background
@@ -1166,6 +1166,8 @@ Item {
       opacity: Math.min(1, root.reveal * 1.5)
       color: root.background
       clip: true
+      antialiasing: true
+      smooth: true
 
       MouseArea { anchors.fill: parent; onClicked: {} }
 

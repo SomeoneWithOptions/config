@@ -51,9 +51,9 @@ Item {
   readonly property int liveBarSize: shell && shell.bar && !shell.bar.barHidden ? Math.max(0, shell.bar.barSize) : defaultBarSize
   readonly property int barClearance: liveBarSize + Style.gapsOut
   readonly property int drawerTop: Math.max(0, liveBarSize - 1)
-  readonly property int frameInset: 10  // matches Hyprland gaps_out
-  readonly property int drawerPadding: 10
-  readonly property int cardWidth: Style.space(380)
+  readonly property int frameInset: Style.gapsOut > 0 ? Style.gapsOut * 2 : 10  // mirrors gaps_out
+  readonly property int drawerPadding: Style.spacing.sm + Style.spacing.xs  // 7 — aligned to scale
+  readonly property int cardWidth: Style.space(360)
 
   // Live Notification objects by originalId, kept OUT of the ListModels: a
   // QObject stored in a model role becomes a dangling C++ pointer when the
@@ -980,7 +980,7 @@ Item {
       mask: Region { item: drawer }
 
       FrameJoin {
-        x: drawer.x - width
+        x: drawer.x - width + 2
         y: drawer.y
         cornerRadius: service.cornerRadius
         frameColor: "#000000"
@@ -1008,15 +1008,19 @@ Item {
         width: service.cardWidth + service.drawerPadding * 2 + service.frameInset
         height: Math.round(contentHeight * reveal)
         clip: true
+        // Antialias the bottom-left curve bleed
+        layer.enabled: true
+        layer.smooth: true
 
         Behavior on reveal {
-          NumberAnimation { duration: 420; easing.type: Easing.OutExpo }
+          NumberAnimation { duration: 360; easing.type: Easing.OutExpo }
         }
 
         Rectangle {
           anchors.fill: parent
           color: "#000000"
           bottomLeftRadius: service.cornerRadius
+          antialiasing: true
         }
 
         ColumnLayout {
@@ -1027,7 +1031,7 @@ Item {
           anchors.rightMargin: service.drawerPadding + service.frameInset
           anchors.bottom: parent.bottom
           anchors.bottomMargin: service.drawerPadding
-          spacing: Style.space(8)
+          spacing: Style.spacing.sm
 
         Repeater {
           model: popupModel

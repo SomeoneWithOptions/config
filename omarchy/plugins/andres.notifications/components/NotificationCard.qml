@@ -63,7 +63,7 @@ BorderSurface {
     return Quickshell.iconPath(value, true)
   }
 
-  implicitWidth: Style.space(380)
+  implicitWidth: Style.space(360)
   // Add vertical border insets so mainColumn (inset by border on top/left/right)
   // doesn't push content under the bottom edge.
   implicitHeight: mainColumn.implicitHeight + borderTop + borderBottom
@@ -71,6 +71,8 @@ BorderSurface {
   color: Color.notifications.background
   borderSpec: cardBorderSpec
   clip: true
+  antialiasing: true
+  smooth: true
 
   HoverHandler { id: hoverTracker }
 
@@ -102,10 +104,10 @@ BorderSurface {
     // Text content.
     RowLayout {
       Layout.fillWidth: true
-      Layout.leftMargin: Style.space(12)
-      Layout.rightMargin: Style.space(12)
-      Layout.topMargin: root.singleLineToast ? Style.space(7) : Style.space(10)
-      Layout.bottomMargin: root.singleLineToast ? Style.space(7) : Style.space(10)
+      Layout.leftMargin: Style.space(14)
+      Layout.rightMargin: Style.space(14)
+      Layout.topMargin: root.singleLineToast ? Style.space(8) : Style.space(11)
+      Layout.bottomMargin: root.singleLineToast ? Style.space(8) : Style.space(11)
       spacing: root.collapseRedundantIcon ? 0 : (root.compactGlyph ? Style.space(8) : Style.space(12))
 
       Item {
@@ -122,11 +124,12 @@ BorderSurface {
           id: smallIconImage
           anchors.fill: parent
           source: root.smallIconSource
-          sourceSize.width: smallIconSlot.width * Screen.devicePixelRatio
-          sourceSize.height: smallIconSlot.height * Screen.devicePixelRatio
+          sourceSize.width: Math.round(smallIconSlot.width * Screen.devicePixelRatio)
+          sourceSize.height: Math.round(smallIconSlot.height * Screen.devicePixelRatio)
           fillMode: Image.PreserveAspectFit
           asynchronous: true
           smooth: true
+          mipmap: true
           visible: !root.hasGlyph || smallIconImage.status === Image.Ready
         }
 
@@ -139,6 +142,7 @@ BorderSurface {
           color: Color.notifications.text
           font.family: root.fontFamily
           font.pixelSize: Style.font.displayLarge
+          renderType: Text.NativeRendering
         }
       }
 
@@ -149,6 +153,7 @@ BorderSurface {
         color: Color.notifications.text
         font.family: root.fontFamily
         font.pixelSize: Style.font.icon
+        renderType: Text.NativeRendering
       }
 
       ColumnLayout {
@@ -163,24 +168,28 @@ BorderSurface {
           font.family: "Liberation Sans"
           color: Color.notifications.text
           font.pixelSize: Style.font.title
-          font.bold: true
+          font.weight: Font.DemiBold
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 2
+          lineHeight: 1.15
+          renderType: Text.NativeRendering
         }
 
         Text {
           Layout.fillWidth: true
-          Layout.topMargin: Style.space(2)
+          Layout.topMargin: Style.space(1)
           visible: root.sanitizedBody.length > 0
           text: root.styledBody
           textFormat: Text.StyledText
           font.family: "Liberation Sans"
           color: root.bodyColor
-          font.pixelSize: Style.font.title
+          font.pixelSize: Style.font.body
+          lineHeight: 1.28
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 3
+          renderType: Text.NativeRendering
         }
       }
     }

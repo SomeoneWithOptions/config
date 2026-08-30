@@ -9,9 +9,9 @@ BarWidget {
   id: root
   moduleName: "andres.pill"
 
-  readonly property int gap: Number(setting("gap", 9))          // between pills
-  readonly property int pad: Number(setting("padding", 8))       // group to pill edge
-  readonly property int thickness: Number(setting("height", 32))
+  readonly property int gap: Number(setting("gap", 8))          // between pills — 8 matches Style.spacing
+  readonly property int pad: Number(setting("padding", 10))       // group to pill edge — breathable
+  readonly property int thickness: Number(setting("height", 30))
   readonly property color tint: root.bar ? root.bar.barForeground : Color.bar.text
   readonly property color fill: Util.alpha(tint, 0.14)
   readonly property color stroke: root.bar && root.bar.transparent
@@ -54,6 +54,16 @@ BarWidget {
   implicitWidth: vertical ? barSize : (extent > 0 ? gap + pad * 2 : 0)
   implicitHeight: vertical ? (extent > 0 ? gap + pad * 2 : 0) : barSize
 
+  Behavior on extent {
+    NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+  }
+  Behavior on implicitWidth {
+    NumberAnimation { duration: 260; easing.type: Easing.OutExpo }
+  }
+  Behavior on implicitHeight {
+    NumberAnimation { duration: 260; easing.type: Easing.OutExpo }
+  }
+
   Rectangle {
     visible: root.extent > 0
     x: root.vertical ? Math.round((root.width - width) / 2) : root.gap + root.pad
@@ -64,5 +74,12 @@ BarWidget {
     color: root.fill
     border.width: 1
     border.color: root.stroke
+    antialiasing: true
+    smooth: true
+
+    Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+    Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+    Behavior on color { ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on border.color { ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
   }
 }

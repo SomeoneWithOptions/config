@@ -980,7 +980,7 @@ Item {
       mask: Region { item: drawer }
 
       FrameJoin {
-        x: drawer.x - width
+        x: drawer.x - width + 1
         y: drawer.y
         cornerRadius: service.cornerRadius
         frameColor: "#000000"

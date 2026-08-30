@@ -12,11 +12,6 @@ Shape {
   width: cornerRadius
   height: cornerRadius
   preferredRendererType: Shape.CurveRenderer
-  smooth: true
-  antialiasing: true
-  layer.enabled: true
-  layer.smooth: true
-  layer.samples: 4
 
   ShapePath {
     strokeWidth: 0
@@ -27,7 +22,7 @@ Shape {
       focalX: centerX
       focalY: centerY
       GradientStop { position: 0.0; color: "transparent" }
-      GradientStop { position: 0.86; color: "transparent" }
+      GradientStop { position: 0.96; color: "transparent" }
       GradientStop { position: 1.0; color: root.frameColor }
     }
     PathSvg {

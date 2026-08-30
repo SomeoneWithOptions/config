@@ -1133,7 +1133,7 @@ Item {
     }
 
     FrameJoin {
-      x: card.x - width
+      x: card.x - width + 1
       y: card.y
       cornerRadius: root.cornerRadius
       frameColor: root.background
@@ -1142,7 +1142,7 @@ Item {
 
     FrameJoin {
       id: rightJoin
-      x: card.x + card.width
+      x: card.x + card.width - 1
       y: card.y
       cornerRadius: root.cornerRadius
       frameColor: root.background

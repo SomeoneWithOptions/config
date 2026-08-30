@@ -406,7 +406,7 @@ PanelWindow {
   FrameJoin {
     parent: revealClip
     visible: root.barPos === "top"
-    x: card.x - width
+    x: card.x - width + 1  // 1px overlap hides fractional-scale hairline
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -417,7 +417,7 @@ PanelWindow {
     id: topRightFrameJoin
     parent: revealClip
     visible: root.barPos === "top" && !root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 1
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -430,9 +430,9 @@ PanelWindow {
   Rectangle {
     parent: revealClip
     visible: root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 1
     y: 0
-    width: root.frameInset
+    width: root.frameInset + 1
     height: card.height
     color: Color.popups.background
     opacity: card.opacity
@@ -442,7 +442,7 @@ PanelWindow {
     parent: revealClip
     visible: root.attachedRight
     x: root.screenW - width
-    y: card.height
+    y: card.height - 1
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
     frameColor: Color.popups.background

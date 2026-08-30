@@ -13,12 +13,6 @@ Shape {
     width: style.cornerRadius
     height: style.cornerRadius
     preferredRendererType: Shape.CurveRenderer
-    smooth: true
-    antialiasing: true
-    // Supersample the curve edge (cheap at this size, visibly smoother).
-    layer.enabled: true
-    layer.smooth: true
-    layer.samples: 4
 
     ShapePath {
         strokeWidth: 0
@@ -28,9 +22,10 @@ Shape {
             centerRadius: root.width
             focalX: centerX
             focalY: centerY
-            // Feather last ~14% (≈2.5px at 18px) — soft edge, zero stair.
+            // Tight 0.96→1 feather (~0.7px at 18px) — crisp flush edge, just enough for antialias
+            // on fractional scale. Previous 0.86 left a visible halo/soft look.
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.86; color: "transparent" }
+            GradientStop { position: 0.96; color: "transparent" }
             GradientStop { position: 1.0; color: style.frameColor }
         }
         PathSvg {

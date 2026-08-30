@@ -395,7 +395,7 @@ BarWidget {
     }
   }
 
-  PopupCard {
+  FramePanel {
     id: managePopup
     anchorItem: root
     owner: root
@@ -517,21 +517,19 @@ BarWidget {
     menu: root.activeTrayItem ? root.activeTrayItem.menu : null
   }
 
-  PopupCard {
+  FramePanel {
     id: trayMenuPopup
     anchorItem: root.activeTrayAnchor || root
     owner: root
     bar: root.bar
     open: root.trayMenuOpen
-    // The card fades out over 140ms (visible stays true for that whole time --
-    // see PopupCard's own visible: open || card.opacity > 0), so resetting on
-    // "open" would swap a live submenu for the root menu mid-fade: a visible
+    // The panel stays visible through its fade-out, so resetting on "open"
+    // would swap a live submenu for the root menu mid-fade: a visible
     // flash, and a resize/reposition if the two have different geometry. Wait
     // for the fade to actually finish. Switching to a different tray item
     // still resets immediately, from openTrayMenu() itself.
     onVisibleChanged: if (!visible) root.resetTrayMenu()
     padding: Style.space(8)
-    borderColor: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.45)
     contentWidth: trayMenuPopup.fittedContentWidth(Style.space(232))
     contentHeight: trayMenuPopup.fittedContentHeight(menuHeaderHeight + trayMenuColumn.implicitHeight, Style.space(420))
 

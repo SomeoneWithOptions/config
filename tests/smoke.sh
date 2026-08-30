@@ -43,6 +43,15 @@ for plugin in "$ROOT"/omarchy/plugins/andres.*; do
     omarchy-plugin-validate "$plugin"
   fi
 done
+# App-provided StatusNotifier menus and tray management must share framed-panel
+# geometry. Config replay uses rsync --delete, so missing helpers here would both
+# restore PopupCard and remove working live files after every Omarchy update.
+tray_plugin="$ROOT/omarchy/plugins/andres.tray"
+test -f "$tray_plugin/FramePanel.qml"
+test -f "$tray_plugin/FrameJoin.qml"
+test "$(grep -c '^  FramePanel {' "$tray_plugin/Tray.qml")" -eq 2
+! grep -q '^  PopupCard {' "$tray_plugin/Tray.qml"
+grep -q 'property int gap: -1' "$tray_plugin/FramePanel.qml"
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
 for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
 test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
@@ -84,6 +93,7 @@ if command -v qmllint >/dev/null 2>&1; then
   done
   "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.menu/Menu.qml"
   "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.tray/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.tray/FramePanel.qml" "$ROOT/omarchy/plugins/andres.tray/Tray.qml"
 fi
 if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
   FLICKO_PICKER_DIR="$ROOT/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null

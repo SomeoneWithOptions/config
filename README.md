@@ -44,7 +44,8 @@ Omarchy/Arch only:
 
 - `hypr/` — Hyprland Lua config (`*.lua`) plus `xdph.conf` for screen sharing
 - `omarchy/plugins/andres.*` — Quattro shell plugins (bar widgets, frame, menu,
-  notifications, idle)
+  notifications, idle); `andres.tray` gives every application tray menu the
+  same attached, outward-curved frame used by built-in panels
 - `omarchy/install-framed-panels.py` — generates `andres.{audio,bluetooth,clock,monitor,network,power,tailscale}`
   by cloning the stock panels and attaching them to the desktop frame. Generated,
   so those seven are not tracked here

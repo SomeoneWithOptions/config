@@ -59,7 +59,7 @@ BarWidget {
   Row {
     id: workspaceRow
     anchors.verticalCenter: parent.verticalCenter
-    spacing: 9
+    spacing: Style.spacing.sm  // 4 — tighter, lets pill shape breathe
 
     Repeater {
       model: ScriptModel { values: root.workspaceValues }
@@ -72,8 +72,8 @@ BarWidget {
         bar: root.bar
         text: modelData.name
         labelVisible: false
-        fixedWidth: Math.max(workspace.fixedHeight, workspaceContent.implicitWidth + 20)
-        fixedHeight: 32
+        fixedWidth: Math.max(workspace.fixedHeight, workspaceContent.implicitWidth + Style.space(20))
+        fixedHeight: Style.space(30)
         tooltipText: "Workspace " + modelData.name
         onPressed: function(button) {
           if (button === Qt.LeftButton) modelData.activate()
@@ -85,6 +85,8 @@ BarWidget {
         Rectangle {
           anchors.fill: parent
           radius: height / 2
+          antialiasing: true
+          smooth: true
           color: workspaceHover.hovered
             ? (workspace.isSelected ? "#ececef" : root.pillHover)
             : (workspace.isSelected ? root.selected : root.pill)
@@ -95,7 +97,8 @@ BarWidget {
               ? Util.alpha(root.adaptiveForeground, workspace.isSelected ? 0.50 : 0.24)
               : (workspace.isSelected ? "#f3f3f5" : "#35363a"))
 
-          Behavior on color { ColorAnimation { duration: 150 } }
+          Behavior on color { ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
+          Behavior on border.color { ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
         }
 
         Row {
@@ -108,10 +111,11 @@ BarWidget {
             text: workspace.modelData.name
             color: workspace.isSelected && !root.transparentBar ? "#151517" : root.foreground
             font.family: "DM Sans"
-            font.pixelSize: 12
+            font.pixelSize: Style.font.bodySmall
             font.weight: Font.DemiBold
+            renderType: Text.NativeRendering
 
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
           }
 
           ListView {
@@ -122,20 +126,21 @@ BarWidget {
             orientation: ListView.Horizontal
             width: count > 0 ? targetWidth : 0
             height: 24
-            spacing: 4
+            spacing: Style.spacing.xs
             clip: true
             interactive: false
             model: ScriptModel { values: workspace.modelData.toplevels.values }
 
-            Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            Behavior on width { NumberAnimation { duration: 240; easing.type: Easing.OutExpo } }
             add: Transition {
-              NumberAnimation { property: "scale"; from: 0.72; to: 1; duration: 160; easing.type: Easing.OutCubic }
+              NumberAnimation { property: "scale"; from: 0.72; to: 1; duration: 180; easing.type: Easing.OutCubic }
+              NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
             }
             remove: Transition {
-              NumberAnimation { properties: "opacity,scale"; from: 1; to: 0; duration: 150; easing.type: Easing.InCubic }
+              NumberAnimation { properties: "opacity,scale"; from: 1; to: 0; duration: 140; easing.type: Easing.InCubic }
             }
             move: Transition {
-              NumberAnimation { properties: "x,y"; duration: 180; easing.type: Easing.OutCubic }
+              NumberAnimation { properties: "x,y"; duration: 200; easing.type: Easing.OutCubic }
             }
 
             delegate: WidgetButton {
@@ -157,21 +162,23 @@ BarWidget {
                 anchors.centerIn: parent
                 width: 22
                 height: 22
-                radius: 6
+                radius: Style.space(6)
+                antialiasing: true
                 color: appHover.hovered
                   ? (root.transparentBar
                     ? Util.alpha(root.adaptiveForeground, 0.18)
                     : (workspace.isSelected ? "#c9cace" : "#393a3f"))
                   : "transparent"
 
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                 IconImage {
                   anchors.centerIn: parent
-                  width: 17
-                  height: 17
+                  width: 16
+                  height: 16
                   source: root.appIcon(app.modelData)
-                  asynchronous: false
+                  asynchronous: true
+                  smooth: true
                 }
               }
 
@@ -181,7 +188,7 @@ BarWidget {
         }
 
         HoverHandler { id: workspaceHover }
-        Behavior on fixedWidth { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
+        Behavior on fixedWidth { NumberAnimation { duration: 220; easing.type: Easing.OutExpo } }
       }
     }
   }

@@ -57,7 +57,7 @@ PanelWindow {
 
   Behavior on reveal {
     NumberAnimation {
-      duration: root.reduceMotion ? 0 : (root.open ? 240 : 180)
+      duration: root.reduceMotion ? 0 : (root.open ? 220 : 160)
       easing.type: Easing.OutExpo
     }
   }
@@ -399,6 +399,8 @@ PanelWindow {
     width: root.screenW
     height: Math.round((root.contentHeight + Style.cornerRadius) * root.reveal)
     clip: true
+    layer.enabled: true
+    layer.smooth: true
   }
 
   FrameJoin {
@@ -461,6 +463,7 @@ PanelWindow {
     topRightRadius: root.barPos === "top" ? 0 : Style.cornerRadius
     bottomRightRadius: root.attachedRight ? 0 : Style.cornerRadius
     opacity: 1
+    antialiasing: true
 
     // Swallow clicks on the card so they don't bubble to the dismissal
     // MouseArea behind us.

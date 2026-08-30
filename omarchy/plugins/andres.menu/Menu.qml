@@ -1166,6 +1166,8 @@ Item {
       opacity: Math.min(1, root.reveal * 1.5)
       color: root.background
       clip: true
+      antialiasing: true
+      smooth: true
 
       MouseArea { anchors.fill: parent; onClicked: {} }
 

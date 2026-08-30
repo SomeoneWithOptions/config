@@ -51,7 +51,7 @@ PanelWindow {
   property int gap: -1  // overlap top bar so panel grows directly from frame
   property int frameInset: 10  // matches Hyprland gaps_out
   readonly property bool attachedRight: barPos === "top"
-    && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 1
+    && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 2
   readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
   property real reveal: open || popoutSwitching ? 1 : 0
 

@@ -417,7 +417,7 @@ def install():
         """  property int gap: -1  // overlap top bar so panel grows directly from frame
   property int frameInset: 10  // matches Hyprland gaps_out
   readonly property bool attachedRight: barPos === "top"
-    && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 1
+     && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 2
   readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
   property real reveal: open || popoutSwitching ? 1 : 0
 
@@ -471,7 +471,7 @@ def install():
   FrameJoin {
     parent: revealClip
     visible: root.barPos === "top"
-    x: card.x - width
+    x: card.x - width + 2
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -482,7 +482,7 @@ def install():
     id: topRightFrameJoin
     parent: revealClip
     visible: root.barPos === "top" && !root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 2
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
@@ -495,9 +495,9 @@ def install():
   Rectangle {
     parent: revealClip
     visible: root.attachedRight
-    x: card.x + card.width
+    x: card.x + card.width - 2
     y: 0
-    width: root.frameInset
+    width: root.frameInset + 2
     height: card.height
     color: Color.popups.background
     opacity: card.opacity
@@ -507,7 +507,7 @@ def install():
     parent: revealClip
     visible: root.attachedRight
     x: root.screenW - width
-    y: card.height
+    y: card.height - 2
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
     frameColor: Color.popups.background

@@ -569,6 +569,13 @@ def install():
             panel = replace_once(
                 panel_path.read_text(), "  KeyboardPanel {", "  FramePanel {", panel_path
             )
+            if panel_id == "clock":
+                panel = replace_once(
+                    panel,
+                    "    centerOnBar: true\n",
+                    "    centerOnBar: false\n",
+                    panel_path,
+                )
             if panel_id == "monitor":
                 panel = patch_monitor_panel(panel, panel_path)
             if panel_id == "power":

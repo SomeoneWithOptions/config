@@ -24,6 +24,9 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
     grep -q 'id: revealClip' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
     grep -q 'duration: root.reduceMotion ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
   done
+  # Clock belongs against right frame like neighboring status panels, not centered.
+  grep -q 'centerOnBar: false' "$framed_panels_tmp/plugins/andres.clock/Panel.qml"
+  ! grep -q 'centerOnBar: true' "$framed_panels_tmp/plugins/andres.clock/Panel.qml"
   # The gamma row is patched onto the stock Display panel. An upstream rename must
   # fail here rather than quietly ship a panel with the slider missing.
   grep -q 'text: "GAMMA"' "$framed_panels_tmp/plugins/andres.monitor/Panel.qml"

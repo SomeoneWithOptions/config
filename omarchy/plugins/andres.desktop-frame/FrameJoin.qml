@@ -22,10 +22,10 @@ Shape {
             centerRadius: root.width
             focalX: centerX
             focalY: centerY
-            // Tight 0.96→1 feather (~0.7px at 18px) — crisp flush edge, just enough for antialias
-            // on fractional scale. Previous 0.86 left a visible halo/soft look.
+            // 0.98→1 feather (~0.36px) — minimal halo, CurveRenderer does antialias.
+            // 0.96 left faint soft edge that read as gap; 0.86 was too haloed.
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 0.96; color: "transparent" }
+            GradientStop { position: 0.98; color: "transparent" }
             GradientStop { position: 1.0; color: style.frameColor }
         }
         PathSvg {

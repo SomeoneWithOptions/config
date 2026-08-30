@@ -22,7 +22,7 @@ Shape {
       focalX: centerX
       focalY: centerY
       GradientStop { position: 0.0; color: "transparent" }
-      GradientStop { position: 0.96; color: "transparent" }
+      GradientStop { position: 0.98; color: "transparent" }
       GradientStop { position: 1.0; color: root.frameColor }
     }
     PathSvg {

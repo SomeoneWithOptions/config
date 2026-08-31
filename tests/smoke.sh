@@ -22,7 +22,9 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
     grep -q 'bottomRightRadius: root.attachedRight ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
     grep -A4 'id: card' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml" | grep -q 'y: 0'
     grep -q 'id: revealClip' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+    grep -q 'id: openRevealTimer' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
     grep -q 'duration: root.reduceMotion ? 0' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
+    grep -q 'easing.type: root.open ? Easing.OutCubic : Easing.OutExpo' "$framed_panels_tmp/plugins/andres.$panel/FramePanel.qml"
   done
   # Clock belongs against right frame like neighboring status panels, not centered.
   grep -q 'centerOnBar: false' "$framed_panels_tmp/plugins/andres.clock/Panel.qml"
@@ -52,6 +54,10 @@ test -f "$tray_plugin/FrameJoin.qml"
 test "$(grep -c '^  FramePanel {' "$tray_plugin/Tray.qml")" -eq 2
 ! grep -q '^  PopupCard {' "$tray_plugin/Tray.qml"
 grep -q 'property int gap: -1' "$tray_plugin/FramePanel.qml"
+grep -q 'id: openRevealTimer' "$tray_plugin/FramePanel.qml"
+grep -q 'easing.type: root.open ? Easing.OutCubic : Easing.OutExpo' "$tray_plugin/FramePanel.qml"
+grep -q 'onWantsOpenChanged: syncReveal()' "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
+grep -q 'Behavior on height' "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
 for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
 test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"

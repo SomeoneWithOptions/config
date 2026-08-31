@@ -54,6 +54,7 @@ Item {
   readonly property int frameInset: Style.gapsOut > 0 ? Style.gapsOut * 2 : 10  // mirrors gaps_out
   readonly property int drawerPadding: Style.spacing.sm + Style.spacing.xs  // 7 — aligned to scale
   readonly property int cardWidth: Style.space(360)
+  readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
 
   // Live Notification objects by originalId, kept OUT of the ListModels: a
   // QObject stored in a model role becomes a dangling C++ pointer when the
@@ -960,7 +961,33 @@ Item {
       id: popupWindow
       required property var modelData
       screen: modelData
-      visible: popupModel.count > 0
+      readonly property bool wantsOpen: popupModel.count > 0
+      // Keep surface mapped until animated height reaches zero. On fresh open,
+      // map first at height zero so Wayland cannot swallow entrance frames.
+      visible: wantsOpen || drawer.height > 0
+
+      function syncReveal() {
+        if (!wantsOpen) {
+          openRevealTimer.stop()
+          drawer.reveal = 0
+          return
+        }
+        if (service.reduceMotion || drawer.height > 0) {
+          drawer.reveal = 1
+        } else if (backingWindowVisible) {
+          openRevealTimer.restart()
+        }
+      }
+
+      onWantsOpenChanged: syncReveal()
+      onBackingWindowVisibleChanged: if (backingWindowVisible) syncReveal()
+      Component.onCompleted: syncReveal()
+
+      Timer {
+        id: openRevealTimer
+        interval: 16
+        onTriggered: if (popupWindow.wantsOpen) drawer.reveal = 1
+      }
 
       WlrLayershell.namespace: "omarchy-notifications"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -980,6 +1007,7 @@ Item {
       mask: Region { item: drawer }
 
       FrameJoin {
+        visible: drawer.height > 0
         x: drawer.x - width + 2
         y: drawer.y
         cornerRadius: service.cornerRadius
@@ -992,6 +1020,7 @@ Item {
       // half-covered row showing the wallpaper behind it as a hairline. The
       // fillet's top row is solid, so the overlap costs nothing.
       FrameJoin {
+        visible: drawer.height > 0
         x: popupWindow.width - width
         y: drawer.y + drawer.height - 1
         cornerRadius: service.cornerRadius
@@ -1001,7 +1030,9 @@ Item {
       Item {
         id: drawer
         readonly property int contentHeight: popupColumn.implicitHeight + service.drawerPadding * 2
-        property real reveal: popupModel.count > 0 ? 1 : 0
+        property real reveal: 0
+        readonly property real revealProgress: contentHeight > 0
+          ? Math.max(0, Math.min(1, height / contentHeight)) : 0
 
         x: popupWindow.width - width
         y: service.drawerTop
@@ -1012,8 +1043,14 @@ Item {
         layer.enabled: true
         layer.smooth: true
 
-        Behavior on reveal {
-          NumberAnimation { duration: 360; easing.type: Easing.OutExpo }
+        // Animate resolved height rather than reveal alone. Stack growth and
+        // shrink now move smoothly too, and final close retains its previous
+        // height while animating even after the last delegate is removed.
+        Behavior on height {
+          NumberAnimation {
+            duration: service.reduceMotion ? 0 : (popupWindow.wantsOpen ? 320 : 180)
+            easing.type: popupWindow.wantsOpen ? Easing.OutCubic : Easing.OutExpo
+          }
         }
 
         Rectangle {
@@ -1031,7 +1068,9 @@ Item {
           anchors.rightMargin: service.drawerPadding + service.frameInset
           anchors.bottom: parent.bottom
           anchors.bottomMargin: service.drawerPadding
+            + (service.reduceMotion ? 0 : (1 - drawer.revealProgress) * Style.space(8))
           spacing: Style.spacing.sm
+          opacity: service.reduceMotion ? 1 : Math.min(1, drawer.revealProgress * 1.7)
 
         Repeater {
           model: popupModel

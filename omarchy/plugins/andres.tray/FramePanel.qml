@@ -53,12 +53,14 @@ PanelWindow {
   readonly property bool attachedRight: barPos === "top"
     && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 2
   readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
-  property real reveal: open || popoutSwitching ? 1 : 0
+  // Keep reveal imperative: mapping and animating in the same turn lets
+  // Wayland miss the first (and fastest) OutExpo frames on a fresh open.
+  property real reveal: 0
 
   Behavior on reveal {
     NumberAnimation {
-      duration: root.reduceMotion ? 0 : (root.open ? 220 : 160)
-      easing.type: Easing.OutExpo
+      duration: root.reduceMotion ? 0 : (root.open ? 280 : 160)
+      easing.type: root.open ? Easing.OutCubic : Easing.OutExpo
     }
   }
   property bool popoutSwitching: false
@@ -88,6 +90,18 @@ PanelWindow {
     if (open && backingWindowVisible) focusPrimeTimer.restart()
   }
 
+  // Fresh surfaces mount at reveal=0, then wait one frame before growing
+  // down from the bar. Reopening a still-mapped closing surface reverses
+  // immediately from its current height instead of flashing closed first.
+  function beginReveal() {
+    if (!open) return
+    if (reduceMotion || reveal > 0) {
+      reveal = 1
+    } else if (backingWindowVisible) {
+      openRevealTimer.restart()
+    }
+  }
+
   // --- screen + lifetime ---------------------------------------------------
 
   screen: anchorWindow ? anchorWindow.screen : null
@@ -112,7 +126,10 @@ PanelWindow {
     ? (focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
     : WlrKeyboardFocus.None
 
-  onBackingWindowVisibleChanged: beginFocusPrime()
+  onBackingWindowVisibleChanged: {
+    beginFocusPrime()
+    if (backingWindowVisible) beginReveal()
+  }
 
   // Full-screen layer-shell. The visible card is positioned inside via
   // `cardOrigin`. The `mask` below makes the bar area click-through (so
@@ -243,10 +260,13 @@ PanelWindow {
     if (open) {
       focusPrimed = false
       beginFocusPrime()
+      beginReveal()
       if (focusTarget) Qt.callLater(function() {
         if (root.open && root.focusTarget) root.focusTarget.forceActiveFocus()
       })
     } else {
+      openRevealTimer.stop()
+      reveal = 0
       focusPrimeTimer.stop()
       focusPrimed = false
     }
@@ -262,6 +282,12 @@ PanelWindow {
       if (bar.activePopout === coordinatorKey) bar.releasePopout(coordinatorKey)
       if (popoutSwitchClosing) closeSwitchTimer.restart()
     }
+  }
+
+  Timer {
+    id: openRevealTimer
+    interval: 16
+    onTriggered: if (root.open) root.reveal = 1
   }
 
   Timer {
@@ -477,7 +503,13 @@ PanelWindow {
       anchors.rightMargin: card.contentRightInset
       anchors.bottomMargin: card.contentBottomInset
       anchors.leftMargin: card.contentLeftInset
-      opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+      // Panel itself grows from the bar; content follows by a few pixels and
+      // fades in, preventing the first clipped text row from popping onscreen.
+      opacity: (root.reduceMotion ? 1 : Math.min(1, root.reveal * 1.7))
+        * (root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0)
+      transform: Translate {
+        y: root.reduceMotion ? 0 : -(1 - root.reveal) * Style.space(8)
+      }
 
       Behavior on opacity {
         enabled: root.popoutSwitching

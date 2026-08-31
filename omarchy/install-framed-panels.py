@@ -419,14 +419,106 @@ def install():
   readonly property bool attachedRight: barPos === "top"
      && Math.abs(cardOrigin.x + contentWidth - (screenW - frameInset)) < 2
   readonly property bool reduceMotion: Quickshell.env("DESKTOP_FRAME_REDUCED_MOTION") === "1"
-  property real reveal: open || popoutSwitching ? 1 : 0
+  // Keep reveal imperative: mapping and animating in the same turn lets
+  // Wayland miss the first (and fastest) OutExpo frames on a fresh open.
+  property real reveal: 0
 
   Behavior on reveal {
     NumberAnimation {
-      duration: root.reduceMotion ? 0 : (root.open ? 240 : 180)
-      easing.type: Easing.OutExpo
+      duration: root.reduceMotion ? 0 : (root.open ? 280 : 180)
+      easing.type: root.open ? Easing.OutCubic : Easing.OutExpo
     }
   }""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """  function beginFocusPrime() {
+    if (open && backingWindowVisible) focusPrimeTimer.restart()
+  }""",
+        """  function beginFocusPrime() {
+    if (open && backingWindowVisible) focusPrimeTimer.restart()
+  }
+
+  // Fresh surfaces mount at reveal=0, then wait one frame before growing
+  // down from the bar. Reopening a still-mapped closing surface reverses
+  // immediately from its current height instead of flashing closed first.
+  function beginReveal() {
+    if (!open) return
+    if (reduceMotion || reveal > 0) {
+      reveal = 1
+    } else if (backingWindowVisible) {
+      openRevealTimer.restart()
+    }
+  }""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        "  onBackingWindowVisibleChanged: beginFocusPrime()",
+        """  onBackingWindowVisibleChanged: {
+    beginFocusPrime()
+    if (backingWindowVisible) beginReveal()
+  }""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """  onOpenChanged: {
+    if (open) {
+      focusPrimed = false
+      beginFocusPrime()""",
+        """  onOpenChanged: {
+    if (open) {
+      focusPrimed = false
+      beginFocusPrime()
+      beginReveal()""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """    } else {
+      focusPrimeTimer.stop()
+      focusPrimed = false
+    }
+    if (!bar) return""",
+        """    } else {
+      openRevealTimer.stop()
+      reveal = 0
+      focusPrimeTimer.stop()
+      focusPrimed = false
+    }
+    if (!bar) return""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """  Timer {
+    id: focusPrimeTimer""",
+        """  Timer {
+    id: openRevealTimer
+    interval: 16
+    onTriggered: if (root.open) root.reveal = 1
+  }
+
+  Timer {
+    id: focusPrimeTimer""",
+        keyboard_path,
+    )
+    keyboard = replace_once(
+        keyboard,
+        """      opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+
+      Behavior on opacity {""",
+        """      // Panel itself grows from the bar; content follows by a few pixels and
+      // fades in, preventing the first clipped text row from popping onscreen.
+      opacity: (root.reduceMotion ? 1 : Math.min(1, root.reveal * 1.7))
+        * (root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0)
+      transform: Translate {
+        y: root.reduceMotion ? 0 : -(1 - root.reveal) * Style.space(8)
+      }
+
+      Behavior on opacity {""",
         keyboard_path,
     )
     keyboard = replace_once(

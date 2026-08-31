@@ -1,5 +1,5 @@
--- Keep terminals fully opaque.
-o.window("^Alacritty$", { opacity = "1.0 override 1.0 override" })
+-- Keep every window fully opaque; overrides Omarchy's default-opacity rule.
+o.window(".*", { opacity = "1.0 override 1.0 override" })
 
 -- Give btop enough room at fractional display scaling.
 o.window([=[^org\.omarchy\.btop$]=], { size = { 1200, 800 }, center = true })

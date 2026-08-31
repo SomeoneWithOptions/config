@@ -47,7 +47,7 @@ BorderSurface {
   readonly property string styledBody: sanitizedBody.replace(/\r\n|\r|\n/g, "<br/>")
 
   readonly property color dimColor: Qt.darker(Color.notifications.text, 1.4)
-  readonly property color bodyColor: Qt.darker(Color.notifications.text, 1.15)
+  readonly property color bodyColor: Color.notifications.text
   readonly property color accentColor: urgency === 2 ? Color.urgent : (urgency === 0 ? dimColor : Color.notifications.countdown)
   readonly property var cardBorderSpec: Border.surfaceSpec("notifications", "border", Color.notifications.border, Math.max(1, Style.space(2)))
 
@@ -165,10 +165,10 @@ BorderSurface {
           Layout.fillWidth: true
           visible: root.summary.length > 0
           text: root.summary
-          font.family: "Liberation Sans"
+          font.family: "Noto Sans"
           color: Color.notifications.text
-          font.pixelSize: Style.font.title
-          font.weight: Font.DemiBold
+          font.pixelSize: 18
+          font.weight: Font.Bold
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 2
@@ -182,10 +182,11 @@ BorderSurface {
           visible: root.sanitizedBody.length > 0
           text: root.styledBody
           textFormat: Text.StyledText
-          font.family: "Liberation Sans"
+          font.family: "Noto Sans"
           color: root.bodyColor
-          font.pixelSize: Style.font.body
-          lineHeight: 1.28
+          font.pixelSize: 16
+          font.weight: Font.Medium
+          lineHeight: 1.22
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 3

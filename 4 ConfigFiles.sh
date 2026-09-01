@@ -326,5 +326,13 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_required "$unit" "$HOME/.config/systemd/user/$(basename "$unit")"
     done
     systemctl --user daemon-reload || true
-    systemctl --user enable --now mise-go-upgrade.timer omarchy-bg-random.timer || true
+    systemctl --user enable --now mise-go-upgrade.timer || true
+
+    # Retired: the background rotated every 4h. Drop it from machines that still have it.
+    if [[ -f "$HOME/.config/systemd/user/omarchy-bg-random.timer" ]]; then
+        systemctl --user disable --now omarchy-bg-random.timer || true
+        rm -f "$HOME/.config/systemd/user/omarchy-bg-random.timer" \
+              "$HOME/.config/systemd/user/omarchy-bg-random.service"
+        systemctl --user daemon-reload || true
+    fi
 fi

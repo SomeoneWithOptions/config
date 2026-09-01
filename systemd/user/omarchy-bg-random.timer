@@ -1,9 +1,0 @@
-[Unit]
-Description=Change Omarchy background every 4 hours
-
-[Timer]
-OnActiveSec=4h
-OnUnitActiveSec=4h
-
-[Install]
-WantedBy=timers.target

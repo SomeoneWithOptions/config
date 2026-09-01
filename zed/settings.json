@@ -1,7 +1,7 @@
 {
   "cli_default_open_behavior": "existing_window",
   "edit_predictions": {
-    "provider": "zed"
+    "provider": "mercury"
   },
   "languages": {
     "JSONC": {
@@ -39,9 +39,7 @@
     }
   },
   "terminal": {
-    "shell": {
-      "program": "/usr/bin/fish"
-    },
+    "shell": "system",
     "font_features": {
       "liga": false,
       "clig": false,

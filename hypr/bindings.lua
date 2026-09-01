@@ -53,10 +53,25 @@ local function send_shortcut_once(mods, key)
   end
 end
 
--- Lean on the `terminal` tag from default/hypr/apps/terminals.lua rather than a
--- second hardcoded class list that drifts out of sync. Dynamic tags trail "*".
-local function active_window_is_terminal()
+-- Apps that want the terminal chord even though they aren't tagged `terminal`.
+-- Zed embeds its own terminal emulator (no foot involved), and its vim mode
+-- takes CTRL+C/CTRL+V in the editor pane, so both panes need the Insert chord.
+-- Tagging Zed `terminal` would also hand it terminal theming, so match the
+-- class here instead. Zed's keymap.json binds CTRL/SHIFT+Insert to copy/paste
+-- in the Editor and Terminal contexts.
+local insert_chord_classes = {
+  ["dev.zed.Zed"] = true,
+}
+
+-- Otherwise lean on the `terminal` tag from default/hypr/apps/terminals.lua
+-- rather than a second hardcoded class list that drifts out of sync. Dynamic
+-- tags trail "*".
+local function active_window_wants_insert_chord()
   local window = hl.get_active_window()
+
+  if window and insert_chord_classes[window.class] then
+    return true
+  end
 
   for _, tag in ipairs(window and window.tags or {}) do
     if tag:gsub("%*$", "") == "terminal" then
@@ -69,7 +84,7 @@ end
 
 local function clipboard_shortcut(mods, key, terminal_mods, terminal_key)
   return function()
-    if active_window_is_terminal() then
+    if active_window_wants_insert_chord() then
       send_shortcut_once(terminal_mods, terminal_key)()
     else
       send_shortcut_once(mods, key)()

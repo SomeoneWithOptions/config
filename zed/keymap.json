@@ -11,5 +11,22 @@
       "ctrl-j": "terminal_panel::ToggleFocus",
       "ctrl-b": "workspace::ToggleRightDock"
     }
+  },
+  // Hyprland ALT+C/ALT+V (see ~/.config/hypr/bindings.lua) send CTRL/SHIFT+Insert
+  // to Zed: vim mode owns ctrl-c/ctrl-v in the editor, and ctrl-c is SIGINT in
+  // the built-in terminal, so the Insert chord is the only pair free in both.
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-insert": "editor::Copy",
+      "shift-insert": "editor::Paste"
+    }
+  },
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-insert": "terminal::Copy",
+      "shift-insert": "terminal::Paste"
+    }
   }
 ]

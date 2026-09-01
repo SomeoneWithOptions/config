@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "andres.dnd",
+  "name": "My Do Not Disturb",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "Shows a bell-off icon in the bar while notifications are silenced.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Do Not Disturb",
+    "description": "Shows when notifications are silenced",
+    "category": "Status",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

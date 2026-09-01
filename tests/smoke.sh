@@ -63,6 +63,12 @@ for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
 test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
 python -m json.tool "$ROOT/zed/settings.json" >/dev/null
 python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
+# Pi web research source must ship in repo; ConfigFiles installs every tracked
+# extension on fresh machines and config replays.
+test -f "$ROOT/pi/agent/extensions/web-research.ts"
+grep -q 'name: "web_search"' "$ROOT/pi/agent/extensions/web-research.ts"
+grep -q 'for extension in "\$SCRIPT_DIR"/pi/agent/extensions/\*.ts' "$ROOT/4 ConfigFiles.sh"
+grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/4 ConfigFiles.sh"
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
 node --input-type=module - "$ROOT/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
 import assert from "node:assert/strict";

@@ -20,6 +20,7 @@
         { "id": "andres.pill" },
         { "id": "loom.recording" },
         { "id": "andres.idle" },
+        { "id": "andres.dnd" },
         { "id": "andres.tailscale" },
         { "id": "andres.bluetooth" },
         { "id": "andres.network" },

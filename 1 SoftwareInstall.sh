@@ -61,8 +61,31 @@ install_commiter() {
     return 0
   fi
 
-  log "Installing commiter using the official installer."
+  log "Installing commiter using its unattended installer."
   curl -fsSL https://go.sanetomore.com/commiter | sh || warn "commiter installer failed."
+}
+
+install_loom_omarchy_linux() {
+  if has_command loom; then
+    log "loom-omarchy-linux is already installed."
+    return 0
+  fi
+
+  log "Installing loom-omarchy-linux using its unattended installer."
+  curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/loom-omarchy-linux/main/install.sh | bash \
+    || warn "loom-omarchy-linux installer failed."
+}
+
+install_linear_omarchy_plugin() {
+  local install_dir="$HOME/.config/omarchy/plugins/andres.linear"
+  if [ -f "$install_dir/manifest.json" ] && [ -x "$install_dir/bin/omarchy-linear-setup" ]; then
+    log "linear-omarchy-plugin is already installed."
+    return 0
+  fi
+
+  log "Installing linear-omarchy-plugin using its unattended installer."
+  curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/linear-omarchy-plugin/main/install.sh \
+    | bash -s -- --yes || warn "linear-omarchy-plugin installer failed."
 }
 
 install_npm_cli() {
@@ -258,6 +281,8 @@ install_arch_packages() {
   # No install_pi here: Omarchy mise-installs `pi` during setup (install/user/mise.sh).
   # The macOS branch still needs the upstream installer.
   install_personal_dev_tools
+  install_loom_omarchy_linux
+  install_linear_omarchy_plugin
 }
 
 # --- macOS ------------------------------------------------------------------

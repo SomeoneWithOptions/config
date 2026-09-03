@@ -155,8 +155,15 @@ rm -rf "$notify_stub" "$drift_report"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$hook"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
-# Config replay owns shell.json, so Loom must stay in that source of truth.
+# Config replay owns shell.json, so externally installed widgets must stay in
+# that source of truth after their installers run.
 grep -q '"id": "loom.recording"' "$ROOT/omarchy/shell.json"
+grep -q '"id": "andres.linear"' "$ROOT/omarchy/shell.json"
+# Fresh-laptop tool installs must use each project's unattended curl path.
+grep -q 'go.sanetomore.com/commiter' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'bash -s -- --yes' "$ROOT/1 SoftwareInstall.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
 grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
 

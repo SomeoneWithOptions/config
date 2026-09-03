@@ -20,17 +20,23 @@ order. On Arch, `4 ConfigFiles.sh` also clones the repo to `~/code/config` for
 the post-update drift check.
 
 Nothing in the run waits for a login. Tailscale and 1Password are installed but
-left signed out, and the end-of-run summary lists the follow-ups:
+left signed out. Commiter, Loom for Omarchy, and the Linear Omarchy plugin are
+also installed through their unattended curl installers. Linear skips its
+account-specific setup when no API key is already stored.
+
+Manual follow-ups:
 
 ```sh
 sudo tailscale up --accept-routes   # or set TS_AUTHKEY=tskey-... before the run
+~/.config/omarchy/plugins/andres.linear/bin/omarchy-linear-setup key
+~/.config/omarchy/plugins/andres.linear/bin/omarchy-linear-setup use "Team" "Project"
 ```
 
 ## Scripts
 
 | Script | Does |
 |---|---|
-| `1 SoftwareInstall.sh` | Packages: pacman/yay on Arch, Homebrew on macOS |
+| `1 SoftwareInstall.sh` | Packages plus personal tools: commiter everywhere; Loom and Linear plugin on Omarchy |
 | `2 Fonts.sh` | Installs `fonts/` into the platform font dir |
 | `3 Git.sh` | Git identity and defaults |
 | `4 ConfigFiles.sh` | Copies every config below into `~`; idempotent, rerun any time. `--check` diffs instead of writing |

@@ -162,8 +162,8 @@ install_arch_tailscale() {
   run_or_warn "enable tailscaled" sudo systemctl enable --now tailscaled.service
   # A prefs edit: works while logged out and survives a later `tailscale up`.
   run_or_warn "allow ${USER} to manage Tailscale" sudo tailscale set --operator="$USER"
-  run_or_warn "enable Taildrop receive" \
-    systemctl --user enable --now omarchy-tailscale-receive.service
+  run_or_warn "enable Taildrop receive unit" \
+    systemctl --user enable omarchy-tailscale-receive.service
   run_or_warn "install Tailscale web app" omarchy-webapp-install "Tailscale" \
     "https://login.tailscale.com/admin/machines" \
     https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tailscale-light.png
@@ -173,12 +173,16 @@ install_arch_tailscale() {
   # `tailscale status` exits non-zero while logged out or while tailscaled is down.
   if tailscale status >/dev/null 2>&1; then
     log "Tailscale is already logged in."
+    run_or_warn "start Taildrop receive" \
+      systemctl --user start omarchy-tailscale-receive.service
     return 0
   fi
 
   if [ -n "${TS_AUTHKEY:-}" ]; then
     run_or_warn "tailscale up with TS_AUTHKEY" \
       sudo tailscale up --accept-routes --auth-key "$TS_AUTHKEY"
+    run_or_warn "start Taildrop receive" \
+      systemctl --user start omarchy-tailscale-receive.service
     return 0
   fi
 
@@ -187,6 +191,13 @@ install_arch_tailscale() {
 
 install_arch_1password() {
   run_or_warn "omarchy install service 1password" omarchy install service 1password
+
+  # omarchy-install-service-1password launches the GUI in the background. Close the
+  # window during unattended installs so it does not occlude the terminal.
+  if command -v hyprctl >/dev/null 2>&1; then
+    sleep 2
+    hyprctl dispatch closewindow "class:^(1[pP]assword)$" >/dev/null 2>&1 || true
+  fi
 
   # The installer opens the 1Password app in the background, but signing in is a
   # human step. `5 Keys.sh` skips the SSH key when the CLI is not signed in.

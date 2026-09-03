@@ -110,7 +110,11 @@ run_script() {
   fi
 
   log "Running: $label"
-  /usr/bin/env bash "$path"
+  if have systemd-inhibit; then
+    systemd-inhibit --what=idle:sleep --who="config-bootstrap" --why="Running $label" /usr/bin/env bash "$path"
+  else
+    /usr/bin/env bash "$path"
+  fi
 }
 
 main() {

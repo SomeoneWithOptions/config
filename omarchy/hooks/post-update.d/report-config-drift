@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# `omarchy update` runs `omarchy-migrate`, and migrations edit ~/.config in place
+# (`sed -i` on terminal configs, `jq` on shell.json, whole-file rewrites during
+# major upgrades). Other tools (loom, linear-omarchy-plugin, herdr) install into
+# the same files. Those edits are usually wanted, so this hook writes nothing.
+#
+# It runs after migrations, diffs the live files against the repo, and leaves
+# the decision to you: apply the repo state with `4 ConfigFiles.sh`, or port the
+# live changes into the repo.
+
+set -euo pipefail
+
+CONFIG_REPO="${CONFIG_REPO:-$HOME/code/config}"
+REPORT="${CONFIG_DRIFT_REPORT:-${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/config-drift.diff}"
+
+notify() {
+  local urgency="$1" title="$2" body="$3"
+  shift 3
+  if command -v omarchy-notification-send >/dev/null 2>&1; then
+    omarchy-notification-send -u "$urgency" "$title" "$body" "$@" || true
+  elif command -v notify-send >/dev/null 2>&1; then
+    notify-send -u "$urgency" "$title" "$body" || true
+  fi
+}
+
+# Silence here means drift goes unseen after every future update, so make a
+# missing checkout visible rather than exiting 0 into the update's scrollback.
+if [[ ! -x "$CONFIG_REPO/4 ConfigFiles.sh" ]]; then
+  echo "Config repo not found at $CONFIG_REPO; config drift was NOT checked"
+  notify critical "Omarchy update" "No config repo at $CONFIG_REPO; config drift not checked"
+  exit 1
+fi
+
+# An older checkout ignores arguments and would run a full replay instead of a
+# check, which is exactly the overwrite this hook exists to avoid.
+if ! grep -q -- '--check) CHECK=1' "$CONFIG_REPO/4 ConfigFiles.sh"; then
+  echo "Config repo at $CONFIG_REPO predates --check; pull it. Drift was NOT checked"
+  notify critical "Omarchy update" "Config repo at $CONFIG_REPO predates --check; pull it. Drift not checked"
+  exit 1
+fi
+
+mkdir -p "$(dirname "$REPORT")"
+echo "Checking ~/.config against $CONFIG_REPO..."
+if ! "$CONFIG_REPO/4 ConfigFiles.sh" --check >"$REPORT" 2>&1; then
+  echo "Config drift check failed; see $REPORT"
+  notify critical "Omarchy update" "Config drift check failed. See $REPORT"
+  exit 1
+fi
+
+count=$(grep -c '^== ' "$REPORT" || true)
+if (( count == 0 )); then
+  echo "No drift: ~/.config matches the repo."
+  rm -f "$REPORT"
+  exit 0
+fi
+
+echo "$count config target(s) differ from the repo. Full diff: $REPORT"
+grep '^== ' "$REPORT" | sed 's/^== /  /'
+notify normal "Config drift after update" \
+  "$count target(s) differ from the repo. Click to review; nothing was overwritten." \
+  --exec omarchy-launch-editor "$REPORT"

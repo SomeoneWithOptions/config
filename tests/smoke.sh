@@ -119,22 +119,41 @@ grep -q 'omarchy-osd ' "$ROOT/bin/hyprsunset-gamma-display"
 grep -q -- '--no-osd' "$ROOT/bin/hyprsunset-gamma-display"
 command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found in PATH" >&2
 
-# Migrations rewrite ~/.config in place during `omarchy update`, so the post-update
-# hook reapplying this repo is the only thing keeping customizations. Its missing-repo
-# guard must fail loudly rather than run the installer from a bad path.
-test -x "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
+# Migrations rewrite ~/.config in place during `omarchy update`. The post-update
+# hook only reports that drift; it must never write. Run --check against an empty
+# HOME: everything is "missing", and HOME must stay empty afterwards.
+hook="$ROOT/omarchy/hooks/post-update.d/report-config-drift"
+test -x "$hook"
 grep -q 'omarchy/hooks/\*\.d' "$ROOT/4 ConfigFiles.sh"
-# A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go
-# unprotected without ever saying so. notify-send is stubbed: the guard's whole job is
-# to shout, and unstubbed it shouts at the real desktop on every test run.
+check_home="$(mktemp -d)"
+check_out="$(mktemp)"
+HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
+test -z "$(ls -A "$check_home")"
+grep -q "^== $check_home/.config/fish/config.fish: missing" "$check_out"
+grep -q "^== $check_home/.pi/agent/AGENTS.md: missing" "$check_out"
+grep -q 'managed target(s) differ from the repo' "$check_out"
+rm -rf "$check_home" "$check_out"
+# Notifications are stubbed: the hook's job is to shout, and unstubbed it shouts at
+# the real desktop on every test run.
 notify_stub="$(mktemp -d)"
-printf '#!/bin/sh\nexit 0\n' >"$notify_stub/notify-send"
-chmod +x "$notify_stub/notify-send"
+for cmd in notify-send omarchy-notification-send; do
+  printf '#!/bin/sh\nexit 0\n' >"$notify_stub/$cmd"
+  chmod +x "$notify_stub/$cmd"
+done
+# A missing checkout must fail loudly. Exiting 0 here is how a new laptop would go
+# unwatched without ever saying so.
 ! CONFIG_REPO=/nonexistent PATH="$notify_stub:/usr/bin:/bin" \
-  bash "$ROOT/omarchy/hooks/post-update.d/reapply-user-config" >/dev/null 2>&1
-rm -rf "$notify_stub"
+  bash "$hook" >/dev/null 2>&1
+# With a checkout the hook writes only its report, exits 0, and counts headers.
+drift_report="$(mktemp -u)"
+CONFIG_REPO="$ROOT" CONFIG_DRIFT_REPORT="$drift_report" PATH="$notify_stub:$PATH" \
+  bash "$hook" >/dev/null 2>&1
+if [[ -f $drift_report ]]; then
+  grep -q '^== ' "$drift_report"
+fi
+rm -rf "$notify_stub" "$drift_report"
 # The hook's default path must be the checkout the installer guarantees exists.
-grep -q 'CONFIG_REPO:-\$HOME/code/config' "$ROOT/omarchy/hooks/post-update.d/reapply-user-config"
+grep -q 'CONFIG_REPO:-\$HOME/code/config' "$hook"
 grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
 # Config replay owns shell.json, so Loom must stay in that source of truth.
 grep -q '"id": "loom.recording"' "$ROOT/omarchy/shell.json"

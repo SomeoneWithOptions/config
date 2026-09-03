@@ -1,9 +1,11 @@
 # config
 
 Machine configuration for the only two setups I run: **Omarchy 4 (Quattro)** on
-Arch, and **macOS**. The repo is the source of truth: `4 ConfigFiles.sh` copies
-files into `~`, and an `omarchy update` hook replays it so migrations cannot
-quietly revert customizations.
+Arch, and **macOS**. `4 ConfigFiles.sh` copies files into `~`. After every
+`omarchy update` a hook runs `4 ConfigFiles.sh --check`, which writes nothing:
+it diffs `~` against the repo and notifies when migrations or other tools
+changed a managed file. You then either apply the repo state or port the live
+change into the repo. Nothing is overwritten behind your back.
 
 ## New machine
 
@@ -13,8 +15,9 @@ On Arch, install Omarchy first. Then, on either platform:
 curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/config/main/bootstrap.sh | sh
 ```
 
-`bootstrap.sh` downloads this repo to /tmp, runs the numbered scripts in order,
-and clones the repo to `~/code/config` for the post-update hook.
+`bootstrap.sh` downloads this repo to /tmp and runs the numbered scripts in
+order. On Arch, `4 ConfigFiles.sh` also clones the repo to `~/code/config` for
+the post-update drift check.
 
 Nothing in the run waits for a login. Tailscale and 1Password are installed but
 left signed out, and the end-of-run summary lists the follow-ups:
@@ -30,7 +33,7 @@ sudo tailscale up --accept-routes   # or set TS_AUTHKEY=tskey-... before the run
 | `1 SoftwareInstall.sh` | Packages: pacman/yay on Arch, Homebrew on macOS |
 | `2 Fonts.sh` | Installs `fonts/` into the platform font dir |
 | `3 Git.sh` | Git identity and defaults |
-| `4 ConfigFiles.sh` | Copies every config below into `~`; idempotent, rerun any time |
+| `4 ConfigFiles.sh` | Copies every config below into `~`; idempotent, rerun any time. `--check` diffs instead of writing |
 | `5 Keys.sh` | 1Password + SSH keys |
 | `tests/smoke.sh` | Syntax/consistency checks. Run before committing |
 
@@ -59,7 +62,7 @@ Omarchy/Arch only:
   by cloning the stock panels and attaching them to the desktop frame. Generated,
   so those seven are not tracked here
 - `omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
-- `omarchy/hooks/` — post-update replay and Zed theme sync
+- `omarchy/hooks/` — post-update drift report (`~/.local/state/omarchy/config-drift.diff`) and Zed theme sync
 - `quickshell/flicko-picker/` — animated screenshot region picker; the optional
   `color` file there pins its accent to a fixed hex, otherwise it follows the theme
 - the rest of `bin/` — Hyprland/Omarchy helpers

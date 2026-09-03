@@ -192,12 +192,6 @@ install_arch_tailscale() {
 install_arch_1password() {
   run_or_warn "omarchy install service 1password" omarchy install service 1password
 
-  # omarchy-install-service-1password launches the GUI in the background. Close the
-  # window during unattended installs so it does not occlude the terminal.
-  if command -v hyprctl >/dev/null 2>&1; then
-    sleep 2
-    hyprctl dispatch closewindow "class:^(1[pP]assword)$" >/dev/null 2>&1 || true
-  fi
 
   # The installer opens the 1Password app in the background, but signing in is a
   # human step. `5 Keys.sh` skips the SSH key when the CLI is not signed in.

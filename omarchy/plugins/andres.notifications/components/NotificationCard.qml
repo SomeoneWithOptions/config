@@ -167,8 +167,8 @@ BorderSurface {
           text: root.summary
           font.family: "Noto Sans"
           color: Color.notifications.text
-          font.pixelSize: 18
-          font.weight: Font.Bold
+          font.pixelSize: Style.font.title
+          font.weight: Font.DemiBold
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 2
@@ -184,9 +184,8 @@ BorderSurface {
           textFormat: Text.StyledText
           font.family: "Noto Sans"
           color: root.bodyColor
-          font.pixelSize: 16
-          font.weight: Font.Medium
-          lineHeight: 1.22
+          font.pixelSize: Style.font.body
+          lineHeight: 1.28
           wrapMode: Text.WordWrap
           elide: Text.ElideRight
           maximumLineCount: 3

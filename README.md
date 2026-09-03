@@ -16,6 +16,13 @@ curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/config/main/boot
 `bootstrap.sh` downloads this repo to /tmp, runs the numbered scripts in order,
 and clones the repo to `~/code/config` for the post-update hook.
 
+Nothing in the run waits for a login. Tailscale and 1Password are installed but
+left signed out, and the end-of-run summary lists the follow-ups:
+
+```sh
+sudo tailscale up --accept-routes   # or set TS_AUTHKEY=tskey-... before the run
+```
+
 ## Scripts
 
 | Script | Does |

@@ -10,6 +10,8 @@ export HOMEBREW_NO_ANALYTICS=1
 export NONINTERACTIVE=1
 
 ERRORS=()
+# Steps a human has to finish later (logins, mostly). Never blocks the install.
+NOTES=()
 
 log() {
   printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -29,6 +31,12 @@ run_or_warn() {
     warn "${description} failed."
     return 1
   fi
+}
+
+note() {
+  local message="$*"
+  NOTES+=("$message")
+  log "NOTE: ${message}"
 }
 
 has_command() {
@@ -140,8 +148,51 @@ remove_stock_omarchy_apps() {
     obsidian xournalpp aether cliamp kdenlive pinta
 }
 
+# `omarchy install service tailscale` ends in a bare `tailscale up`, which blocks
+# the whole install until the device is authenticated in a browser. Every other
+# step of that installer is unattended, so run those here and leave the login for
+# later -- or pass TS_AUTHKEY to finish it now.
+install_arch_tailscale() {
+  if pacman_package_installed tailscale; then
+    log "tailscale is already installed."
+  elif ! run_or_warn "omarchy install tailscale package" omarchy pkg add tailscale; then
+    return 0
+  fi
+
+  run_or_warn "enable tailscaled" sudo systemctl enable --now tailscaled.service
+  # A prefs edit: works while logged out and survives a later `tailscale up`.
+  run_or_warn "allow ${USER} to manage Tailscale" sudo tailscale set --operator="$USER"
+  run_or_warn "enable Taildrop receive" \
+    systemctl --user enable --now omarchy-tailscale-receive.service
+  run_or_warn "install Tailscale web app" omarchy-webapp-install "Tailscale" \
+    "https://login.tailscale.com/admin/machines" \
+    https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tailscale-light.png
+  # No `omarchy-plugin-enable omarchy.tailscale`: the bar runs this repo's own
+  # andres.tailscale clone, wired up by omarchy/shell.json.
+
+  # `tailscale status` exits non-zero while logged out or while tailscaled is down.
+  if tailscale status >/dev/null 2>&1; then
+    log "Tailscale is already logged in."
+    return 0
+  fi
+
+  if [ -n "${TS_AUTHKEY:-}" ]; then
+    run_or_warn "tailscale up with TS_AUTHKEY" \
+      sudo tailscale up --accept-routes --auth-key "$TS_AUTHKEY"
+    return 0
+  fi
+
+  note "Tailscale is installed but not logged in. Run: sudo tailscale up --accept-routes"
+}
+
 install_arch_1password() {
   run_or_warn "omarchy install service 1password" omarchy install service 1password
+
+  # The installer opens the 1Password app in the background, but signing in is a
+  # human step. `5 Keys.sh` skips the SSH key when the CLI is not signed in.
+  if ! op whoami >/dev/null 2>&1; then
+    note "1Password is not signed in. Sign in to the app, enable the CLI integration, then rerun '5 Keys.sh' for the SSH key."
+  fi
 }
 
 install_arch_packages() {
@@ -195,9 +246,7 @@ install_arch_packages() {
 
   # The bar ships an `andres.tailscale` widget, so the binary has to exist on a
   # fresh laptop. This also enables tailscaled and Taildrop.
-  if ! has_command tailscale; then
-    run_or_warn "omarchy install service tailscale" omarchy install service tailscale
-  fi
+  install_arch_tailscale
 
   install_arch_1password
   install_rtk
@@ -310,14 +359,21 @@ install_macos_packages() {
 print_summary() {
   if [ "${#ERRORS[@]}" -eq 0 ]; then
     log "Software installation completed with no warnings."
-    return 0
+  else
+    log "Software installation completed with ${#ERRORS[@]} warning(s):"
+    local error
+    for error in "${ERRORS[@]}"; do
+      printf "  - %s\n" "$error"
+    done
   fi
 
-  log "Software installation completed with ${#ERRORS[@]} warning(s):"
-  local error
-  for error in "${ERRORS[@]}"; do
-    printf "  - %s\n" "$error"
-  done
+  if [ "${#NOTES[@]}" -gt 0 ]; then
+    log "Manual follow-up(s) left for you, none of them blocked this install:"
+    local pending
+    for pending in "${NOTES[@]}"; do
+      printf "  - %s\n" "$pending"
+    done
+  fi
 }
 
 main() {

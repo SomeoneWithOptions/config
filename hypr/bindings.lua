@@ -7,8 +7,8 @@ hl.unbind("SUPER + ALT + SPACE")
 -- SUPER+SHIFT+W stays on Quattro's default (Omawrite); typora is uninstalled here.
 o.bind(
   "SUPER + SHIFT + H",
-  "System monitor (btop)",
-  "omarchy-launch-or-focus org.omarchy.btop 'alacritty --class org.omarchy.btop,org.omarchy.btop -e btop'"
+  "Herdr (Foot)",
+  { launch = "foot --app-id=org.omarchy.herdr herdr", focus = "^org.omarchy.herdr$" }
 )
 
 -- Gamma controls remain separate from Quattro's normal brightness keys.
@@ -98,3 +98,7 @@ o.bind("ALT + C", "Copy", clipboard_shortcut("CTRL", "C", "CTRL", "Insert"))
 o.bind("ALT + V", "Paste", clipboard_shortcut("CTRL", "V", "SHIFT", "Insert"))
 o.bind("ALT + X", "Cut", send_shortcut_once("CTRL", "X"))
 o.bind("ALT + Z", "Undo", send_shortcut_once("CTRL", "Z"))
+
+-- Linear ticket capture. Toggles the andres.linear bar popup in place, so the
+-- keybind and the bar icon land on the same panel rather than two surfaces.
+o.bind("SUPER + SHIFT + L", "New Linear issue", "omarchy-shell andres.linear toggle")

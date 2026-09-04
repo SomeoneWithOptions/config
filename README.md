@@ -75,7 +75,5 @@ Omarchy/Arch only:
 - `systemd/user/` — mise Go upgrades and random-background timers
 - `zen/`, `xdg/` — browser prefs and default-app associations
 
-`terraform/` is unrelated to laptops: it provisions a personal AWS box.
-
 Waybar, Walker, SwayOSD, mako, hypridle and hyprlock are gone: Quattro's
 `omarchy-shell` replaces all of them.

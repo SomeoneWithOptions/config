@@ -1,14 +1,3 @@
-# Terraform local state
-.terraform/
-.terraform
-terraform.tfstate
-terraform.tfstate.*
-terraform.tfstate.backup
-.terraform.tfstate.lock.info
-.terraform.lock.hcl
-crash.log
-crash.*.log
-
 # Private keys / credentials
 [k]eys/
 *.pem
@@ -19,7 +8,6 @@ crash.*.log
 # Environment and local secret files
 .env
 .env.*
-*.tfvars
 client_secret*.json
 
 # Shell/local history

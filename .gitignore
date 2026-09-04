@@ -35,3 +35,5 @@ pi/agent/bin/
 
 # Local repo hygiene notes
 PUBLIC_REPO_SANITIZATION_PLAN.md
+
+/artifacts

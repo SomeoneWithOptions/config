@@ -9,6 +9,10 @@ export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_ANALYTICS=1
 export NONINTERACTIVE=1
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=lib/report.sh
+. "$SCRIPT_DIR/lib/report.sh"
+
 ERRORS=()
 # Steps a human has to finish later (logins, mostly). Never blocks the install.
 NOTES=()
@@ -20,7 +24,7 @@ log() {
 warn() {
   local message="$*"
   ERRORS+=("$message")
-  log "WARNING: ${message}"
+  report_warning "$message"
 }
 
 run_or_warn() {
@@ -34,9 +38,8 @@ run_or_warn() {
 }
 
 note() {
-  local message="$*"
-  NOTES+=("$message")
-  log "NOTE: ${message}"
+  NOTES+=("$2")
+  report_action "$@"
 }
 
 has_command() {
@@ -80,12 +83,14 @@ install_linear_omarchy_plugin() {
   local install_dir="$HOME/.config/omarchy/plugins/andres.linear"
   if [ -f "$install_dir/manifest.json" ] && [ -x "$install_dir/bin/omarchy-linear-setup" ]; then
     log "linear-omarchy-plugin is already installed."
+    report_linear_action
     return 0
   fi
 
   log "Installing linear-omarchy-plugin using its unattended installer."
   curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/linear-omarchy-plugin/main/install.sh \
     | bash -s -- --yes || warn "linear-omarchy-plugin installer failed."
+  report_linear_action
 }
 
 install_npm_cli() {
@@ -209,7 +214,9 @@ install_arch_tailscale() {
     return 0
   fi
 
-  note "Tailscale is installed but not logged in. Run: sudo tailscale up --accept-routes"
+  note tailscale 'Tailscale → sign in' \
+    'Run: sudo tailscale up --accept-routes' \
+    'Then: systemctl --user start omarchy-tailscale-receive.service'
 }
 
 install_arch_1password() {
@@ -218,14 +225,44 @@ install_arch_1password() {
 
   # The installer opens the 1Password app in the background, but signing in is a
   # human step. `5 Keys.sh` skips the SSH key when the CLI is not signed in.
-  if ! op whoami >/dev/null 2>&1; then
-    note "1Password is not signed in. Sign in to the app, enable the CLI integration, then rerun '5 Keys.sh' for the SSH key."
+  if [ "${BOOTSTRAP_KEYS:-1}" = 1 ] && ! op whoami >/dev/null 2>&1; then
+    report_keys_action
   fi
 }
 
+update_arch_system() {
+  local update_log="${OMARCHY_UPDATE_LOG_FILE:-/tmp/omarchy-update.log}"
+  local update_status
+
+  log "Updating Omarchy and system packages through the supported update entrypoint."
+  # Omarchy normally wraps itself in script(1) for /tmp/omarchy-update.log. That
+  # creates a new pseudo-TTY with a separate sudo ticket, defeating bootstrap's
+  # one-time sudo authentication. Keep update + sudo on this TTY, while tee still
+  # supplies Omarchy's expected diagnostics log and bootstrap's private transcript.
+  if ! (umask 077; : >"$update_log") || ! chmod 600 "$update_log"; then
+    warn "Cannot create private Omarchy update log at ${update_log}; package operations were stopped."
+    note system-update 'Omarchy update → retry' \
+      "Make ${update_log} writable, then rerun bootstrap."
+    return 1
+  fi
+  if OMARCHY_UPDATE_LOGGED=1 omarchy update -y 2>&1 | tee "$update_log"; then
+    return 0
+  else
+    update_status=$?
+  fi
+
+  warn "Omarchy system update failed; subsequent package operations were stopped."
+  note system-update 'Omarchy update → retry' \
+    'Review the detailed bootstrap log and correct the update error.' \
+    'Run: omarchy update -y' \
+    'Then rerun bootstrap.'
+  return "$update_status"
+}
+
 install_arch_packages() {
-  log "Refreshing pacman repositories."
-  run_or_warn "pacman refresh" sudo pacman -Syu --noconfirm
+  # Do not remove or install packages after a failed full-system update: package
+  # databases or installed packages may be mid-transition or out of sync.
+  update_arch_system || return $?
 
   remove_stock_omarchy_apps
 
@@ -283,6 +320,10 @@ install_arch_packages() {
   install_personal_dev_tools
   install_loom_omarchy_linux
   install_linear_omarchy_plugin
+
+  # Individual optional install failures are warnings. Only failed system update
+  # returns non-zero, above, because continuing package work would be unsafe.
+  return 0
 }
 
 # --- macOS ------------------------------------------------------------------
@@ -387,6 +428,8 @@ install_macos_packages() {
 }
 
 print_summary() {
+  # Bootstrap owns the combined summary, after all five scripts finish.
+  [ -z "${BOOTSTRAP_REPORT_DIR:-}" ] || return 0
   if [ "${#ERRORS[@]}" -eq 0 ]; then
     log "Software installation completed with no warnings."
   else
@@ -407,6 +450,8 @@ print_summary() {
 }
 
 main() {
+  local status=0
+
   if ! has_command curl; then
     warn "curl not found; it is required by every installer here."
   fi
@@ -417,7 +462,7 @@ main() {
       ;;
     Linux)
       if has_command pacman; then
-        install_arch_packages
+        install_arch_packages || status=$?
       else
         warn "Unsupported Linux distribution. This repo configures Omarchy/Arch only."
       fi
@@ -428,7 +473,7 @@ main() {
   esac
 
   print_summary
-  return 0
+  return "$status"
 }
 
 main "$@"

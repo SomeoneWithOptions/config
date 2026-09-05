@@ -3,6 +3,9 @@
 set -euo pipefail
 
 # Installs the SSH key from 1Password on macOS and Omarchy/Arch.
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=lib/report.sh
+. "$SCRIPT_DIR/lib/report.sh"
 
 # Ensure an ssh-agent is available. Reuse existing agent when possible.
 agent_is_reachable() {
@@ -91,7 +94,10 @@ add_ssh_key_if_missing() {
 
   if ! ssh-keygen -y -P "" -f "$key_path" >/dev/null 2>&1; then
     printf 'SSH key %s appears to require a passphrase; skipping ssh-add to keep this script unattended.\n' "$key_path" >&2
-    printf 'Add it manually later with: ssh-add %s\n' "$key_path" >&2
+    local add_command
+    printf -v add_command '%q ' "${SSH_ADD_CMD[@]}" "$key_path"
+    report_action ssh-passphrase 'SSH key → enter passphrase' "Run (Bash): $add_command"
+    report_deferred
     return
   fi
 
@@ -103,13 +109,23 @@ SSH_ADD_CMD=(ssh-add)
 
 if ! command -v op >/dev/null 2>&1; then
   printf '1Password CLI (op) is not installed; skipping SSH key setup.\n' >&2
+  report_action ssh-keys '1Password → install CLI' \
+    'Install 1Password CLI: https://developer.1password.com/docs/cli/get-started/' \
+    "Then rerun (Bash): $(printf 'bash %q' "$SCRIPT_DIR/5 Keys.sh")"
+  report_deferred
   exit 0
 fi
 
 if ! op whoami >/dev/null 2>&1; then
   printf '1Password CLI is not signed in; skipping SSH key setup to keep this script unattended.\n' >&2
-  printf 'Sign in with "op account add" or "op signin", then rerun this script.\n' >&2
+  report_keys_action
+  report_deferred
   exit 0
+fi
+
+# A login may have completed since the software stage recorded its reminder.
+if [ -n "${BOOTSTRAP_REPORT_DIR:-}" ]; then
+  rm -f "$BOOTSTRAP_REPORT_DIR/actions/ssh-keys"
 fi
 
 if [ "$(uname -s)" = "Darwin" ]; then

@@ -3,9 +3,19 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-bash -n "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
+for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
-  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/*
+  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/* "$ROOT/lib/report.sh" \
+  "$ROOT/tests/bootstrap.sh" "$ROOT/tests/software-install.sh"; do
+  # bin/ also contains Python helpers. Only shell scripts belong in bash -n.
+  IFS= read -r shebang <"$script"
+  case "$shebang" in
+    '#!'*bash*|'#!'*/sh|'#!'*'env sh') bash -n "$script" ;;
+  esac
+done
+sh -n "$ROOT/bootstrap.sh"
+bash "$ROOT/tests/bootstrap.sh"
+bash "$ROOT/tests/software-install.sh"
 python -m json.tool "$ROOT/omarchy/shell.json" >/dev/null
 python - "$ROOT/omarchy/install-framed-panels.py" <<'PY'
 import sys

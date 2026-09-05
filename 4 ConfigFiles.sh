@@ -19,6 +19,8 @@ DRIFT=0
 
 OS_NAME=$(uname -s)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=lib/report.sh
+. "$SCRIPT_DIR/lib/report.sh"
 
 # report_drift TARGET [SOURCE] [NOTE]
 # Prints one "== TARGET: ..." header per drifted target so callers can count them.
@@ -230,10 +232,13 @@ if [[ -n "${FISH_PATH:-}" ]]; then
             # Use sudo so the only allowed prompt is sudo authentication, not chsh's own password prompt.
             if command -v sudo >/dev/null 2>&1; then
                 if ! sudo chsh -s "$FISH_PATH" "$USER"; then
-                    printf 'Failed to change the default shell to fish. You may need to rerun `sudo chsh -s %s %s` manually.\n' "$FISH_PATH" "$USER" >&2
+                    report_warning 'Could not change the default shell to fish.'
+                    report_action fish-shell 'Fish → change login shell' \
+                      "Run (Bash): $(printf 'sudo chsh -s %q %q' "$FISH_PATH" "$USER")"
                 fi
             else
-                printf 'sudo not found; skipping default shell change. Run `chsh -s %s` manually if desired.\n' "$FISH_PATH" >&2
+                report_action fish-shell 'Fish → change login shell (sudo unavailable)' \
+                  "Run (Bash): $(printf 'chsh -s %q' "$FISH_PATH")"
             fi
         fi
     fi
@@ -341,7 +346,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         fi
         rm -rf "$framed_panels_tmp"
     elif ! framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py"); then
-        printf 'Framed panel generation FAILED (upstream panel source changed).\n' >&2
+        report_warning 'Framed panel generation FAILED (upstream panel source changed).'
         if command -v notify-send >/dev/null 2>&1; then
             notify-send -u critical "Config replay" "Framed panels failed to regenerate" || true
         fi
@@ -384,7 +389,13 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         zen_profiles_found=1
     done
     if [[ $zen_profiles_found -eq 0 ]]; then
-        printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
+        if (( CHECK )); then
+            printf 'No Zen profile yet: launch Zen once, then re-run this script.\n'
+        else
+            report_action zen 'Zen → create browser profile' \
+              'Launch Zen once, then close it.' \
+              "Rerun (Bash): $(printf 'bash %q' "$SCRIPT_DIR/4 ConfigFiles.sh")"
+        fi
     fi
 
     # Omarchy theme, branding, and hooks
@@ -424,10 +435,16 @@ if [[ "$OS_NAME" == "Linux" ]]; then
                 git -C "$CONFIG_REPO" remote set-url --push origin git@github.com:SomeoneWithOptions/config.git
                 printf 'Cloned config repo to %s for the post-update drift check\n' "$CONFIG_REPO"
             else
-                printf 'Could not clone config repo to %s; post-update drift check will fail.\n' "$CONFIG_REPO" >&2
+                report_warning "Could not clone config repo to $CONFIG_REPO; post-update drift check will fail."
+                report_action config-checkout 'Config repository → enable drift checks' \
+                  "Required checkout: $CONFIG_REPO" \
+                  "Rerun (Bash): $(printf 'bash %q' "$SCRIPT_DIR/4 ConfigFiles.sh")"
             fi
         else
-            printf 'git not found; skipped config repo clone to %s.\n' "$CONFIG_REPO" >&2
+            report_warning "git not found; skipped config repo clone to $CONFIG_REPO."
+            report_action config-checkout 'Config repository → enable drift checks' \
+              'Install git first.' "Required checkout: $CONFIG_REPO" \
+              "Rerun (Bash): $(printf 'bash %q' "$SCRIPT_DIR/4 ConfigFiles.sh")"
         fi
     fi
 

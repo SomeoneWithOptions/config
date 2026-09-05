@@ -369,11 +369,13 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     # "set as default" buttons). A plain copy reverted those on every update.
     copy_required_if_missing "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
     if command -v xdg-settings >/dev/null 2>&1 && command -v zen-browser >/dev/null 2>&1; then
+        # Omarchy shells export BROWSER=omarchy-launch-browser (default/bash/envs);
+        # xdg-settings refuses `set` and skews `get` while BROWSER is in the env.
         if (( CHECK )); then
-            browser="$(xdg-settings get default-web-browser 2>/dev/null || true)"
+            browser="$(env -u BROWSER xdg-settings get default-web-browser 2>/dev/null || true)"
             [[ "$browser" == "zen.desktop" ]] || report_drift "default web browser" "" "is ${browser:-unset}, repo wants zen.desktop"
         else
-            xdg-settings set default-web-browser zen.desktop || true
+            env -u BROWSER xdg-settings set default-web-browser zen.desktop || true
         fi
     fi
 

@@ -166,11 +166,25 @@ arch_install_if_missing() {
   fi
 }
 
+# `omarchy default editor` ends in a desktop notification and returns the toast's
+# exit status. Right after `omarchy update` restarts the shell, the notification
+# daemon is not back on the bus yet, so the call reports failure even though the
+# editor was written. Verify the setting instead of trusting the exit code.
+set_default_editor() {
+  local editor="$1"
+
+  omarchy default editor "$editor" >/dev/null 2>&1
+  [ "$(omarchy default editor 2>/dev/null)" = "$editor" ] && return 0
+
+  warn "set ${editor} as default editor failed."
+  return 1
+}
+
 remove_stock_omarchy_apps() {
   log "Removing stock Omarchy apps not wanted on this laptop config."
 
   # omarchy-launch-editor otherwise falls back to nvim after it is removed.
-  run_or_warn "set Vim as default editor" omarchy default editor vim
+  set_default_editor vim
   run_or_warn "remove unwanted Omarchy packages" omarchy pkg drop \
     omarchy-nvim neovim \
     obsidian xournalpp aether cliamp kdenlive pinta

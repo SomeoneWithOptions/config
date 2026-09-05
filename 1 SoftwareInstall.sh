@@ -253,13 +253,25 @@ update_arch_system() {
   # creates a new pseudo-TTY with a separate sudo ticket, defeating bootstrap's
   # one-time sudo authentication. Keep update + sudo on this TTY, while tee still
   # supplies Omarchy's expected diagnostics log and bootstrap's private transcript.
+  #
+  # Attach the controlling terminal to stdin when bootstrap itself was piped in
+  # (curl ... | sh). omarchy-update-stay-awake picks its privilege runner via
+  # "[[ -t 0 ]]": pipe stdin forces the pkexec path, and pkexec exec(3)s
+  # systemd-inhibit in its own (now root-owned) process, which the unprivileged
+  # stop step can never kill (EPERM) — leaving a leaked sleep inhibitor plus
+  # "Failed to stop the Omarchy update sleep inhibitor.". With a TTY on stdin it
+  # uses sudo, whose ticket is already warm from start_sudo_keepalive.
+  local update_stdin=/dev/null
+  if { true </dev/tty; } 2>/dev/null; then
+    update_stdin=/dev/tty
+  fi
   if ! (umask 077; : >"$update_log") || ! chmod 600 "$update_log"; then
     warn "Cannot create private Omarchy update log at ${update_log}; package operations were stopped."
     note system-update 'Omarchy update → retry' \
       "Make ${update_log} writable, then rerun bootstrap."
     return 1
   fi
-  if OMARCHY_UPDATE_LOGGED=1 omarchy update -y 2>&1 | tee "$update_log"; then
+  if OMARCHY_UPDATE_LOGGED=1 omarchy update -y <"$update_stdin" 2>&1 | tee "$update_log"; then
     return 0
   else
     update_status=$?

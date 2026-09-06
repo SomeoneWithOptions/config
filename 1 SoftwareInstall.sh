@@ -164,6 +164,34 @@ install_personal_dev_tools() {
   install_npm_cli vercel vercel
 }
 
+install_turso() {
+  # Auth (`turso auth login`) is deliberately a manual follow-up below.
+  #
+  # Arch uses the AUR prebuilt binary: `turso-cli` builds from Go source, and
+  # the dev-env Go install only happens later in install_arch_packages. The
+  # upstream get.tur.so installer mutates shell rc files to add ~/.turso to
+  # PATH, which this repo's dotfiles would rather own themselves.
+  if [ "$(uname -s)" = "Linux" ]; then
+    arch_install_if_missing turso-cli-bin
+  elif brew list --formula turso >/dev/null 2>&1; then
+    log "turso is already installed."
+    report_software_progress skip 'turso already installed'
+  elif has_command brew; then
+    progress_step 'Installing turso…' 'turso installed' 'turso installation failed' \
+      "Homebrew install turso" brew install tursodatabase/tap/turso
+  else
+    warn "brew not found; cannot install turso."
+    report_software_progress fail 'turso not installed'
+  fi
+
+  # `turso whoami` exits non-zero while signed out, so only then is a login
+  # left for later. Local development works without an account.
+  if has_command turso && ! turso whoami >/dev/null 2>&1; then
+    note turso 'Turso CLI → sign in' \
+      'Run: turso auth login'
+  fi
+}
+
 install_rtk() {
   if has_command rtk; then
     log "RTK is already installed."
@@ -482,6 +510,7 @@ install_arch_packages() {
   # No install_pi here: Omarchy mise-installs `pi` during setup (install/user/mise.sh).
   # The macOS branch still needs the upstream installer.
   install_personal_dev_tools
+  install_turso
   install_loom_omarchy_linux
   install_linear_omarchy_plugin
 
@@ -630,6 +659,7 @@ install_macos_packages() {
   fi
 
   install_personal_dev_tools
+  install_turso
 }
 
 print_summary() {

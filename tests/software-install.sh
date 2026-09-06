@@ -116,6 +116,12 @@ SH
   for tool in mise omarchy-mise-install omarchy-webapp-install systemctl pi clasp vercel rtk brew yay; do
     printf '#!/bin/sh\nprintf "%s %%s\\n" "%s" "$*" >>"$MOCK_CALLS"\nexit 0\n' "$tool" "$tool" >"$SOFT/bin/$tool"
   done
+  cat >"$SOFT/bin/turso" <<'SH'
+#!/bin/sh
+printf 'turso %s\n' "$*" >>"$MOCK_CALLS"
+[ "$1" = whoami ] && exit "${MOCK_TURSO_STATUS:-0}"
+exit 0
+SH
   cat >"$SOFT/bin/brew" <<'SH'
 #!/bin/bash
 printf 'brew %s\n' "$*" >>"$MOCK_CALLS"
@@ -184,7 +190,9 @@ soft_assert_absent() {
 # order: update first, then removal, then per-package installs.
 soft_new_env
 MOCK_INSTALLED='zed omazed 1password 1password-cli'
-export MOCK_INSTALLED
+# turso-cli-bin only exists in the AUR, so it must take the yay path.
+MOCK_NOT_IN_REPO='turso-cli-bin'
+export MOCK_INSTALLED MOCK_NOT_IN_REPO
 status=0
 soft_run
 [[ $status == 0 ]]
@@ -212,19 +220,23 @@ grep -q $'done\tcommiter installed' "$SOFT/software-events"
 grep -q $'done\tclasp installed' "$SOFT/software-events"
 grep -q $'done\tloom-omarchy-linux installed' "$SOFT/software-events"
 grep -q $'done\tlinear-omarchy-plugin installed' "$SOFT/software-events"
+grep -q $'done\tturso-cli-bin installed' "$SOFT/software-events"
 ! grep -q $'fail' "$SOFT/software-events"
 # Package work only after the successful update.
 [[ $(grep -n '^omarchy update -y$' "$SOFT/calls" | head -1 | cut -d: -f1) -lt \
   $(grep -n '^sudo pacman ' "$SOFT/calls" | head -1 | cut -d: -f1) ]]
 grep -q '^sudo pacman -S --needed --noconfirm fish$' "$SOFT/calls"
+grep -q '^yay -S --needed --noconfirm turso-cli-bin$' "$SOFT/calls"
 rm -rf "$SOFT"
-unset MOCK_INSTALLED
+unset MOCK_INSTALLED MOCK_NOT_IN_REPO
 
 # Omarchy: everything already installed reports skip where detection exists
 # and runs no package installers.
 soft_new_env
-MOCK_INSTALLED='fish alacritty ghostty vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli'
-export MOCK_INSTALLED
+MOCK_INSTALLED='fish alacritty ghostty vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli turso-cli-bin'
+# turso whoami fails, so the sign-in follow-up note must be written.
+MOCK_TURSO_STATUS=1
+export MOCK_INSTALLED MOCK_TURSO_STATUS
 printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/loom"
 chmod +x "$SOFT/bin/loom"
 mkdir -p "$SOFT/home/.local/bin"
@@ -248,18 +260,21 @@ grep -q $'skip\tcommiter already installed' "$SOFT/software-events"
 grep -q $'done\tclasp installed' "$SOFT/software-events"
 grep -q $'skip\tloom-omarchy-linux already installed' "$SOFT/software-events"
 grep -q $'skip\tlinear-omarchy-plugin already installed' "$SOFT/software-events"
+grep -q $'skip\tturso-cli-bin already installed' "$SOFT/software-events"
+grep -q 'Turso CLI → sign in' "$SOFT/report/actions/turso"
+grep -q 'Run: turso auth login' "$SOFT/report/actions/turso"
 grep -q $'start\tConfiguring Tailscale…' "$SOFT/software-events"
 grep -q $'done\tTailscale configured' "$SOFT/software-events"
 ! grep -q '^sudo pacman -S ' "$SOFT/calls"
 ! grep -q '^pacman -Si ' "$SOFT/calls"
 rm -rf "$SOFT"
-unset MOCK_INSTALLED
+unset MOCK_INSTALLED MOCK_TURSO_STATUS
 
 # Omarchy: a failing optional package warns and reports failure, later packages
 # continue, and no success is ever claimed for the failed operation.
 soft_new_env
 MOCK_FAIL_PACKAGES='fish'
-MOCK_NOT_IN_REPO='libfprint'
+MOCK_NOT_IN_REPO='libfprint turso-cli-bin'
 MOCK_YAY_STATUS=1
 export MOCK_FAIL_PACKAGES MOCK_NOT_IN_REPO MOCK_YAY_STATUS
 soft_run
@@ -270,6 +285,8 @@ grep -q $'fail\tlibfprint installation failed' "$SOFT/software-events"
 grep -q $'done\tvim installed' "$SOFT/software-events"
 grep -q 'pacman install fish failed.' "$SOFT/report/warnings"
 grep -q 'yay install libfprint failed.' "$SOFT/report/warnings"
+grep -q $'fail\tturso-cli-bin installation failed' "$SOFT/software-events"
+grep -q 'yay install turso-cli-bin failed.' "$SOFT/report/warnings"
 soft_assert_no_done_after_fail
 rm -rf "$SOFT"
 unset MOCK_FAIL_PACKAGES MOCK_NOT_IN_REPO MOCK_YAY_STATUS
@@ -373,6 +390,8 @@ grep -q $'done\t1Password installed' "$SOFT/software-events"
 grep -q $'done\tcommiter installed' "$SOFT/software-events"
 grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'skip\tclasp already installed' "$SOFT/software-events"
+grep -q '^brew install tursodatabase/tap/turso$' "$SOFT/calls"
+grep -q $'done\tturso installed' "$SOFT/software-events"
 ! grep -q $'fail' "$SOFT/software-events"
 rm -rf "$SOFT"
 unset MOCK_INSTALLED SOFT_UNAME

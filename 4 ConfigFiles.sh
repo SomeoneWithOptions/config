@@ -147,6 +147,33 @@ append_line_once() {
     printf '%s\n' "$line" >> "$file"
 }
 
+# Shared skills (pi + Claude Code) install into ~/.agents/skills; each agent's
+# skill dir gets a relative symlink so one copy serves both.
+link_agent_skill() {
+    local name="$1" link_dir="$2" rel_target="$3"
+    local link="$link_dir/$name"
+
+    if [[ -L "$link" && "$(readlink "$link")" == "$rel_target/$name" ]]; then
+        return
+    fi
+    if [[ -e "$link" ]]; then
+        # Never clobber a real dir or a deliberate user-made link.
+        if (( CHECK )); then
+            report_drift "$link" "" "exists but is not the expected symlink to $rel_target/$name"
+        else
+            report_warning "$link exists but is not the expected symlink to $rel_target/$name; left untouched."
+        fi
+        return
+    fi
+    if (( CHECK )); then
+        report_drift "$link" "missing (repo would symlink it to $rel_target/$name)"
+        return
+    fi
+    mkdir -p "$link_dir"
+    ln -s "$rel_target/$name" "$link"
+    printf 'Linked %s -> %s\n' "$link" "$rel_target/$name"
+}
+
 current_login_shell() {
     if [[ "$OS_NAME" == "Darwin" ]]; then
         dscl . -read "/Users/$USER" UserShell 2>/dev/null | awk '{print $2}'
@@ -169,6 +196,17 @@ for skill in "$SCRIPT_DIR"/pi/agent/skills/*; do
     # a-front is user-updatable: seed it once, never overwrite local edits on replay.
     [[ "$skill_name" == "a-front" && -d "$HOME/.pi/agent/skills/a-front" ]] && continue
     copy_dir_required "$skill" "$HOME/.pi/agent/skills/$skill_name"
+done
+
+# Shared agent skills (pi + Claude Code). orchestrator needs the herdr skill.
+for skill in "$SCRIPT_DIR"/agents/skills/*; do
+    skill_name="$(basename "$skill")"
+    copy_dir_required "$skill" "$HOME/.agents/skills/$skill_name"
+    link_agent_skill "$skill_name" "$HOME/.pi/agent/skills" "../../../.agents/skills"
+    # Claude Code may not be installed (or launched) yet; link only when present.
+    if [[ -d "$HOME/.claude" ]]; then
+        link_agent_skill "$skill_name" "$HOME/.claude/skills" "../../.agents/skills"
+    fi
 done
 
 # Fish Configuration

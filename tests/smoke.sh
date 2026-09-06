@@ -176,6 +176,11 @@ grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/1 Soft
 grep -q 'bash -s -- --yes' "$ROOT/1 SoftwareInstall.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
 grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
+# Shared orchestrator/herdr skills are tracked and symlinked into pi + Claude Code.
+[[ -f "$ROOT/agents/skills/orchestrator/SKILL.md" && -f "$ROOT/agents/skills/herdr/SKILL.md" ]]
+grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/4 ConfigFiles.sh"
+grep -q 'arch_install_if_missing "\$package"' "$ROOT/1 SoftwareInstall.sh"
+grep -q '^    herdr \\$' "$ROOT/1 SoftwareInstall.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"

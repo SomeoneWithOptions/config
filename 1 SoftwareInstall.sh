@@ -447,6 +447,7 @@ install_arch_packages() {
     fish \
     alacritty \
     ghostty \
+    herdr \
     vim \
     terraform \
     aws-cli-v2 \

@@ -82,8 +82,9 @@ SH
 run_bootstrap() {
   local expected=$1
   shift
-  local status=0
-  env HOME="$WORK/home" PATH="$WORK/bin:/usr/bin:/bin" \
+  local status=0 timeout_args=()
+  [ -z "${TEST_TIMEOUT:-}" ] || timeout_args=(timeout "$TEST_TIMEOUT")
+  "${timeout_args[@]}" env HOME="$WORK/home" PATH="$WORK/bin:/usr/bin:/bin" \
     BOOTSTRAP_ALLOW_CONFIG_DIR=1 CONFIG_DIR="$REPO" \
     BOOTSTRAP_SUDO=0 BOOTSTRAP_KEYS=1 BOOTSTRAP_VERBOSE=0 NO_COLOR=1 TMPDIR="$WORK" \
     "$@" sh "$ROOT/bootstrap.sh" >"$WORK/output" 2>&1 || status=$?
@@ -298,5 +299,182 @@ printf '#!/bin/bash\nexit 0\n' >"$REPO/2 Fonts.sh"
 : >"$WORK/home/idle-calls"
 run_bootstrap 0
 [[ ! -s "$WORK/home/idle-calls" ]]
+
+# --- Software progress renderer ---------------------------------------------
+# App events from the installer must render as dedicated rows while raw output
+# stays hidden, with BOOTSTRAP_SOFTWARE_PROGRESS_FILE set only for software.
+PROGRESS_ENV_LOG="$WORK/progress-env.log"
+: >"$PROGRESS_ENV_LOG"
+cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
+#!/bin/bash
+set -uo pipefail
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/report.sh"
+printf '%s\n' "${BOOTSTRAP_SOFTWARE_PROGRESS_FILE-UNSET}" >>"$PROGRESS_ENV_LOG"
+report_software_progress start 'Installing Zen browser…'
+report_software_progress done 'Zen browser installed'
+report_software_progress skip 'Zed already installed'
+report_software_progress fail 'Tailscale installation failed'
+echo 'RAW SOFTWARE OUTPUT'
+SH
+for script in '2 Fonts.sh' '3 Git.sh' '4 ConfigFiles.sh'; do
+  printf '#!/bin/bash\nprintf "%%s\\n" "${BOOTSTRAP_SOFTWARE_PROGRESS_FILE-UNSET}" >>"$PROGRESS_ENV_LOG"\n' >"$REPO/$script"
+done
+run_bootstrap 0 MOCK_FAST_HEARTBEAT=1 PROGRESS_ENV_LOG="$PROGRESS_ENV_LOG"
+! grep -q $'\033' "$WORK/output"
+! grep -q 'RAW SOFTWARE OUTPUT' "$WORK/output"
+grep -q '→ Installing Zen browser…' "$WORK/output"
+grep -q '✓ Zen browser installed' "$WORK/output"
+grep -q '– Zed already installed' "$WORK/output"
+grep -q '! Tailscale installation failed' "$WORK/output"
+python3 - "$WORK/output" <<'PY'
+import sys
+out = open(sys.argv[1]).read()
+assert out.index('✓ Zen browser installed') < out.index('✓ Software'), out
+PY
+[[ $(wc -l <"$PROGRESS_ENV_LOG") == 4 ]]
+[[ $(head -n1 "$PROGRESS_ENV_LOG") == "${LOG%/*}/software-progress" ]]
+[[ $(sed -n 2p "$PROGRESS_ENV_LOG") == 'UNSET' ]]
+[[ $(sed -n 3p "$PROGRESS_ENV_LOG") == 'UNSET' ]]
+[[ $(sed -n 4p "$PROGRESS_ENV_LOG") == 'UNSET' ]]
+EVENTS=$(head -n1 "$PROGRESS_ENV_LOG")
+[[ -f $EVENTS ]]
+[[ $(stat -c '%a' "$EVENTS") == 600 ]]
+[[ $(wc -l <"$EVENTS") == 4 ]]
+grep -q $'start\tInstalling Zen browser…' "$EVENTS"
+grep -q $'done\tZen browser installed' "$EVENTS"
+grep -q $'skip\tZed already installed' "$EVENTS"
+grep -q $'fail\tTailscale installation failed' "$EVENTS"
+grep -q '→ Installing Zen browser…' "$LOG"
+grep -q 'RAW SOFTWARE OUTPUT' "$LOG"
+
+# Verbose streams the transcript once: no duplicate dedicated progress rows.
+run_bootstrap 0 MOCK_FAST_HEARTBEAT=1 BOOTSTRAP_VERBOSE=1 PROGRESS_ENV_LOG="$PROGRESS_ENV_LOG"
+[[ $(grep -c 'Installing Zen browser…' "$WORK/output") == 1 ]]
+grep -q 'RAW SOFTWARE OUTPUT' "$WORK/output"
+! grep -q $'\033' "$WORK/output"
+
+# The software heartbeat reports the current operation's elapsed time.
+cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
+#!/bin/bash
+set -uo pipefail
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/report.sh"
+report_software_progress start 'Installing Zen browser…'
+/bin/sleep 1.3
+report_software_progress done 'Zen browser installed'
+SH
+run_bootstrap 0 MOCK_FAST_HEARTBEAT=1 SOFTWARE_HEARTBEAT_INTERVAL=1 PROGRESS_ENV_LOG="$PROGRESS_ENV_LOG"
+grep -Eq '… Installing Zen browser… \((1|2)s\)' "$WORK/output"
+! grep -q 'Software still running' "$WORK/output"
+
+# SOFTWARE_HEARTBEAT_INTERVAL is sanitized before use: zero, octal-looking, and
+# huge values must neither hang the renderer's heartbeat loop nor abort its
+# arithmetic. The interval 0 previously looped forever; "08" previously died on
+# "value too great for base" octal arithmetic.
+cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
+#!/bin/bash
+set -uo pipefail
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/report.sh"
+report_software_progress start 'Installing Zen browser…'
+/bin/sleep 1.3
+report_software_progress done 'Zen browser installed'
+SH
+for bad_interval in 0 08 99999999999999999999; do
+  run_bootstrap 0 TEST_TIMEOUT=60 MOCK_FAST_HEARTBEAT=1 SOFTWARE_HEARTBEAT_INTERVAL=$bad_interval \
+    PROGRESS_ENV_LOG="$PROGRESS_ENV_LOG"
+  grep -q '→ Installing Zen browser…' "$WORK/output"
+  grep -q '✓ Zen browser installed' "$WORK/output"
+done
+# The op is shorter than any sanitized interval, so no heartbeat may appear.
+# (set -e exempts negated commands; assert absence through the exit status.)
+[[ $(grep -c '… Installing Zen browser… (' "$WORK/output" || true) == 0 ]]
+
+# On a real terminal (pty via script(1)) the active pending line is replaced
+# with the final result and completed rows are retained.
+if command -v script >/dev/null 2>&1; then
+  cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
+#!/bin/bash
+set -uo pipefail
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/report.sh"
+report_software_progress start 'Installing Zen browser…'
+report_software_progress done 'Zen browser installed'
+report_software_progress skip 'Zed already installed'
+SH
+  cat >"$WORK/tty-run" <<RUNNER
+#!/bin/sh
+env HOME="$WORK/home" PATH="$WORK/bin:/usr/bin:/bin" \\
+  BOOTSTRAP_ALLOW_CONFIG_DIR=1 CONFIG_DIR="$REPO" \\
+  BOOTSTRAP_SUDO=0 BOOTSTRAP_KEYS=0 BOOTSTRAP_VERBOSE=0 NO_COLOR=1 \\
+  TERM=xterm TMPDIR="$WORK" MOCK_FAST_HEARTBEAT=1 PROGRESS_ENV_LOG="$PROGRESS_ENV_LOG" \\
+  sh "$ROOT/bootstrap.sh"
+printf '%s\n' "\$?" >"$WORK/tty-status"
+RUNNER
+  chmod +x "$WORK/tty-run"
+  script -qec "$WORK/tty-run" "$WORK/tty-typescript" </dev/null >/dev/null 2>&1 || true
+  [[ $(cat "$WORK/tty-status") == 0 ]]
+  grep -q '→ Installing Zen browser…' "$WORK/tty-typescript"
+  grep -q '✓ Zen browser installed' "$WORK/tty-typescript"
+  grep -q '– Zed already installed' "$WORK/tty-typescript"
+  grep -qF $'\033[A' "$WORK/tty-typescript"
+  ! grep -qF $'\033[3' "$WORK/tty-typescript"
+fi
+
+# A final event appended after the renderer's read loop hits EOF but before the
+# stop marker exists must still be drained before exit: the parent writes the
+# marker only after the installer exits. Reproduce the old race deterministically
+# by running the extracted renderer with a date(1) stub that appends the final
+# event and creates the marker inside the renderer's own heartbeat call — which
+# happens after EOF and before the old end-of-loop marker check.
+RWORK="$WORK/renderer-race"
+mkdir -p "$RWORK/bin"
+awk '/^software_renderer\(\) \($/,/^\)$/' "$ROOT/bootstrap.sh" >"$RWORK/renderer.inc"
+grep -q 'software_renderer() (' "$RWORK/renderer.inc"
+cat >"$RWORK/bin/date" <<'SH'
+#!/bin/sh
+if [ "$1" = +%s ]; then
+  count=$(cat "$MOCK_DATE_COUNT" 2>/dev/null || printf '0')
+  count=$((count + 1))
+  printf '%s\n' "$count" >"$MOCK_DATE_COUNT"
+  if [ "$count" -eq 2 ]; then
+    printf 'done\t%s\n' "$MOCK_DONE_LABEL" >>"$MOCK_EVENTS"
+    : >"$MOCK_STOP"
+  fi
+fi
+exec /usr/bin/date "$@"
+SH
+chmod +x "$RWORK/bin/date"
+printf 'start\tInstalling Zen browser…\n' >"$RWORK/events"
+{
+  cat "$RWORK/renderer.inc"
+  cat <<SH
+MOCK_DATE_COUNT="$RWORK/date-count"
+MOCK_EVENTS="$RWORK/events"
+MOCK_STOP="$RWORK/stop"
+MOCK_DONE_LABEL='Zen browser installed'
+export MOCK_DATE_COUNT MOCK_EVENTS MOCK_STOP MOCK_DONE_LABEL
+export SOFTWARE_EVENTS_FILE="$RWORK/events" SOFTWARE_EVENTS_STOP="$RWORK/stop"
+export SOFTWARE_HEARTBEAT_INTERVAL=999999999 BOOTSTRAP_VERBOSE=0 TERM=dumb
+PATH="$RWORK/bin:/usr/bin:/bin"
+export PATH
+rm -f "\$SOFTWARE_EVENTS_STOP"
+exec 3>"$RWORK/out"
+software_renderer
+printf '%s\n' "\$?" >"$RWORK/status"
+SH
+} >"$RWORK/run.sh"
+chmod +x "$RWORK/run.sh"
+timeout 30 bash "$RWORK/run.sh" || { echo 'renderer race test timed out' >&2; exit 1; }
+[[ $(cat "$RWORK/status") == 0 ]]
+[[ $(cat "$RWORK/date-count") == 2 ]]
+grep -q '→ Installing Zen browser…' "$RWORK/out"
+grep -q '✓ Zen browser installed' "$RWORK/out"
+
+# Signal during the software stage reaps the renderer and stops bootstrap.
+printf '#!/bin/bash\nkill -TERM "$PPID"\nsleep 0.2\n' >"$REPO/1 SoftwareInstall.sh"
+run_bootstrap 143
+grep -q 'Setup stopped — Software (exit 143)' "$WORK/output"
 
 printf 'bootstrap logging tests passed\n'

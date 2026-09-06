@@ -11,6 +11,41 @@ report_warning() {
   fi
 }
 
+# App-by-app software progress. STATE is start|done|skip|fail and only picks
+# the symbol; LABEL is the complete human-readable operation text (never a
+# command, its arguments, output, URLs, or credentials). During bootstrap's
+# software stage BOOTSTRAP_SOFTWARE_PROGRESS_FILE points at a private events
+# file and one TSV record is appended for the parent's renderer; the readable
+# line always goes to stdout (captured into the detailed log during bootstrap,
+# terminal otherwise).
+report_software_progress() {
+  local status=0 symbol
+  case "$1" in
+    start|done|skip|fail) ;;
+    *)
+      printf 'report_software_progress: invalid state: %s\n' "${1-}" >&2
+      return 2
+      ;;
+  esac
+  case "${2-}" in
+    ''|*$'\t'*|*$'\n'*)
+      printf 'report_software_progress: label must be non-empty text without tabs or newlines\n' >&2
+      return 2
+      ;;
+  esac
+  if [ -n "${BOOTSTRAP_SOFTWARE_PROGRESS_FILE:-}" ]; then
+    printf '%s\t%s\n' "$1" "$2" >>"$BOOTSTRAP_SOFTWARE_PROGRESS_FILE" || status=1
+  fi
+  case "$1" in
+    start) symbol='→' ;;
+    done) symbol='✓' ;;
+    skip) symbol='–' ;;
+    fail) symbol='!' ;;
+  esac
+  printf '%s %s\n' "$symbol" "$2"
+  return "$status"
+}
+
 # Stable ID, title, then one or more human-readable instruction lines.
 report_action() {
   case "$1" in ''|*[!a-zA-Z0-9_-]*) return 2 ;; esac

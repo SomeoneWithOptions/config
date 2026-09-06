@@ -31,6 +31,9 @@ exec 3>&2
 RUN_DIR=$(mktemp -d /tmp/config-bootstrap.XXXXXX)
 chmod 700 "$RUN_DIR"
 LOG_FILE="$RUN_DIR/install.log"
+SOFTWARE_EVENTS_FILE="$RUN_DIR/software-progress"
+SOFTWARE_EVENTS_STOP="$RUN_DIR/software-renderer.stop"
+SOFTWARE_RENDERER_PID=''
 BOOTSTRAP_REPORT_DIR="$RUN_DIR/report"
 export BOOTSTRAP_REPORT_DIR BOOTSTRAP_KEYS
 (
@@ -38,6 +41,7 @@ export BOOTSTRAP_REPORT_DIR BOOTSTRAP_KEYS
   mkdir -p "$BOOTSTRAP_REPORT_DIR/actions" "$BOOTSTRAP_REPORT_DIR/stages"
   : >"$BOOTSTRAP_REPORT_DIR/warnings"
   : >"$LOG_FILE"
+  : >"$SOFTWARE_EVENTS_FILE"
 )
 GREEN='' YELLOW='' RED='' RESET=''
 if [ -t 3 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${NO_COLOR+x}" ]; then
@@ -47,6 +51,121 @@ fi
 ui() { printf '%s\n' "$*" >&3; }
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 
+# Renders app-by-app software progress from the private TSV events file that
+# report_software_progress appends to. Polls at most once per second, keeps one
+# active line for the current operation (rewritten on capable terminals, plain
+# newlines otherwise), heartbeats the current operation's elapsed time, and
+# drains remaining events after the stop file appears before exiting. Silent
+# when BOOTSTRAP_VERBOSE=1: the streamed transcript already carries the same
+# readable records, so dedicated rows would only duplicate them.
+software_renderer() (
+  events=$SOFTWARE_EVENTS_FILE
+  stop=$SOFTWARE_EVENTS_STOP
+  verbose=${BOOTSTRAP_VERBOSE:-0}
+  interval=${SOFTWARE_HEARTBEAT_INTERVAL:-30}
+  case "$interval" in *[!0-9]*) interval=30 ;; esac
+  # POSIX/bash arithmetic reads a leading zero as octal ("08" would abort the
+  # renderer mid-loop) and a zero interval would spin the catch-up loop below
+  # forever, so strip leading zeros and bound the value before any arithmetic.
+  interval=${interval#"${interval%%[!0]*}"}
+  if [ -z "$interval" ] || [ "$interval" -eq 0 ] || [ "${#interval}" -gt 9 ]; then
+    interval=30
+  fi
+  tab=$(printf '\t')
+  pending_label=''
+  pending_since=0
+  pending_shown=0
+  next_heartbeat=0
+  tty_capable=0
+  if [ -t 3 ] && [ "${TERM:-dumb}" != dumb ]; then
+    tty_capable=1
+  fi
+  exec 4<"$events"
+  while :; do
+    # Snapshot the stop marker at the START of the iteration, before draining.
+    # The parent writes the marker only after the installer exits, so a final
+    # event appended after the read loop below hits EOF is still drained on the
+    # next pass; an end-of-loop marker check alone could exit and lose it.
+    if [ -f "$stop" ]; then
+      stop_seen=1
+    else
+      stop_seen=0
+    fi
+    while IFS= read -r event <&4; do
+      [ -n "$event" ] || continue
+      state=${event%%"$tab"*}
+      label=${event#*"$tab"}
+      case "$state" in
+        start)
+          if [ "$verbose" = 0 ]; then
+            if [ "$tty_capable" = 1 ] && [ "$pending_shown" = 1 ]; then
+              printf '\033[A\r\033[K%s\n' "→ $label" >&3
+            else
+              printf '%s\n' "→ $label" >&3
+            fi
+            pending_shown=1
+          fi
+          pending_label=$label
+          pending_since=$(date +%s)
+          next_heartbeat=$((pending_since + interval))
+          ;;
+        done|skip|fail)
+          if [ "$verbose" = 0 ]; then
+            case "$state" in
+              done) color=$GREEN; symbol='✓' ;;
+              skip) color=''; symbol='–' ;;
+              fail) color=$YELLOW; symbol='!' ;;
+            esac
+            if [ "$tty_capable" = 1 ] && [ "$pending_shown" = 1 ]; then
+              printf '\033[A\r\033[K%s%s %s%s\n' "$color" "$symbol" "$label" "$RESET" >&3
+            else
+              printf '%s%s %s%s\n' "$color" "$symbol" "$label" "$RESET" >&3
+            fi
+            pending_shown=0
+          fi
+          pending_label=''
+          ;;
+      esac
+    done
+    if [ "$verbose" = 0 ] && [ -n "$pending_label" ]; then
+      now=$(date +%s)
+      if [ "$now" -ge "$next_heartbeat" ]; then
+        if [ "$tty_capable" = 1 ] && [ "$pending_shown" = 1 ]; then
+          printf '\033[A\r\033[K  … %s (%ss)\n' \
+            "$pending_label" "$((now - pending_since))" >&3
+        else
+          printf '  … %s (%ss)\n' "$pending_label" "$((now - pending_since))" >&3
+        fi
+        while [ "$now" -ge "$next_heartbeat" ]; do
+          next_heartbeat=$((next_heartbeat + interval))
+        done
+      fi
+    fi
+    if [ "$stop_seen" = 1 ]; then
+      exit 0
+    fi
+    sleep 1
+  done
+)
+
+start_software_renderer() {
+  software_renderer &
+  SOFTWARE_RENDERER_PID=$!
+}
+
+stop_software_renderer() {
+  # $1 = kill: stop immediately (signal path); otherwise let it drain first.
+  if [ -n "$SOFTWARE_RENDERER_PID" ]; then
+    : >"$SOFTWARE_EVENTS_STOP" 2>/dev/null || true
+    if [ "${1:-}" = kill ]; then
+      kill "$SOFTWARE_RENDERER_PID" 2>/dev/null || true
+    fi
+    wait "$SOFTWARE_RENDERER_PID" 2>/dev/null || true
+    SOFTWARE_RENDERER_PID=''
+  fi
+  unset BOOTSTRAP_SOFTWARE_PROGRESS_FILE
+}
+
 stop_background() {
   for background_pid in "$HEARTBEAT_PID" "$SUDO_KEEPALIVE_PID" "$FOLLOW_PID"; do
     if [ -n "$background_pid" ]; then
@@ -54,6 +173,7 @@ stop_background() {
       wait "$background_pid" 2>/dev/null || true
     fi
   done
+  stop_software_renderer kill
 }
 
 render_summary() {
@@ -192,17 +312,24 @@ run_script() {
   ui "→ $label"
   log "START $label"
   # Keep long package builds visibly alive, without per-package console noise.
-  (
-    heartbeat_seconds=0
-    while sleep 1; do
-      heartbeat_seconds=$((heartbeat_seconds + 1))
-      if [ "$heartbeat_seconds" -ge 30 ]; then
-        ui "  … $label still running ($(( $(date +%s) - stage_start ))s)"
-        heartbeat_seconds=0
-      fi
-    done
-  ) &
-  HEARTBEAT_PID=$!
+  # The software stage instead runs the app-by-app progress renderer, whose
+  # current-operation heartbeat replaces the generic stage heartbeat.
+  if [ "$BOOTSTRAP_STAGE" = software ]; then
+    export BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$SOFTWARE_EVENTS_FILE"
+    start_software_renderer
+  else
+    (
+      heartbeat_seconds=0
+      while sleep 1; do
+        heartbeat_seconds=$((heartbeat_seconds + 1))
+        if [ "$heartbeat_seconds" -ge 30 ]; then
+          ui "  … $label still running ($(( $(date +%s) - stage_start ))s)"
+          heartbeat_seconds=0
+        fi
+      done
+    ) &
+    HEARTBEAT_PID=$!
+  fi
   # Keep installers in the foreground: background jobs inherit ignored SIGINT,
   # which would make Ctrl-C leave package managers running behind the summary.
   stage_status=0
@@ -212,9 +339,15 @@ run_script() {
   else
     /usr/bin/env bash "$path" </dev/null || stage_status=$?
   fi
-  kill "$HEARTBEAT_PID" 2>/dev/null || true
-  wait "$HEARTBEAT_PID" 2>/dev/null || true
-  HEARTBEAT_PID=''
+  if [ "$BOOTSTRAP_STAGE" = software ]; then
+    # The renderer exits after draining everything written before the stop
+    # file, so app rows always precede this stage's own result line.
+    stop_software_renderer
+  else
+    kill "$HEARTBEAT_PID" 2>/dev/null || true
+    wait "$HEARTBEAT_PID" 2>/dev/null || true
+    HEARTBEAT_PID=''
+  fi
   elapsed=$(( $(date +%s) - stage_start ))
   log "END $label: exit=$stage_status elapsed=${elapsed}s"
   if [ "$stage_status" -ne 0 ]; then

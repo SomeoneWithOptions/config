@@ -23,7 +23,25 @@ the post-update drift check.
 
 Bootstrap shows stage progress and elapsed time instead of package-manager and
 file-copy output. Long stages report that they are still running every 30 seconds.
-On Omarchy, `omarchy toggle idle stay-awake` runs before software installation to
+During the Software stage the view goes app-by-app: each operation reports
+itself as it runs (`→ Installing Zen browser…`) and its pending line becomes
+the result once finished (`✓ Zen browser installed`, `– Zed already installed`,
+`! Zen browser installation failed`), keeping completed rows above. The current
+operation's elapsed time replaces the generic stage heartbeat (every 30 s:
+`  … Installing Zen browser… (30s)`). On capable terminals the active line is
+rewritten in place; non-TTY and `TERM=dumb` output stays newline-only without
+cursor escapes, and `NO_COLOR=1` disables color. Nothing else in the UI parses
+installer output: the renderer reads only explicit progress records written to
+a private events file, while raw command output remains in the detailed log.
+With `BOOTSTRAP_VERBOSE=1` the streamed transcript already carries those
+readable records, so no duplicate progress rows are printed. Installers whose
+real script does more than add packages keep running when the app is already
+installed — `omarchy install service 1password` also wires the Chromium
+extension policy and re-opens the app, and `omarchy install browser zen` also
+installs the Firefox policy distribution and the Wayland environment file — so
+those runs are reported as configuration (`→ Configuring 1Password…` →
+`✓ 1Password configured`) instead of a skip. On Omarchy,
+`omarchy toggle idle stay-awake` runs before software installation to
 prevent the screensaver and idle lock during the whole bootstrap. The explicit
 `stay-awake` mode is safe on repeated runs; a bare toggle could re-enable idle.
 Bootstrap restores normal idle on exit unless stay-awake was already enabled.
@@ -109,7 +127,7 @@ enable **Settings → Developer → Integrate with 1Password CLI**, verify with
 | `5 Keys.sh` | 1Password + SSH keys |
 | `tests/smoke.sh` | Syntax/consistency checks, including bootstrap logging tests. Run before committing |
 | `tests/bootstrap.sh` | Hermetic logging/failure/follow-up tests; no installs or real credentials |
-| `tests/software-install.sh` | Hermetic Omarchy update-entrypoint/fail-stop regression test |
+| `tests/software-install.sh` | Hermetic Omarchy/macOS update-entrypoint, app progress events, and fail-stop regression tests |
 
 ## Layout
 

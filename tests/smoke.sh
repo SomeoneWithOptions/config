@@ -141,6 +141,9 @@ HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
 test -z "$(ls -A "$check_home")"
 grep -q "^== $check_home/.config/fish/config.fish: missing" "$check_out"
 grep -q "^== $check_home/.pi/agent/AGENTS.md: missing" "$check_out"
+grep -q "^== $check_home/.config/herdr/config.toml: missing" "$check_out"
+grep -q "^== $check_home/.claude/skills/herdr: missing" "$check_out"
+grep -q "^== $check_home/.pi/agent/skills/herdr: missing" "$check_out"
 grep -q 'managed target(s) differ from the repo' "$check_out"
 rm -rf "$check_home" "$check_out"
 # Notifications are stubbed: the hook's job is to shout, and unstubbed it shouts at
@@ -179,6 +182,13 @@ grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$RO
 # Shared orchestrator/herdr skills are tracked and symlinked into pi + Claude Code.
 [[ -f "$ROOT/agents/skills/orchestrator/SKILL.md" && -f "$ROOT/agents/skills/herdr/SKILL.md" ]]
 grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/4 ConfigFiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/4 ConfigFiles.sh"
+# Claude skill links must not wait on ~/.claude already existing.
+! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/4 ConfigFiles.sh"
+[[ -f "$ROOT/herdr/config.toml" ]]
+grep -q 'copy_required "\$SCRIPT_DIR/herdr/config.toml"' "$ROOT/4 ConfigFiles.sh"
+python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/herdr/config.toml"
 grep -q 'arch_install_if_missing "\$package"' "$ROOT/1 SoftwareInstall.sh"
 grep -q '^    herdr \\$' "$ROOT/1 SoftwareInstall.sh"
 

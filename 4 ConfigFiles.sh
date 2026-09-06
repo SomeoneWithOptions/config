@@ -166,7 +166,7 @@ link_agent_skill() {
         return
     fi
     if (( CHECK )); then
-        report_drift "$link" "missing (repo would symlink it to $rel_target/$name)"
+        report_drift "$link" "" "missing (repo would symlink it to $rel_target/$name)"
         return
     fi
     mkdir -p "$link_dir"
@@ -199,14 +199,13 @@ for skill in "$SCRIPT_DIR"/pi/agent/skills/*; do
 done
 
 # Shared agent skills (pi + Claude Code). orchestrator needs the herdr skill.
+# Always create both skill dirs so Claude Code finds herdr on first launch even
+# if ~/.claude does not exist yet.
 for skill in "$SCRIPT_DIR"/agents/skills/*; do
     skill_name="$(basename "$skill")"
     copy_dir_required "$skill" "$HOME/.agents/skills/$skill_name"
     link_agent_skill "$skill_name" "$HOME/.pi/agent/skills" "../../../.agents/skills"
-    # Claude Code may not be installed (or launched) yet; link only when present.
-    if [[ -d "$HOME/.claude" ]]; then
-        link_agent_skill "$skill_name" "$HOME/.claude/skills" "../../.agents/skills"
-    fi
+    link_agent_skill "$skill_name" "$HOME/.claude/skills" "../../.agents/skills"
 done
 
 # Fish Configuration
@@ -296,6 +295,9 @@ copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
 
 # Foot Configuration (default terminal on Linux; see xdg-terminals.list below)
 copy_required "$SCRIPT_DIR/foot/foot.ini" "$HOME/.config/foot/foot.ini"
+
+# Herdr Configuration (Omarchy ships the package; this overlay is the live laptop config)
+copy_required "$SCRIPT_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 # Zed Configuration
 copy_required "$SCRIPT_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"

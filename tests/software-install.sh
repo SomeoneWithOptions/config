@@ -226,6 +226,7 @@ grep -q $'done\tturso-cli-bin installed' "$SOFT/software-events"
 [[ $(grep -n '^omarchy update -y$' "$SOFT/calls" | head -1 | cut -d: -f1) -lt \
   $(grep -n '^sudo pacman ' "$SOFT/calls" | head -1 | cut -d: -f1) ]]
 grep -q '^sudo pacman -S --needed --noconfirm fish$' "$SOFT/calls"
+grep -q '^sudo pacman -S --needed --noconfirm herdr$' "$SOFT/calls"
 grep -q '^yay -S --needed --noconfirm turso-cli-bin$' "$SOFT/calls"
 rm -rf "$SOFT"
 unset MOCK_INSTALLED MOCK_NOT_IN_REPO
@@ -233,7 +234,7 @@ unset MOCK_INSTALLED MOCK_NOT_IN_REPO
 # Omarchy: everything already installed reports skip where detection exists
 # and runs no package installers.
 soft_new_env
-MOCK_INSTALLED='fish alacritty ghostty vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli turso-cli-bin'
+MOCK_INSTALLED='fish alacritty ghostty herdr vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli turso-cli-bin'
 # turso whoami fails, so the sign-in follow-up note must be written.
 MOCK_TURSO_STATUS=1
 export MOCK_INSTALLED MOCK_TURSO_STATUS
@@ -249,6 +250,7 @@ chmod +x "$SOFT/home/.config/omarchy/plugins/andres.linear/bin/omarchy-linear-se
 soft_run
 [[ $status == 0 ]]
 grep -q $'skip\tfish already installed' "$SOFT/software-events"
+grep -q $'skip\therdr already installed' "$SOFT/software-events"
 grep -q $'skip\tZed already installed' "$SOFT/software-events"
 grep -q $'start\tConfiguring Zen browser…' "$SOFT/software-events"
 grep -q $'done\tZen browser configured' "$SOFT/software-events"

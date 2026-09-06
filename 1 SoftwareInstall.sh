@@ -440,6 +440,9 @@ install_arch_packages() {
   # and vulkan-{intel,radeon,asahi} for the detected GPU; curl/gnupg/openssh arrive
   # as dependencies. Listing them here was a no-op.
   #
+  # herdr is in omarchy-base.packages. Keep it listed so a machine that lost
+  # the package (or a not-yet-migrated install) still gets it; skip if present.
+  #
   # libfprint here is `libfprint`, never `libfprint-git`: the AUR build
   # provides+conflicts libfprint, so `pacman -S --noconfirm` answers the conflict
   # prompt N and aborts the whole step -- and it is a downgrade besides.

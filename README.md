@@ -134,9 +134,11 @@ enable **Settings → Developer → Integrate with 1Password CLI**, verify with
 Shared by both platforms:
 
 - `fish/`, `zed/`, `foot/`, `ghostty/`, `alacritty/`, `fontconfig/`, `gtk-*`,
-  `git/` — app config
+  `git/`, `herdr/` — app config
 - `bin/ghui`, `bin/hunk` — helpers installed to `~/.local/bin` everywhere
 - `pi/agent/` — pi agent extensions and skills
+- `agents/skills/` — shared skills (`herdr`, `orchestrator`) copied to
+  `~/.agents/skills` and symlinked into pi and Claude Code
 
 macOS only:
 

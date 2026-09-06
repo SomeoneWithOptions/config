@@ -162,6 +162,7 @@ install_personal_dev_tools() {
   install_commiter
   install_npm_cli @google/clasp clasp
   install_npm_cli vercel vercel
+  install_npm_cli clerk clerk
 }
 
 install_turso() {

@@ -56,8 +56,8 @@ test -f "$WORK/report/stages/software.warning"
 test -f "$WORK/report/stages/software.action"
 grep -q 'Omarchy update → retry' "$WORK/report/actions/system-update"
 grep -q 'Run: omarchy update -y' "$WORK/report/actions/system-update"
-! grep -q 'OMARCHY_ALLOW_DIRECT_PACMAN' "$ROOT/1 SoftwareInstall.sh"
-! grep -Eq 'pacman[[:space:]]+-S(yu|uy)|pacman[[:space:]]+-Syu' "$ROOT/1 SoftwareInstall.sh"
+! grep -q 'OMARCHY_ALLOW_DIRECT_PACMAN' "$ROOT/install/arch.sh"
+! grep -Eq 'pacman[[:space:]]+-S(yu|uy)|pacman[[:space:]]+-Syu' "$ROOT/install/arch.sh"
 
 # --- App-by-app progress events ---------------------------------------------
 # Each block builds a fresh mock environment; every installer is hermetic.

@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
-  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/* "$ROOT/lib/report.sh" \
+  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/* \
   "$ROOT/tests/bootstrap.sh" "$ROOT/tests/software-install.sh"; do
   # bin/ also contains Python helpers. Only shell scripts belong in bash -n.
   IFS= read -r shebang <"$script"
@@ -13,6 +13,12 @@ for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
     '#!'*bash*|'#!'*/sh|'#!'*'env sh') bash -n "$script" ;;
   esac
 done
+# Sourced modules have no shebang, so the loop above skips them.
+shopt -s nullglob
+for module in "$ROOT"/lib/*.sh "$ROOT"/install/*.sh "$ROOT"/config/*.sh; do
+  bash -n "$module"
+done
+shopt -u nullglob
 sh -n "$ROOT/bootstrap.sh"
 bash "$ROOT/tests/bootstrap.sh"
 bash "$ROOT/tests/software-install.sh"
@@ -47,7 +53,7 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
 fi
 # Every plugin folder is installed by one glob in the installer, so the only
 # per-plugin risk left is a plugin that is shipped but never enabled in shell.json.
-grep -q 'omarchy/plugins/andres\.\*' "$ROOT/4 ConfigFiles.sh"
+grep -q 'omarchy/plugins/andres\.\*' "$ROOT/config/dotfiles.sh"
 for plugin in "$ROOT"/omarchy/plugins/andres.*; do
   python -m json.tool "$plugin/manifest.json" >/dev/null
   grep -q "\"id\": \"$(basename "$plugin")\"" "$ROOT/omarchy/shell.json"
@@ -77,8 +83,8 @@ python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
 # extension on fresh machines and config replays.
 test -f "$ROOT/pi/agent/extensions/web-research.ts"
 grep -q 'name: "web_search"' "$ROOT/pi/agent/extensions/web-research.ts"
-grep -q 'for extension in "\$SCRIPT_DIR"/pi/agent/extensions/\*.ts' "$ROOT/4 ConfigFiles.sh"
-grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'for extension in "\$SCRIPT_DIR"/pi/agent/extensions/\*.ts' "$ROOT/config/dotfiles.sh"
+grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/config/dotfiles.sh"
 node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
 node --input-type=module - "$ROOT/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
 import assert from "node:assert/strict";
@@ -134,7 +140,7 @@ command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found i
 # HOME: everything is "missing", and HOME must stay empty afterwards.
 hook="$ROOT/omarchy/hooks/post-update.d/report-config-drift"
 test -x "$hook"
-grep -q 'omarchy/hooks/\*\.d' "$ROOT/4 ConfigFiles.sh"
+grep -q 'omarchy/hooks/\*\.d' "$ROOT/config/dotfiles.sh"
 check_home="$(mktemp -d)"
 check_out="$(mktemp)"
 HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
@@ -167,30 +173,30 @@ fi
 rm -rf "$notify_stub" "$drift_report"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$hook"
-grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/config/migrations.sh"
 # Config replay owns shell.json, so externally installed widgets must stay in
 # that source of truth after their installers run.
 grep -q '"id": "loom.recording"' "$ROOT/omarchy/shell.json"
 grep -q '"id": "andres.linear"' "$ROOT/omarchy/shell.json"
 # Fresh-laptop tool installs must use each project's unattended curl path.
-grep -q 'go.sanetomore.com/commiter' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'bash -s -- --yes' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'go.sanetomore.com/commiter' "$ROOT/install/tools.sh"
+grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/install/tools.sh"
+grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/install/tools.sh"
+grep -q 'bash -s -- --yes' "$ROOT/install/tools.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
-grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
+grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/config/dotfiles.sh"
 # Shared orchestrator/herdr skills are tracked and symlinked into pi + Claude Code.
 [[ -f "$ROOT/agents/skills/orchestrator/SKILL.md" && -f "$ROOT/agents/skills/herdr/SKILL.md" ]]
-grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/4 ConfigFiles.sh"
-grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/4 ConfigFiles.sh"
-grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/config/dotfiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/config/dotfiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/config/dotfiles.sh"
 # Claude skill links must not wait on ~/.claude already existing.
-! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/4 ConfigFiles.sh"
+! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/config/dotfiles.sh"
 [[ -f "$ROOT/herdr/config.toml" ]]
-grep -q 'copy_required "\$SCRIPT_DIR/herdr/config.toml"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'copy_required "\$SCRIPT_DIR/herdr/config.toml"' "$ROOT/config/dotfiles.sh"
 python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/herdr/config.toml"
-grep -q 'arch_install_if_missing "\$package"' "$ROOT/1 SoftwareInstall.sh"
-grep -q '^    herdr \\$' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'arch_install_if_missing "\$package"' "$ROOT/install/arch.sh"
+grep -q '^    herdr \\$' "$ROOT/install/arch.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"

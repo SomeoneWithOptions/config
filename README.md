@@ -12,12 +12,17 @@ change into the repo. Nothing is overwritten behind your back.
 On Arch, install Omarchy first. Then, on either platform:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/config/main/bootstrap.sh | sh
+curl -fsSL https://go.sanetomore.com/config | sh
 ```
 
-`bootstrap.sh` downloads this repo to /tmp and runs the numbered scripts in
-order. On Arch, `4 ConfigFiles.sh` also clones the repo to `~/code/config` for
-the post-update drift check.
+`https://go.sanetomore.com/config` is a permanent redirect to `bootstrap.sh` in
+this repo. The direct URL
+`https://raw.githubusercontent.com/SomeoneWithOptions/config/main/bootstrap.sh`
+is the redirect target and a fallback. `bootstrap.sh` must keep its name and
+stay at the repo root because the published redirect points at that exact path.
+It downloads this repo to /tmp and runs the numbered scripts in order. On Arch,
+`4 ConfigFiles.sh` also clones the repo to `~/code/config` for the post-update
+drift check.
 
 ### Progress and logs
 
@@ -65,8 +70,11 @@ long-lived alternative once cloned successfully.
 To stream detailed output too:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/config/main/bootstrap.sh | BOOTSTRAP_VERBOSE=1 sh
+curl -fsSL https://go.sanetomore.com/config | BOOTSTRAP_VERBOSE=1 sh
 ```
+
+Same short URL as above; the equivalent direct URL is
+`https://raw.githubusercontent.com/SomeoneWithOptions/config/main/bootstrap.sh`.
 
 `NO_COLOR=1` disables color; redirected output is always plain. Bootstrap asks
 for sudo once with `sudo -v`, then refreshes that credential non-interactively
@@ -120,16 +128,40 @@ enable **Settings → Developer → Integrate with 1Password CLI**, verify with
 
 | Script | Does |
 |---|---|
-| `1 SoftwareInstall.sh` | Packages plus personal tools: commiter everywhere; Loom and Linear plugin on Omarchy |
+| `bootstrap.sh` | Stage driver: downloads the repo and runs 1..5 |
+| `1 SoftwareInstall.sh` | Entrypoint for software install: sources `lib/` and `install/` modules, switches on platform, prints the summary |
 | `2 Fonts.sh` | Installs `fonts/` into the platform font dir |
 | `3 Git.sh` | Git identity and defaults |
-| `4 ConfigFiles.sh` | Copies every config below into `~`; idempotent, rerun any time. `--check` diffs instead of writing |
+| `4 ConfigFiles.sh` | Entrypoint for the config replay: parses `--check`, sources the `config/` modules in order, prints the drift total |
 | `5 Keys.sh` | 1Password + SSH keys |
 | `tests/smoke.sh` | Syntax/consistency checks, including bootstrap logging tests. Run before committing |
 | `tests/bootstrap.sh` | Hermetic logging/failure/follow-up tests; no installs or real credentials |
 | `tests/software-install.sh` | Hermetic Omarchy/macOS update-entrypoint, app progress events, and fail-stop regression tests |
 
+Sourced modules (pulled in by the numbered drivers; never executed on their own):
+
+| Module | Does |
+|---|---|
+| `lib/report.sh` | Reporting, action, and progress records |
+| `lib/common.sh` | `log` `warn` `note` `run_or_warn` `has_command` `progress_step` |
+| `lib/copy.sh` | CHECK-aware fs ops: `report_drift` `copy_required` `copy_required_if_missing` `copy_executable_required` `copy_dir_required` `append_line_once` `link_agent_skill` |
+| `lib/pkg.sh` | `pacman_*` `arch_install_if_missing` `ensure_homebrew` `brew_*` |
+| `install/tools.sh` | Vendor installers: pi, commiter, loom, linear, npm CLIs, turso, rtk |
+| `install/arch.sh` | Arch/Omarchy: system update, stock-app removal, package list, dev-envs, zed, zen, tailscale, 1password |
+| `install/macos.sh` | Homebrew formulae/casks, node@24, quarantine strip |
+| `config/dotfiles.sh` | Every managed file copy (both platforms) |
+| `config/generated.sh` | Framed Omarchy panels: generate/compare + shell restart |
+| `config/settings.sh` | Live machine state: login shell, hyprctl reload, default browser, omarchy theme, user systemd timer |
+| `config/migrations.sh` | Retired hook + retired timer removal, `~/code/config` clone |
+
 ## Layout
+
+Numbered scripts `1` and `4` are thin drivers. Shared helpers live in `lib/`,
+platform and vendor installers in `install/`, and the config replay body in
+`config/`. Those files are sourced, never executed: no shebang, mode 644,
+pulled in by a numbered driver. `install/*.sh` only defines functions;
+`config/*.sh` runs its statements at source time, which is what the config
+replay has always done.
 
 Shared by both platforms:
 

@@ -243,7 +243,7 @@ fi
 is_config_repo() {
   [ -f "$1/1 SoftwareInstall.sh" ] && [ -f "$1/2 Fonts.sh" ] && \
   [ -f "$1/3 Git.sh" ] && [ -f "$1/4 ConfigFiles.sh" ] && \
-  [ -f "$1/5 Keys.sh" ] && [ -f "$1/lib/report.sh" ]
+  [ -f "$1/5 Keys.sh" ] && [ -f "$1/scripts/lib/report.sh" ]
 }
 
 prepare_config_dir() {

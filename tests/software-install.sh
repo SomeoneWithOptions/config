@@ -56,8 +56,8 @@ test -f "$WORK/report/stages/software.warning"
 test -f "$WORK/report/stages/software.action"
 grep -q 'Omarchy update → retry' "$WORK/report/actions/system-update"
 grep -q 'Run: omarchy update -y' "$WORK/report/actions/system-update"
-! grep -q 'OMARCHY_ALLOW_DIRECT_PACMAN' "$ROOT/install/arch.sh"
-! grep -Eq 'pacman[[:space:]]+-S(yu|uy)|pacman[[:space:]]+-Syu' "$ROOT/install/arch.sh"
+! grep -q 'OMARCHY_ALLOW_DIRECT_PACMAN' "$ROOT/scripts/install/arch.sh"
+! grep -Eq 'pacman[[:space:]]+-S(yu|uy)|pacman[[:space:]]+-Syu' "$ROOT/scripts/install/arch.sh"
 
 # --- App-by-app progress events ---------------------------------------------
 # Each block builds a fresh mock environment; every installer is hermetic.
@@ -462,7 +462,7 @@ unset SOFT_UNAME
 # report_software_progress: validation, TSV records, readable stdout.
 HELPER=$(mktemp -d)
 : >"$HELPER/events"
-printf '#!/bin/bash\n. "$1/lib/report.sh"\nreport_software_progress "$2" "$3"\n' >"$HELPER/probe.sh"
+printf '#!/bin/bash\n. "$1/scripts/lib/report.sh"\nreport_software_progress "$2" "$3"\n' >"$HELPER/probe.sh"
 chmod +x "$HELPER/probe.sh"
 probe_progress() {
   local status=0
@@ -486,7 +486,7 @@ grep -q 'without tabs or newlines' "$HELPER/out"
 [[ $(probe_progress start $'zen\nbad') == 2 ]]
 (
   export BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$HELPER/events"
-  . "$ROOT/lib/report.sh"
+  . "$ROOT/scripts/lib/report.sh"
   report_software_progress start 'Installing Zen browser…'
   report_software_progress done 'Zen browser installed'
 ) >/dev/null

@@ -9,9 +9,9 @@ cleanup() {
   if ((${#RUN_DIRS[@]})); then rm -rf "${RUN_DIRS[@]}"; fi
 }
 trap cleanup EXIT
-mkdir -p "$WORK/bin" "$WORK/repo with spaces/lib" "$WORK/home"
+mkdir -p "$WORK/bin" "$WORK/repo with spaces/scripts/lib" "$WORK/home"
 REPO="$WORK/repo with spaces"
-cp "$ROOT/lib/report.sh" "$REPO/lib/report.sh"
+cp "$ROOT/scripts/lib/report.sh" "$REPO/scripts/lib/report.sh"
 
 cat >"$WORK/bin/systemd-inhibit" <<'SH'
 #!/bin/sh
@@ -59,7 +59,7 @@ cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 echo 'RAW SOFTWARE OUTPUT'
 echo 'RAW SOFTWARE STDERR' >&2
 report_warning 'mock optional package failed'
@@ -74,7 +74,7 @@ cat >"$REPO/5 Keys.sh" <<'SH'
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 report_keys_action
 report_deferred
 SH
@@ -123,7 +123,7 @@ PY
 # Archive path exercises the same curl | sh bootstrap entry without a network.
 tar -czf "$WORK/repo.tar.gz" -C "$WORK" 'repo with spaces'
 run_bootstrap 0 BOOTSTRAP_ALLOW_CONFIG_DIR=0 MOCK_ARCHIVE="$WORK/repo.tar.gz"
-[[ -f ${LOG%/*}/source/repo\ with\ spaces/lib/report.sh ]]
+[[ -f ${LOG%/*}/source/repo\ with\ spaces/scripts/lib/report.sh ]]
 grep -q 'SSH keys — deferred' "$WORK/output"
 
 run_bootstrap 0 BOOTSTRAP_VERBOSE=1
@@ -175,7 +175,7 @@ printf '#!/bin/sh\necho "setup must not run in a readiness probe" >&2\nexit 99\n
 chmod +x "$setup"
 probe_linear() {
   env HOME="$WORK/home" PATH="$WORK/bin:/usr/bin:/bin" MOCK_KEYRING="$1" \
-    bash -c '. "$1/lib/report.sh"; report_linear_action' bash "$ROOT" >"$WORK/linear-output"
+    bash -c '. "$1/scripts/lib/report.sh"; report_linear_action' bash "$ROOT" >"$WORK/linear-output"
 }
 probe_linear missing
 grep -q 'Linear → API key + team/project' "$WORK/linear-output"
@@ -309,7 +309,7 @@ cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
 #!/bin/bash
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 printf '%s\n' "${BOOTSTRAP_SOFTWARE_PROGRESS_FILE-UNSET}" >>"$PROGRESS_ENV_LOG"
 report_software_progress start 'Installing Zen browser…'
 report_software_progress done 'Zen browser installed'
@@ -359,7 +359,7 @@ cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
 #!/bin/bash
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 report_software_progress start 'Installing Zen browser…'
 /bin/sleep 1.3
 report_software_progress done 'Zen browser installed'
@@ -376,7 +376,7 @@ cat >"$REPO/1 SoftwareInstall.sh" <<'SH'
 #!/bin/bash
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 report_software_progress start 'Installing Zen browser…'
 /bin/sleep 1.3
 report_software_progress done 'Zen browser installed'
@@ -398,7 +398,7 @@ if command -v script >/dev/null 2>&1; then
 #!/bin/bash
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-. "$SCRIPT_DIR/lib/report.sh"
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 report_software_progress start 'Installing Zen browser…'
 report_software_progress done 'Zen browser installed'
 report_software_progress skip 'Zed already installed'

@@ -19,18 +19,18 @@ DRIFT=0
 
 OS_NAME=$(uname -s)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=lib/report.sh
-. "$SCRIPT_DIR/lib/report.sh"
-# shellcheck source=lib/copy.sh
-. "$SCRIPT_DIR/lib/copy.sh"
-# shellcheck source=config/dotfiles.sh
-. "$SCRIPT_DIR/config/dotfiles.sh"
-# shellcheck source=config/generated.sh
-. "$SCRIPT_DIR/config/generated.sh"
-# shellcheck source=config/settings.sh
-. "$SCRIPT_DIR/config/settings.sh"
-# shellcheck source=config/migrations.sh
-. "$SCRIPT_DIR/config/migrations.sh"
+# shellcheck source=scripts/lib/report.sh
+. "$SCRIPT_DIR/scripts/lib/report.sh"
+# shellcheck source=scripts/lib/copy.sh
+. "$SCRIPT_DIR/scripts/lib/copy.sh"
+# shellcheck source=scripts/apply/dotfiles.sh
+. "$SCRIPT_DIR/scripts/apply/dotfiles.sh"
+# shellcheck source=scripts/apply/generated.sh
+. "$SCRIPT_DIR/scripts/apply/generated.sh"
+# shellcheck source=scripts/apply/settings.sh
+. "$SCRIPT_DIR/scripts/apply/settings.sh"
+# shellcheck source=scripts/apply/migrations.sh
+. "$SCRIPT_DIR/scripts/apply/migrations.sh"
 
 if (( CHECK )); then
     if (( DRIFT == 0 )); then

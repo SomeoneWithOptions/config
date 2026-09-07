@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FONT_ROOT="$SCRIPT_DIR/fonts"
+FONT_ROOT="$SCRIPT_DIR/theme/fonts"
 FONTS_CHANGED=0
 
 copy_fonts() {

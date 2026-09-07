@@ -129,10 +129,10 @@ enable **Settings → Developer → Integrate with 1Password CLI**, verify with
 | Script | Does |
 |---|---|
 | `bootstrap.sh` | Stage driver: downloads the repo and runs 1..5 |
-| `1 SoftwareInstall.sh` | Entrypoint for software install: sources `lib/` and `install/` modules, switches on platform, prints the summary |
-| `2 Fonts.sh` | Installs `fonts/` into the platform font dir |
+| `1 SoftwareInstall.sh` | Entrypoint for software install: sources `scripts/lib/` and `scripts/install/` modules, switches on platform, prints the summary |
+| `2 Fonts.sh` | Installs `theme/fonts/` into the platform font dir |
 | `3 Git.sh` | Git identity and defaults |
-| `4 ConfigFiles.sh` | Entrypoint for the config replay: parses `--check`, sources the `config/` modules in order, prints the drift total |
+| `4 ConfigFiles.sh` | Entrypoint for the config replay: parses `--check`, sources the `scripts/apply/` modules in order, prints the drift total |
 | `5 Keys.sh` | 1Password + SSH keys |
 | `tests/smoke.sh` | Syntax/consistency checks, including bootstrap logging tests. Run before committing |
 | `tests/bootstrap.sh` | Hermetic logging/failure/follow-up tests; no installs or real credentials |
@@ -142,58 +142,80 @@ Sourced modules (pulled in by the numbered drivers; never executed on their own)
 
 | Module | Does |
 |---|---|
-| `lib/report.sh` | Reporting, action, and progress records |
-| `lib/common.sh` | `log` `warn` `note` `run_or_warn` `has_command` `progress_step` |
-| `lib/copy.sh` | CHECK-aware fs ops: `report_drift` `copy_required` `copy_required_if_missing` `copy_executable_required` `copy_dir_required` `append_line_once` `link_agent_skill` |
-| `lib/pkg.sh` | `pacman_*` `arch_install_if_missing` `ensure_homebrew` `brew_*` |
-| `install/tools.sh` | Vendor installers: pi, commiter, loom, linear, npm CLIs, turso, rtk |
-| `install/arch.sh` | Arch/Omarchy: system update, stock-app removal, package list, dev-envs, zed, zen, tailscale, 1password |
-| `install/macos.sh` | Homebrew formulae/casks, node@24, quarantine strip |
-| `config/dotfiles.sh` | Every managed file copy (both platforms) |
-| `config/generated.sh` | Framed Omarchy panels: generate/compare + shell restart |
-| `config/settings.sh` | Live machine state: login shell, hyprctl reload, default browser, omarchy theme, user systemd timer |
-| `config/migrations.sh` | Retired hook + retired timer removal, `~/code/config` clone |
+| `scripts/lib/report.sh` | Reporting, action, and progress records |
+| `scripts/lib/common.sh` | `log` `warn` `note` `run_or_warn` `has_command` `progress_step` |
+| `scripts/lib/copy.sh` | CHECK-aware fs ops: `report_drift` `copy_required` `copy_required_if_missing` `copy_executable_required` `copy_dir_required` `append_line_once` `link_agent_skill` |
+| `scripts/lib/pkg.sh` | `pacman_*` `arch_install_if_missing` `ensure_homebrew` `brew_*` |
+| `scripts/install/tools.sh` | Vendor installers: pi, commiter, loom, linear, npm CLIs, turso, rtk |
+| `scripts/install/arch.sh` | Arch/Omarchy: system update, stock-app removal, package list, dev-envs, zed, zen, tailscale, 1password |
+| `scripts/install/macos.sh` | Homebrew formulae/casks, node@24, quarantine strip |
+| `scripts/apply/dotfiles.sh` | Every managed file copy (both platforms) |
+| `scripts/apply/generated.sh` | Framed Omarchy panels: generate/compare + shell restart |
+| `scripts/apply/settings.sh` | Live machine state: login shell, hyprctl reload, default browser, omarchy theme, user systemd timer |
+| `scripts/apply/migrations.sh` | Retired hook + retired timer removal, `~/code/config` clone |
 
 ## Layout
 
-Numbered scripts `1` and `4` are thin drivers. Shared helpers live in `lib/`,
-platform and vendor installers in `install/`, and the config replay body in
-`config/`. Those files are sourced, never executed: no shebang, mode 644,
-pulled in by a numbered driver. `install/*.sh` only defines functions;
-`config/*.sh` runs its statements at source time, which is what the config
-replay has always done.
+Numbered scripts `1` and `4` are thin drivers. Shared helpers live in
+`scripts/lib/`, platform and vendor installers in `scripts/install/`, and the
+config replay body in `scripts/apply/` (was a top-level `config` dir: nineteen sibling
+dirs are application config, and the name collided). Those files are sourced,
+never executed: no shebang, mode 644, pulled in by a numbered driver.
+`scripts/install/*.sh` only defines functions; `scripts/apply/*.sh` runs its
+statements at source time, which is what the config replay has always done.
 
-Shared by both platforms:
+The tree groups by domain, not platform. `apps/aerospace/` is macOS-only and
+`system/` is Linux/Omarchy-only in practice; those notes stay in the prose, not
+the directory names. `bin/` stays at the root: its eight files span desktop and
+shell, and the name mirrors the `~/.local/bin` destination. `theme/` absorbed
+fonts even though `2 Fonts.sh` installs that tree rather than the config replay
+— grouping is by what a thing is, not by which script reads it.
 
-- `fish/`, `zed/`, `foot/`, `ghostty/`, `alacritty/`, `fontconfig/`, `gtk-*`,
-  `git/`, `herdr/` — app config
-- `bin/ghui`, `bin/hunk` — helpers installed to `~/.local/bin` everywhere
-- `pi/agent/` — pi agent extensions and skills
+```
+.
+├── 1 SoftwareInstall.sh  2 Fonts.sh  3 Git.sh  4 ConfigFiles.sh  5 Keys.sh
+├── bootstrap.sh   README.md
+├── scripts/     lib/  install/  apply/
+├── system/      omarchy/ hypr/ quickshell/ systemd/ xdg/
+├── apps/        alacritty/ foot/ ghostty/ zed/ zen/ herdr/ aerospace/
+├── shell/       fish/ git/
+├── agents/      pi/ skills/
+├── theme/       fonts/ fontconfig/ gtk-3.0/ gtk-4.0/
+├── bin/
+└── tests/
+```
+
+- `scripts/` — sourced modules for the numbered drivers (never executed directly)
+- `system/` — Omarchy/Arch only
+  - `system/hypr/` — Hyprland Lua config (`*.lua`) plus `xdph.conf` for screen sharing
+  - `system/omarchy/plugins/andres.*` — Quattro shell plugins (bar widgets, frame,
+    menu, notifications, idle, dnd); `andres.tray` gives every application tray
+    menu the same attached, outward-curved frame used by built-in panels.
+    `andres.idle` and `andres.dnd` are status-only icons: each shows solely while
+    its non-default state is on (staying awake, notifications silenced)
+  - `system/omarchy/install-framed-panels.py` — generates `andres.{audio,bluetooth,clock,monitor,network,power,tailscale}`
+    by cloning the stock panels and attaching them to the desktop frame. Generated,
+    so those seven are not tracked here
+  - `system/omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
+  - `system/omarchy/hooks/` — post-update drift report (`~/.local/state/omarchy/config-drift.diff`) and Zed theme sync
+  - `system/quickshell/flicko-picker/` — animated screenshot region picker; the
+    optional `color` file there pins its accent to a fixed hex, otherwise it
+    follows the theme
+  - `system/systemd/user/` — mise Go upgrades and random-background timers
+  - `system/xdg/` — default-app associations
+- `apps/` — application config. Shared by both platforms unless noted:
+  `apps/alacritty/`, `apps/foot/`, `apps/ghostty/`, `apps/zed/`, `apps/herdr/`;
+  `apps/aerospace/` is macOS only (tiling window manager); `apps/zen/` is
+  Omarchy/Arch only (browser prefs)
+- `shell/` — shared: `shell/fish/`, `shell/git/`
+- `agents/pi/agent/` — pi agent extensions and skills (shared)
 - `agents/skills/` — shared skills (`herdr`, `orchestrator`) copied to
   `~/.agents/skills` and symlinked into pi and Claude Code
-
-macOS only:
-
-- `aerospace/` — tiling window manager
-
-Omarchy/Arch only:
-
-- `hypr/` — Hyprland Lua config (`*.lua`) plus `xdph.conf` for screen sharing
-- `omarchy/plugins/andres.*` — Quattro shell plugins (bar widgets, frame, menu,
-  notifications, idle, dnd); `andres.tray` gives every application tray menu the
-  same attached, outward-curved frame used by built-in panels. `andres.idle` and
-  `andres.dnd` are status-only icons: each shows solely while its non-default
-  state is on (staying awake, notifications silenced)
-- `omarchy/install-framed-panels.py` — generates `andres.{audio,bluetooth,clock,monitor,network,power,tailscale}`
-  by cloning the stock panels and attaching them to the desktop frame. Generated,
-  so those seven are not tracked here
-- `omarchy/shell.json` / `shell.toml` — bar layout and machine-level theme overrides
-- `omarchy/hooks/` — post-update drift report (`~/.local/state/omarchy/config-drift.diff`) and Zed theme sync
-- `quickshell/flicko-picker/` — animated screenshot region picker; the optional
-  `color` file there pins its accent to a fixed hex, otherwise it follows the theme
-- the rest of `bin/` — Hyprland/Omarchy helpers
-- `systemd/user/` — mise Go upgrades and random-background timers
-- `zen/`, `xdg/` — browser prefs and default-app associations
+- `theme/` — shared: `theme/fonts/` (installed by `2 Fonts.sh`), `theme/fontconfig/`,
+  `theme/gtk-3.0/`, `theme/gtk-4.0/`
+- `bin/ghui`, `bin/hunk` — helpers installed to `~/.local/bin` everywhere; the
+  rest of `bin/` are Hyprland/Omarchy helpers
+- `tests/` — syntax and hermetic bootstrap checks
 
 Waybar, Walker, SwayOSD, mako, hypridle and hyprlock are gone: Quattro's
 `omarchy-shell` replaces all of them.

@@ -7,7 +7,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     if (( CHECK )); then
         # Generate into a scratch root and diff against the live plugins.
         framed_panels_tmp="$(mktemp -d)"
-        if OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$SCRIPT_DIR/omarchy/install-framed-panels.py" >/dev/null 2>&1; then
+        if OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$SCRIPT_DIR/system/omarchy/install-framed-panels.py" >/dev/null 2>&1; then
             for generated in "$framed_panels_tmp"/plugins/andres.*; do
                 live="$HOME/.config/omarchy/plugins/$(basename "$generated")"
                 if [[ ! -d "$live" ]] || ! diff -qr "$generated" "$live" >/dev/null 2>&1; then
@@ -18,7 +18,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
             report_drift "framed panels" "" "generation FAILED (upstream panel source changed)"
         fi
         rm -rf "$framed_panels_tmp"
-    elif ! framed_panels_changed=$(python "$SCRIPT_DIR/omarchy/install-framed-panels.py"); then
+    elif ! framed_panels_changed=$(python "$SCRIPT_DIR/system/omarchy/install-framed-panels.py"); then
         report_warning 'Framed panel generation FAILED (upstream panel source changed).'
         if command -v notify-send >/dev/null 2>&1; then
             notify-send -u critical "Config replay" "Framed panels failed to regenerate" || true

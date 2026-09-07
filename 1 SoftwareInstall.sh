@@ -10,18 +10,18 @@ export HOMEBREW_NO_ANALYTICS=1
 export NONINTERACTIVE=1
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=lib/report.sh
-. "$SCRIPT_DIR/lib/report.sh"
-# shellcheck source=lib/common.sh
-. "$SCRIPT_DIR/lib/common.sh"
-# shellcheck source=lib/pkg.sh
-. "$SCRIPT_DIR/lib/pkg.sh"
-# shellcheck source=install/tools.sh
-. "$SCRIPT_DIR/install/tools.sh"
-# shellcheck source=install/arch.sh
-. "$SCRIPT_DIR/install/arch.sh"
-# shellcheck source=install/macos.sh
-. "$SCRIPT_DIR/install/macos.sh"
+# shellcheck source=scripts/lib/report.sh
+. "$SCRIPT_DIR/scripts/lib/report.sh"
+# shellcheck source=scripts/lib/common.sh
+. "$SCRIPT_DIR/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/pkg.sh
+. "$SCRIPT_DIR/scripts/lib/pkg.sh"
+# shellcheck source=scripts/install/tools.sh
+. "$SCRIPT_DIR/scripts/install/tools.sh"
+# shellcheck source=scripts/install/arch.sh
+. "$SCRIPT_DIR/scripts/install/arch.sh"
+# shellcheck source=scripts/install/macos.sh
+. "$SCRIPT_DIR/scripts/install/macos.sh"
 
 print_summary() {
   # Bootstrap owns the combined summary, after all five scripts finish.

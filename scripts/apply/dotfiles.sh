@@ -3,14 +3,14 @@
 
 # Pi Configuration
 (( CHECK )) || mkdir -p "$HOME/code/worktrees" # /worktree extension creates worktrees here
-copy_required "$SCRIPT_DIR/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
-for extension in "$SCRIPT_DIR"/pi/agent/extensions/*.ts; do
+copy_required "$SCRIPT_DIR/agents/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
+for extension in "$SCRIPT_DIR"/agents/pi/agent/extensions/*.ts; do
     copy_required "$extension" "$HOME/.pi/agent/extensions/$(basename "$extension")"
 done
 # Seed only: pi writes this file itself (lastChangelogVersion, model picks made in
 # the TUI). Overwriting it on every update replayed the changelog and reset models.
-copy_required_if_missing "$SCRIPT_DIR/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
-for skill in "$SCRIPT_DIR"/pi/agent/skills/*; do
+copy_required_if_missing "$SCRIPT_DIR/agents/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
+for skill in "$SCRIPT_DIR"/agents/pi/agent/skills/*; do
     skill_name="$(basename "$skill")"
     # a-front is user-updatable: seed it once, never overwrite local edits on replay.
     [[ "$skill_name" == "a-front" && -d "$HOME/.pi/agent/skills/a-front" ]] && continue
@@ -28,7 +28,7 @@ for skill in "$SCRIPT_DIR"/agents/skills/*; do
 done
 
 # Fish Configuration
-FISH_CONFIG_SOURCE="$SCRIPT_DIR/fish/config.fish"
+FISH_CONFIG_SOURCE="$SCRIPT_DIR/shell/fish/config.fish"
 FISH_CONFIG_DEST="$HOME/.config/fish/config.fish"
 if [[ ! -f "$FISH_CONFIG_SOURCE" ]]; then
     printf 'Missing required config file: %s\n' "$FISH_CONFIG_SOURCE" >&2
@@ -62,36 +62,36 @@ if [[ ! -f "$FISH_CONFIG_DEST" ]] || ! cmp -s "$FISH_CONFIG_TMP" "$FISH_CONFIG_D
 fi
 rm -f "$FISH_CONFIG_TMP"
 
-copy_required "$SCRIPT_DIR/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/theme.fish"
-copy_required "$SCRIPT_DIR/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
-copy_required "$SCRIPT_DIR/fish/conf.d/turso.fish" "$HOME/.config/fish/conf.d/turso.fish"
-copy_required "$SCRIPT_DIR/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
-copy_required "$SCRIPT_DIR/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
+copy_required "$SCRIPT_DIR/shell/fish/conf.d/theme.fish" "$HOME/.config/fish/conf.d/theme.fish"
+copy_required "$SCRIPT_DIR/shell/fish/conf.d/key_bindings.fish" "$HOME/.config/fish/conf.d/key_bindings.fish"
+copy_required "$SCRIPT_DIR/shell/fish/conf.d/turso.fish" "$HOME/.config/fish/conf.d/turso.fish"
+copy_required "$SCRIPT_DIR/shell/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
+copy_required "$SCRIPT_DIR/shell/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
 
 # Fontconfig / GTK Configuration
-copy_required "$SCRIPT_DIR/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"
-copy_required "$SCRIPT_DIR/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
-copy_required "$SCRIPT_DIR/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
-copy_required "$SCRIPT_DIR/git/ignore" "$HOME/.config/git/ignore"
+copy_required "$SCRIPT_DIR/theme/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"
+copy_required "$SCRIPT_DIR/theme/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
+copy_required "$SCRIPT_DIR/theme/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
+copy_required "$SCRIPT_DIR/shell/git/ignore" "$HOME/.config/git/ignore"
 
 # Alacritty Configuration
-copy_required "$SCRIPT_DIR/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+copy_required "$SCRIPT_DIR/apps/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 
 # Ghostty Configuration
-copy_required "$SCRIPT_DIR/ghostty/config" "$HOME/.config/ghostty/config"
+copy_required "$SCRIPT_DIR/apps/ghostty/config" "$HOME/.config/ghostty/config"
 
 # Foot Configuration (default terminal on Linux; see xdg-terminals.list below)
-copy_required "$SCRIPT_DIR/foot/foot.ini" "$HOME/.config/foot/foot.ini"
+copy_required "$SCRIPT_DIR/apps/foot/foot.ini" "$HOME/.config/foot/foot.ini"
 
 # Herdr Configuration (Omarchy ships the package; this overlay is the live laptop config)
-copy_required "$SCRIPT_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+copy_required "$SCRIPT_DIR/apps/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 # Zed Configuration
-copy_required "$SCRIPT_DIR/zed/settings.json" "$HOME/.config/zed/settings.json"
-copy_required "$SCRIPT_DIR/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+copy_required "$SCRIPT_DIR/apps/zed/settings.json" "$HOME/.config/zed/settings.json"
+copy_required "$SCRIPT_DIR/apps/zed/keymap.json" "$HOME/.config/zed/keymap.json"
 
 if [[ "$OS_NAME" == "Darwin" ]]; then
-    copy_required "$SCRIPT_DIR/aerospace/aerospace.toml" "$HOME/.config/aerospace/aerospace.toml"
+    copy_required "$SCRIPT_DIR/apps/aerospace/aerospace.toml" "$HOME/.config/aerospace/aerospace.toml"
 
     # macOS only: on Linux, Omarchy's install/user/mise.sh generates byte-identical
     # wrappers for these two via omarchy-mise-install.
@@ -107,7 +107,7 @@ append_line_once "set relativenumber" "$VIMRC"
 
 if [[ "$OS_NAME" == "Linux" ]]; then
     # Hyprland
-    for hypr_file in "$SCRIPT_DIR"/hypr/*; do
+    for hypr_file in "$SCRIPT_DIR"/system/hypr/*; do
         copy_required "$hypr_file" "$HOME/.config/hypr/$(basename "$hypr_file")"
     done
 
@@ -122,26 +122,26 @@ if [[ "$OS_NAME" == "Linux" ]]; then
 
     # Animated screenshot selector. Adapter is named `slurp` only inside the
     # screenshot wrapper's scoped PATH, leaving the system slurp untouched.
-    copy_required "$SCRIPT_DIR/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
+    copy_required "$SCRIPT_DIR/system/quickshell/flicko-picker/shell.qml" "$HOME/.config/quickshell/flicko-picker/shell.qml"
     copy_executable_required "$SCRIPT_DIR/bin/flicko-slurp" "$HOME/.local/lib/flicko-picker/slurp"
     # Optional fixed picker accent. Absent here, a machine-local color file is
     # left alone; absent in both, the picker follows the theme accent.
-    if [[ -f "$SCRIPT_DIR/quickshell/flicko-picker/color" ]]; then
-        copy_required "$SCRIPT_DIR/quickshell/flicko-picker/color" "$HOME/.config/quickshell/flicko-picker/color"
+    if [[ -f "$SCRIPT_DIR/system/quickshell/flicko-picker/color" ]]; then
+        copy_required "$SCRIPT_DIR/system/quickshell/flicko-picker/color" "$HOME/.config/quickshell/flicko-picker/color"
     fi
 
-    for plugin in "$SCRIPT_DIR"/omarchy/plugins/andres.*; do
+    for plugin in "$SCRIPT_DIR"/system/omarchy/plugins/andres.*; do
         copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"
     done
-    copy_required "$SCRIPT_DIR/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
-    copy_required "$SCRIPT_DIR/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
-    copy_required "$SCRIPT_DIR/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
+    copy_required "$SCRIPT_DIR/system/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+    copy_required "$SCRIPT_DIR/system/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
+    copy_required "$SCRIPT_DIR/system/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
 
     # XDG defaults
-    copy_required "$SCRIPT_DIR/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
+    copy_required "$SCRIPT_DIR/system/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"
     # Seed only: apps append their own associations here (xdg-mime, browser
     # "set as default" buttons). A plain copy reverted those on every update.
-    copy_required_if_missing "$SCRIPT_DIR/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
+    copy_required_if_missing "$SCRIPT_DIR/system/xdg/mimeapps.list" "$HOME/.config/mimeapps.list"
 
     # Zen prefs + chrome CSS. The CSS hides native window controls and assumes the
     # Omarchy/Hyprland shell. Profile dirs are randomly named, so fan out over all
@@ -150,8 +150,8 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     zen_profiles_found=0
     for zen_profile in "$HOME"/.config/zen/*/; do
         [[ -f "$zen_profile/times.json" || -f "$zen_profile/prefs.js" ]] || continue
-        copy_required "$SCRIPT_DIR/zen/user.js" "$zen_profile/user.js"
-        copy_required "$SCRIPT_DIR/zen/userChrome.css" "$zen_profile/chrome/userChrome.css"
+        copy_required "$SCRIPT_DIR/apps/zen/user.js" "$zen_profile/user.js"
+        copy_required "$SCRIPT_DIR/apps/zen/userChrome.css" "$zen_profile/chrome/userChrome.css"
         zen_profiles_found=1
     done
     if [[ $zen_profiles_found -eq 0 ]]; then
@@ -165,9 +165,9 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     fi
 
     # Omarchy theme, branding, and hooks
-    copy_required "$SCRIPT_DIR/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
-    copy_required "$SCRIPT_DIR/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
-    for hook_dir in "$SCRIPT_DIR"/omarchy/hooks/*.d; do
+    copy_required "$SCRIPT_DIR/system/omarchy/branding/about.txt" "$HOME/.config/omarchy/branding/about.txt"
+    copy_required "$SCRIPT_DIR/system/omarchy/branding/screensaver.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
+    for hook_dir in "$SCRIPT_DIR"/system/omarchy/hooks/*.d; do
         event="$(basename "$hook_dir")"
         for hook in "$hook_dir"/*; do
             copy_executable_required "$hook" "$HOME/.config/omarchy/hooks/$event/$(basename "$hook")"
@@ -175,7 +175,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     done
 
     # Custom user systemd units/timers
-    for unit in "$SCRIPT_DIR"/systemd/user/*; do
+    for unit in "$SCRIPT_DIR"/system/systemd/user/*; do
         copy_required "$unit" "$HOME/.config/systemd/user/$(basename "$unit")"
     done
 fi

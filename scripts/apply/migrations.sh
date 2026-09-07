@@ -1,21 +1,7 @@
-# One-time cleanups for artifacts this repo used to install, plus the
-# checkout the post-update drift hook needs.
+# Ensure post-update drift hook has persistent checkout.
 
 if [[ "$OS_NAME" == "Linux" ]]; then
-    # Retired: the old post-update hook replayed this whole script over ~/.config,
-    # undoing migration edits and other tools' installs. report-config-drift
-    # replaced it. Drop it from machines that still have it.
-    RETIRED_HOOK="$HOME/.config/omarchy/hooks/post-update.d/reapply-user-config"
-    if [[ -e "$RETIRED_HOOK" ]]; then
-        if (( CHECK )); then
-            report_drift "$RETIRED_HOOK" "" "retired hook still installed (repo would remove it)"
-        else
-            rm -f "$RETIRED_HOOK"
-            printf 'Removed retired hook %s\n' "$RETIRED_HOOK"
-        fi
-    fi
-
-    # The drift hook above compares ~/.config against this repo after `omarchy
+    # The drift hook compares ~/.config against this repo after `omarchy
     # update`, so it needs a checkout that outlives the update. `bootstrap.sh`
     # deliberately runs from a throwaway /tmp extract, so on a new laptop there is
     # nothing at CONFIG_REPO and the hook would fail loudly on the first update.
@@ -40,18 +26,6 @@ if [[ "$OS_NAME" == "Linux" ]]; then
             report_action config-checkout 'Config repository → enable drift checks' \
               'Install git first.' "Required checkout: $CONFIG_REPO" \
               "Rerun (Bash): $(printf 'bash %q' "$SCRIPT_DIR/4 ConfigFiles.sh")"
-        fi
-    fi
-
-    # Retired: the background rotated every 4h. Drop it from machines that still have it.
-    if [[ -f "$HOME/.config/systemd/user/omarchy-bg-random.timer" ]]; then
-        if (( CHECK )); then
-            report_drift "$HOME/.config/systemd/user/omarchy-bg-random.timer" "" "retired timer still installed (repo would remove it)"
-        else
-            systemctl --user disable --now omarchy-bg-random.timer || true
-            rm -f "$HOME/.config/systemd/user/omarchy-bg-random.timer" \
-                  "$HOME/.config/systemd/user/omarchy-bg-random.service"
-            systemctl --user daemon-reload || true
         fi
     fi
 fi

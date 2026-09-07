@@ -152,7 +152,7 @@ Sourced modules (pulled in by the numbered drivers; never executed on their own)
 | `scripts/apply/dotfiles.sh` | Every managed file copy (both platforms) |
 | `scripts/apply/generated.sh` | Framed Omarchy panels: generate/compare + shell restart |
 | `scripts/apply/settings.sh` | Live machine state: login shell, hyprctl reload, default browser, omarchy theme, user systemd timer |
-| `scripts/apply/migrations.sh` | Retired hook + retired timer removal, `~/code/config` clone |
+| `scripts/apply/migrations.sh` | Ensure `~/code/config` checkout exists for post-update drift checks |
 
 ## Layout
 

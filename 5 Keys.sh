@@ -4,8 +4,8 @@ set -euo pipefail
 
 # Installs the SSH key from 1Password on macOS and Omarchy/Arch.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=lib/report.sh
-. "$SCRIPT_DIR/lib/report.sh"
+# shellcheck source=scripts/lib/report.sh
+. "$SCRIPT_DIR/scripts/lib/report.sh"
 
 # Ensure an ssh-agent is available. Reuse existing agent when possible.
 agent_is_reachable() {

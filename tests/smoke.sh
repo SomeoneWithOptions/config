@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
-  "$ROOT"/bin/* "$ROOT"/omarchy/hooks/*.d/* "$ROOT/lib/report.sh" \
+  "$ROOT"/bin/* "$ROOT"/system/omarchy/hooks/*.d/* \
   "$ROOT/tests/bootstrap.sh" "$ROOT/tests/software-install.sh"; do
   # bin/ also contains Python helpers. Only shell scripts belong in bash -n.
   IFS= read -r shebang <"$script"
@@ -13,18 +13,24 @@ for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
     '#!'*bash*|'#!'*/sh|'#!'*'env sh') bash -n "$script" ;;
   esac
 done
+# Sourced modules have no shebang, so the loop above skips them.
+shopt -s nullglob
+for module in "$ROOT"/scripts/lib/*.sh "$ROOT"/scripts/install/*.sh "$ROOT"/scripts/apply/*.sh; do
+  bash -n "$module"
+done
+shopt -u nullglob
 sh -n "$ROOT/bootstrap.sh"
 bash "$ROOT/tests/bootstrap.sh"
 bash "$ROOT/tests/software-install.sh"
-python -m json.tool "$ROOT/omarchy/shell.json" >/dev/null
-python - "$ROOT/omarchy/install-framed-panels.py" <<'PY'
+python -m json.tool "$ROOT/system/omarchy/shell.json" >/dev/null
+python - "$ROOT/system/omarchy/install-framed-panels.py" <<'PY'
 import sys
 compile(open(sys.argv[1]).read(), sys.argv[1], "exec")
 PY
 if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
   framed_panels_tmp="$(mktemp -d)"
-  OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py"
-  test -z "$(OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/omarchy/install-framed-panels.py")"
+  OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/system/omarchy/install-framed-panels.py"
+  test -z "$(OMARCHY_CONFIG_ROOT="$framed_panels_tmp" python "$ROOT/system/omarchy/install-framed-panels.py")"
   for panel in audio bluetooth clock monitor network power tailscale; do
     python -m json.tool "$framed_panels_tmp/plugins/andres.$panel/manifest.json" >/dev/null
     grep -q '  FramePanel {' "$framed_panels_tmp/plugins/andres.$panel/Panel.qml"
@@ -47,10 +53,10 @@ if [[ -f /usr/share/omarchy/shell/Ui/KeyboardPanel.qml ]]; then
 fi
 # Every plugin folder is installed by one glob in the installer, so the only
 # per-plugin risk left is a plugin that is shipped but never enabled in shell.json.
-grep -q 'omarchy/plugins/andres\.\*' "$ROOT/4 ConfigFiles.sh"
-for plugin in "$ROOT"/omarchy/plugins/andres.*; do
+grep -q 'omarchy/plugins/andres\.\*' "$ROOT/scripts/apply/dotfiles.sh"
+for plugin in "$ROOT"/system/omarchy/plugins/andres.*; do
   python -m json.tool "$plugin/manifest.json" >/dev/null
-  grep -q "\"id\": \"$(basename "$plugin")\"" "$ROOT/omarchy/shell.json"
+  grep -q "\"id\": \"$(basename "$plugin")\"" "$ROOT/system/omarchy/shell.json"
   if command -v omarchy-plugin-validate >/dev/null 2>&1; then
     omarchy-plugin-validate "$plugin"
   fi
@@ -58,7 +64,7 @@ done
 # App-provided StatusNotifier menus and tray management must share framed-panel
 # geometry. Config replay uses rsync --delete, so missing helpers here would both
 # restore PopupCard and remove working live files after every Omarchy update.
-tray_plugin="$ROOT/omarchy/plugins/andres.tray"
+tray_plugin="$ROOT/system/omarchy/plugins/andres.tray"
 test -f "$tray_plugin/FramePanel.qml"
 test -f "$tray_plugin/FrameJoin.qml"
 test "$(grep -c '^  FramePanel {' "$tray_plugin/Tray.qml")" -eq 2
@@ -66,21 +72,21 @@ test "$(grep -c '^  FramePanel {' "$tray_plugin/Tray.qml")" -eq 2
 grep -q 'property int gap: -1' "$tray_plugin/FramePanel.qml"
 grep -q 'id: openRevealTimer' "$tray_plugin/FramePanel.qml"
 grep -q 'easing.type: root.open ? Easing.OutCubic : Easing.OutExpo' "$tray_plugin/FramePanel.qml"
-grep -q 'onWantsOpenChanged: syncReveal()' "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
-grep -q 'Behavior on height' "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
-python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/omarchy/shell.toml"
-for lua in "$ROOT"/hypr/*.lua; do luac -p "$lua"; done
-test -f "$ROOT/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
-python -m json.tool "$ROOT/zed/settings.json" >/dev/null
-python -m json.tool "$ROOT/pi/agent/settings.json" >/dev/null
+grep -q 'onWantsOpenChanged: syncReveal()' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+grep -q 'Behavior on height' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/system/omarchy/shell.toml"
+for lua in "$ROOT"/system/hypr/*.lua; do luac -p "$lua"; done
+test -f "$ROOT/theme/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"
+python -m json.tool "$ROOT/apps/zed/settings.json" >/dev/null
+python -m json.tool "$ROOT/agents/pi/agent/settings.json" >/dev/null
 # Pi web research source must ship in repo; ConfigFiles installs every tracked
 # extension on fresh machines and config replays.
-test -f "$ROOT/pi/agent/extensions/web-research.ts"
-grep -q 'name: "web_search"' "$ROOT/pi/agent/extensions/web-research.ts"
-grep -q 'for extension in "\$SCRIPT_DIR"/pi/agent/extensions/\*.ts' "$ROOT/4 ConfigFiles.sh"
-grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/4 ConfigFiles.sh"
-node "$ROOT/pi/agent/extensions/worktree.ts" --self-test >/dev/null
-node --input-type=module - "$ROOT/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
+test -f "$ROOT/agents/pi/agent/extensions/web-research.ts"
+grep -q 'name: "web_search"' "$ROOT/agents/pi/agent/extensions/web-research.ts"
+grep -q 'for extension in "\$SCRIPT_DIR"/agents/pi/agent/extensions/\*.ts' "$ROOT/scripts/apply/dotfiles.sh"
+grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/scripts/apply/dotfiles.sh"
+node "$ROOT/agents/pi/agent/extensions/worktree.ts" --self-test >/dev/null
+node --input-type=module - "$ROOT/agents/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 const { themeMode } = await import(pathToFileURL(process.argv[2]));
@@ -90,7 +96,7 @@ JS
 
 if [[ -d /usr/share/omarchy/shell/plugins ]]; then
   (cd /usr/share/omarchy/shell/plugins &&
-    sha256sum --quiet -c "$ROOT/omarchy/plugins/UPSTREAM.sha256")
+    sha256sum --quiet -c "$ROOT/system/omarchy/plugins/UPSTREAM.sha256")
 fi
 if [[ -x /usr/bin/omazed-generator.sh ]]; then
   omazed_tmp="$(mktemp -d)"
@@ -98,10 +104,10 @@ if [[ -x /usr/bin/omazed-generator.sh ]]; then
   cp "$HOME/.local/state/omarchy/current/theme/colors.toml" "$omazed_tmp/.local/state/omarchy/current/theme/"
   colors="$omazed_tmp/.local/state/omarchy/current/theme/colors.toml"
   sed -i -E 's/^mode[[:space:]]*=.*/mode = "dark"/' "$colors"
-  HOME="$omazed_tmp" bash "$ROOT/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
+  HOME="$omazed_tmp" bash "$ROOT/system/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
   grep -q '"appearance": "dark"' "$omazed_tmp/.config/zed/themes/omazed.json"
   sed -i -E 's/^mode[[:space:]]*=.*/mode = "light"/' "$colors"
-  HOME="$omazed_tmp" bash "$ROOT/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
+  HOME="$omazed_tmp" bash "$ROOT/system/omarchy/hooks/theme-set.d/sync-zed-theme" >/dev/null
   grep -q '"appearance": "light"' "$omazed_tmp/.config/zed/themes/omazed.json"
   python -m json.tool "$omazed_tmp/.config/zed/themes/omazed.json" >/dev/null
   rm -rf "$omazed_tmp"
@@ -109,16 +115,16 @@ fi
 if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
-  "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/quickshell/flicko-picker/shell.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/system/quickshell/flicko-picker/shell.qml"
   for qml in FrameStyle.qml FrameJoin.qml FrameService.qml; do
-    "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/omarchy/plugins/andres.desktop-frame/$qml"
+    "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/system/omarchy/plugins/andres.desktop-frame/$qml"
   done
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.menu/Menu.qml"
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.notifications/Service.qml"
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/omarchy/plugins/andres.tray/FrameJoin.qml" "$ROOT/omarchy/plugins/andres.tray/FramePanel.qml" "$ROOT/omarchy/plugins/andres.tray/Tray.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.menu/Menu.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.tray/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.tray/FramePanel.qml" "$ROOT/system/omarchy/plugins/andres.tray/Tray.qml"
 fi
 if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
-  FLICKO_PICKER_DIR="$ROOT/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null
+  FLICKO_PICKER_DIR="$ROOT/system/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null
 fi
 
 # The gamma keys are silent without an OSD, and Quattro renamed the client the
@@ -132,9 +138,9 @@ command -v omarchy-osd >/dev/null 2>&1 || echo "warning: omarchy-osd not found i
 # Migrations rewrite ~/.config in place during `omarchy update`. The post-update
 # hook only reports that drift; it must never write. Run --check against an empty
 # HOME: everything is "missing", and HOME must stay empty afterwards.
-hook="$ROOT/omarchy/hooks/post-update.d/report-config-drift"
+hook="$ROOT/system/omarchy/hooks/post-update.d/report-config-drift"
 test -x "$hook"
-grep -q 'omarchy/hooks/\*\.d' "$ROOT/4 ConfigFiles.sh"
+grep -q 'omarchy/hooks/\*\.d' "$ROOT/scripts/apply/dotfiles.sh"
 check_home="$(mktemp -d)"
 check_out="$(mktemp)"
 HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
@@ -167,33 +173,33 @@ fi
 rm -rf "$notify_stub" "$drift_report"
 # The hook's default path must be the checkout the installer guarantees exists.
 grep -q 'CONFIG_REPO:-\$HOME/code/config' "$hook"
-grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'CONFIG_REPO="\$HOME/code/config"' "$ROOT/scripts/apply/migrations.sh"
 # Config replay owns shell.json, so externally installed widgets must stay in
 # that source of truth after their installers run.
-grep -q '"id": "loom.recording"' "$ROOT/omarchy/shell.json"
-grep -q '"id": "andres.linear"' "$ROOT/omarchy/shell.json"
+grep -q '"id": "loom.recording"' "$ROOT/system/omarchy/shell.json"
+grep -q '"id": "andres.linear"' "$ROOT/system/omarchy/shell.json"
 # Fresh-laptop tool installs must use each project's unattended curl path.
-grep -q 'go.sanetomore.com/commiter' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/1 SoftwareInstall.sh"
-grep -q 'bash -s -- --yes' "$ROOT/1 SoftwareInstall.sh"
+grep -q 'go.sanetomore.com/commiter' "$ROOT/scripts/install/tools.sh"
+grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/scripts/install/tools.sh"
+grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/scripts/install/tools.sh"
+grep -q 'bash -s -- --yes' "$ROOT/scripts/install/tools.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
-grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/4 ConfigFiles.sh"
+grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/scripts/apply/dotfiles.sh"
 # Shared orchestrator/herdr skills are tracked and symlinked into pi + Claude Code.
 [[ -f "$ROOT/agents/skills/orchestrator/SKILL.md" && -f "$ROOT/agents/skills/herdr/SKILL.md" ]]
-grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/4 ConfigFiles.sh"
-grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/4 ConfigFiles.sh"
-grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/4 ConfigFiles.sh"
+grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/scripts/apply/dotfiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/scripts/apply/dotfiles.sh"
+grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/scripts/apply/dotfiles.sh"
 # Claude skill links must not wait on ~/.claude already existing.
-! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/4 ConfigFiles.sh"
-[[ -f "$ROOT/herdr/config.toml" ]]
-grep -q 'copy_required "\$SCRIPT_DIR/herdr/config.toml"' "$ROOT/4 ConfigFiles.sh"
-python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/herdr/config.toml"
-grep -q 'arch_install_if_missing "\$package"' "$ROOT/1 SoftwareInstall.sh"
-grep -q '^    herdr \\$' "$ROOT/1 SoftwareInstall.sh"
+! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/scripts/apply/dotfiles.sh"
+[[ -f "$ROOT/apps/herdr/config.toml" ]]
+grep -q 'copy_required "\$SCRIPT_DIR/apps/herdr/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
+python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/apps/herdr/config.toml"
+grep -q 'arch_install_if_missing "\$package"' "$ROOT/scripts/install/arch.sh"
+grep -q '^    herdr \\$' "$ROOT/scripts/install/arch.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
-grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/zen/user.js"
-grep -q '#zen-appcontent-navbar-wrapper' "$ROOT/zen/userChrome.css"
+grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/apps/zen/user.js"
+grep -q '#zen-appcontent-navbar-wrapper' "$ROOT/apps/zen/userChrome.css"
 
 printf 'smoke tests passed\n'

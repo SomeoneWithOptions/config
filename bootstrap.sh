@@ -2,6 +2,7 @@
 set -eu
 
 # Download a fresh archive, then run the numbered scripts on macOS or Omarchy.
+# https://go.sanetomore.com/config redirects here, so this file must keep its name and repo-root path.
 # Overrides:
 #   CONFIG_ARCHIVE_URL=... CONFIG_REF=main
 #   BOOTSTRAP_ALLOW_CONFIG_DIR=1 CONFIG_DIR=/path/to/clone
@@ -242,7 +243,7 @@ fi
 is_config_repo() {
   [ -f "$1/1 SoftwareInstall.sh" ] && [ -f "$1/2 Fonts.sh" ] && \
   [ -f "$1/3 Git.sh" ] && [ -f "$1/4 ConfigFiles.sh" ] && \
-  [ -f "$1/5 Keys.sh" ] && [ -f "$1/lib/report.sh" ]
+  [ -f "$1/5 Keys.sh" ] && [ -f "$1/scripts/lib/report.sh" ]
 }
 
 prepare_config_dir() {

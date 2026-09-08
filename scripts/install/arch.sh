@@ -1,7 +1,7 @@
 # Arch/Omarchy package and service install.
 
 # `omarchy default editor` ends in a desktop notification and returns the toast's
-# exit status. Right after `omarchy update` restarts the shell, the notification
+# exit status. Right after an `omarchy update` restarts the shell, the notification
 # daemon is not back on the bus yet, so the call reports failure even though the
 # editor was written. Verify the setting instead of trusting the exit code.
 set_default_editor() {
@@ -120,55 +120,15 @@ install_arch_1password() {
   fi
 }
 
-update_arch_system() {
-  local update_log="${OMARCHY_UPDATE_LOG_FILE:-/tmp/omarchy-update.log}"
-  local update_status
-
-  log "Updating Omarchy and system packages through the supported update entrypoint."
-  report_software_progress start 'Updating Omarchy and system packages…'
-  # Omarchy normally wraps itself in script(1) for /tmp/omarchy-update.log. That
-  # creates a new pseudo-TTY with a separate sudo ticket, defeating bootstrap's
-  # one-time sudo authentication. Keep update + sudo on this TTY, while tee still
-  # supplies Omarchy's expected diagnostics log and bootstrap's private transcript.
-  #
-  # Attach the controlling terminal to stdin when bootstrap itself was piped in
-  # (curl ... | sh). omarchy-update-stay-awake picks its privilege runner via
-  # "[[ -t 0 ]]": pipe stdin forces the pkexec path, and pkexec exec(3)s
-  # systemd-inhibit in its own (now root-owned) process, which the unprivileged
-  # stop step can never kill (EPERM) — leaving a leaked sleep inhibitor plus
-  # "Failed to stop the Omarchy update sleep inhibitor.". With a TTY on stdin it
-  # uses sudo, whose ticket is already warm from start_sudo_keepalive.
-  local update_stdin=/dev/null
-  if { true </dev/tty; } 2>/dev/null; then
-    update_stdin=/dev/tty
-  fi
-  if ! (umask 077; : >"$update_log") || ! chmod 600 "$update_log"; then
-    warn "Cannot create private Omarchy update log at ${update_log}; package operations were stopped."
-    report_software_progress fail 'Omarchy system update failed'
-    note system-update 'Omarchy update → retry' \
-      "Make ${update_log} writable, then rerun bootstrap."
-    return 1
-  fi
-  if OMARCHY_UPDATE_LOGGED=1 omarchy update -y <"$update_stdin" 2>&1 | tee "$update_log"; then
-    report_software_progress done 'Omarchy and system packages updated'
-    return 0
-  else
-    update_status=$?
-  fi
-
-  warn "Omarchy system update failed; subsequent package operations were stopped."
-  report_software_progress fail 'Omarchy system update failed'
-  note system-update 'Omarchy update → retry' \
-    'Review the detailed bootstrap log and correct the update error.' \
-    'Run: omarchy update -y' \
-    'Then rerun bootstrap.'
-  return "$update_status"
-}
-
 install_arch_packages() {
-  # Do not remove or install packages after a failed full-system update: package
-  # databases or installed packages may be mid-transition or out of sync.
-  update_arch_system || return $?
+  # No `omarchy update` here: it stops to ask whether to remove packages and
+  # waits for an answer, so it cannot run unattended. Run it by hand *before*
+  # this configuration: nothing here syncs the pacman database, so the installs
+  # below resolve against whatever the image shipped.
+  note system-update 'Omarchy update → run it yourself' \
+    'Bootstrap never updates the system: `omarchy update` asks before removing packages.' \
+    'Run it before the next bootstrap, so package installs see fresh repos.' \
+    'Run: omarchy update'
 
   remove_stock_omarchy_apps
 

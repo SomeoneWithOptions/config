@@ -1,61 +1,13 @@
 #!/usr/bin/env bash
-# Hermetic regression test for Omarchy's system-update entrypoint.
+# Hermetic regression test for the software install scripts.
 # No installs, sudo, network, package queries, or host updates.
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
-mkdir -p "$WORK/bin" "$WORK/home" "$WORK/report/actions" "$WORK/report/stages"
-: >"$WORK/calls"
-: >"$WORK/report/warnings"
 
-cat >"$WORK/bin/uname" <<'SH'
-#!/bin/sh
-printf 'Linux\n'
-SH
-cat >"$WORK/bin/pacman" <<'SH'
-#!/bin/sh
-printf 'pacman %s\n' "$*" >>"$MOCK_CALLS"
-exit 99
-SH
-cat >"$WORK/bin/omarchy" <<'SH'
-#!/bin/sh
-printf 'omarchy %s\n' "$*" >>"$MOCK_CALLS"
-if [ "$#" -eq 2 ] && [ "$1" = update ] && [ "$2" = -y ] && \
-  [ "${OMARCHY_UPDATE_LOGGED:-}" = 1 ]; then
-  printf 'mock update failure\n' >&2
-  exit 42
-fi
-printf 'unexpected Omarchy operation after failed update: %s\n' "$*" >&2
-exit 99
-SH
-cat >"$WORK/bin/sudo" <<'SH'
-#!/bin/sh
-printf 'sudo %s\n' "$*" >>"$MOCK_CALLS"
-printf 'unexpected sudo\n' >&2
-exit 99
-SH
-chmod +x "$WORK/bin/"*
-
-status=0
-env HOME="$WORK/home" PATH="$WORK/bin:/usr/bin:/bin" MOCK_CALLS="$WORK/calls" \
-  OMARCHY_UPDATE_LOG_FILE="$WORK/omarchy-update.log" \
-  BOOTSTRAP_REPORT_DIR="$WORK/report" BOOTSTRAP_STAGE=software \
-  bash "$ROOT/1 SoftwareInstall.sh" >"$WORK/output" 2>&1 || status=$?
-
-[[ $status == 42 ]]
-[[ $(grep -c '^omarchy update -y$' "$WORK/calls") == 1 ]]
-[[ $(wc -l <"$WORK/calls") == 1 ]]
-[[ $(stat -c '%a' "$WORK/omarchy-update.log") == 600 ]]
-grep -q 'mock update failure' "$WORK/output" "$WORK/omarchy-update.log"
-! grep -q '^pacman ' "$WORK/calls"
-! grep -q '^sudo ' "$WORK/calls"
-grep -q 'WARNING: Omarchy system update failed; subsequent package operations were stopped.' "$WORK/output"
-grep -q 'software: Omarchy system update failed; subsequent package operations were stopped.' "$WORK/report/warnings"
-test -f "$WORK/report/stages/software.warning"
-test -f "$WORK/report/stages/software.action"
-grep -q 'Omarchy update → retry' "$WORK/report/actions/system-update"
-grep -q 'Run: omarchy update -y' "$WORK/report/actions/system-update"
+# `omarchy update` is a manual step: it asks before removing packages, so the
+# installer must never invoke it, nor update the system behind its back.
+! grep -Eq '(^|[;&|]|\$\()[[:space:]]*([A-Za-z_]+=[^[:space:]]*[[:space:]]+)*omarchy update' \
+  "$ROOT/scripts/install/arch.sh"
 ! grep -q 'OMARCHY_ALLOW_DIRECT_PACMAN' "$ROOT/scripts/install/arch.sh"
 ! grep -Eq 'pacman[[:space:]]+-S(yu|uy)|pacman[[:space:]]+-Syu' "$ROOT/scripts/install/arch.sh"
 
@@ -104,9 +56,9 @@ if [ "$1 $2" = 'default editor' ]; then
   cat "$state" 2>/dev/null
   exit 0
 fi
-if [ "$1 $2" = 'update -y' ]; then
-  [ "${MOCK_UPDATE_FAIL:-0}" = 1 ] && exit 42
-  exit 0
+if [ "$1" = update ]; then
+  printf 'unexpected omarchy update: %s\n' "$*" >&2
+  exit 99
 fi
 if [ "$1 $2" = 'pkg add' ]; then
   case " ${MOCK_FAIL_PKG_ADD:-} " in *" $3 "*) exit 1 ;; esac
@@ -160,7 +112,6 @@ soft_run() {
   env HOME="$SOFT/home" PATH="$SOFT/bin:/usr/bin:/bin" MOCK_CALLS="$SOFT/calls" \
     SOFT_STATE_DIR="$SOFT" BOOTSTRAP_REPORT_DIR="$SOFT/report" BOOTSTRAP_STAGE=software \
     BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$SOFT/software-events" \
-    OMARCHY_UPDATE_LOG_FILE="$SOFT/omarchy-update.log" \
     bash "$ROOT/1 SoftwareInstall.sh" >"$SOFT/output" 2>&1 || status=$?
 }
 
@@ -187,7 +138,7 @@ soft_assert_absent() {
 }
 
 # Omarchy: everything mocked green. Events must track the real operation
-# order: update first, then removal, then per-package installs.
+# order: removal first, then per-package installs.
 soft_new_env
 MOCK_INSTALLED='zed omazed 1password 1password-cli'
 # turso-cli-bin only exists in the AUR, so it must take the yay path.
@@ -197,9 +148,11 @@ status=0
 soft_run
 [[ $status == 0 ]]
 [[ ! -s "$SOFT/report/warnings" ]]
-[[ $(head -n1 "$SOFT/software-events") == $'start\tUpdating Omarchy and system packages…' ]]
-[[ $(sed -n 2p "$SOFT/software-events") == $'done\tOmarchy and system packages updated' ]]
-grep -q $'start\tRemoving stock Omarchy apps…' "$SOFT/software-events"
+[[ $(head -n1 "$SOFT/software-events") == $'start\tRemoving stock Omarchy apps…' ]]
+soft_assert_absent 'Updating Omarchy and system packages' "$SOFT/software-events"
+soft_assert_absent '^omarchy update' "$SOFT/calls"
+grep -q 'Omarchy update → run it yourself' "$SOFT/report/actions/system-update"
+grep -q 'Run: omarchy update' "$SOFT/report/actions/system-update"
 grep -q $'done\tStock Omarchy apps removed' "$SOFT/software-events"
 grep -q $'start\tInstalling fish…' "$SOFT/software-events"
 grep -q $'done\tfish installed' "$SOFT/software-events"
@@ -222,9 +175,6 @@ grep -q $'done\tloom-omarchy-linux installed' "$SOFT/software-events"
 grep -q $'done\tlinear-omarchy-plugin installed' "$SOFT/software-events"
 grep -q $'done\tturso-cli-bin installed' "$SOFT/software-events"
 ! grep -q $'fail' "$SOFT/software-events"
-# Package work only after the successful update.
-[[ $(grep -n '^omarchy update -y$' "$SOFT/calls" | head -1 | cut -d: -f1) -lt \
-  $(grep -n '^sudo pacman ' "$SOFT/calls" | head -1 | cut -d: -f1) ]]
 grep -q '^sudo pacman -S --needed --noconfirm fish$' "$SOFT/calls"
 grep -q '^sudo pacman -S --needed --noconfirm herdr$' "$SOFT/calls"
 grep -q '^yay -S --needed --noconfirm turso-cli-bin$' "$SOFT/calls"
@@ -332,7 +282,6 @@ status=0
 env HOME="$SOFT/home" PATH="$SOFT/bin:$SOFT/core" MOCK_CALLS="$SOFT/calls" \
   SOFT_STATE_DIR="$SOFT" BOOTSTRAP_REPORT_DIR="$SOFT/report" BOOTSTRAP_STAGE=software \
   BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$SOFT/software-events" \
-  OMARCHY_UPDATE_LOG_FILE="$SOFT/omarchy-update.log" \
   bash "$ROOT/1 SoftwareInstall.sh" >"$SOFT/output" 2>&1 || status=$?
 [[ $status == 0 ]]
 grep -q 'Cannot install libfprint: package unavailable and yay not found.' "$SOFT/output"
@@ -340,21 +289,6 @@ grep -q $'fail\tlibfprint installation failed' "$SOFT/software-events"
 grep -q $'done\tvim installed' "$SOFT/software-events"
 rm -rf "$SOFT"
 unset MOCK_NOT_IN_REPO
-
-# Omarchy: failed system update emits a fail event, never a done event, and
-# still stops all package operations (exit 42 regression).
-soft_new_env
-MOCK_UPDATE_FAIL=1
-export MOCK_UPDATE_FAIL
-soft_run
-[[ $status == 42 ]]
-[[ $(wc -l <"$SOFT/software-events") == 2 ]]
-[[ $(head -n1 "$SOFT/software-events") == $'start\tUpdating Omarchy and system packages…' ]]
-grep -q $'fail\tOmarchy system update failed' "$SOFT/software-events"
-! grep -q $'done\t' "$SOFT/software-events"
-! grep -q '^pacman ' "$SOFT/calls"
-rm -rf "$SOFT"
-unset MOCK_UPDATE_FAIL
 
 # Shell-pipeline installer: a failed curl must fail the pipeline under
 # pipefail, emit a fail record, and never a done record for that operation.
@@ -498,4 +432,4 @@ env BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$HELPER/events" bash "$HELPER/probe.sh" "$
 [[ ! -s "$HELPER/events" ]]
 rm -rf "$HELPER"
 
-printf 'software update tests passed\n'
+printf 'software install tests passed\n'

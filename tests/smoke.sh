@@ -54,6 +54,9 @@ fi
 # Every plugin folder is installed by one glob in the installer, so the only
 # per-plugin risk left is a plugin that is shipped but never enabled in shell.json.
 grep -q 'omarchy/plugins/andres\.\*' "$ROOT/scripts/apply/dotfiles.sh"
+grep -q 'andres.notifications ]] && continue' "$ROOT/scripts/apply/dotfiles.sh"
+grep -q 'loom-notifications-overlay' "$ROOT/scripts/apply/generated.sh"
+grep -q 'expected_notifications_tree' "$ROOT/scripts/apply/generated.sh"
 for plugin in "$ROOT"/system/omarchy/plugins/andres.*; do
   python -m json.tool "$plugin/manifest.json" >/dev/null
   grep -q "\"id\": \"$(basename "$plugin")\"" "$ROOT/system/omarchy/shell.json"

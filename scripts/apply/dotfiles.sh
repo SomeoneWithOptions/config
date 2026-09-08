@@ -131,6 +131,10 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     fi
 
     for plugin in "$SCRIPT_DIR"/system/omarchy/plugins/andres.*; do
+        # andres.notifications is copied in generated.sh so the Loom rich-card
+        # overlay can be reapplied after rsync --delete, and so --check does not
+        # treat that overlay as config drift.
+        [[ $(basename "$plugin") == andres.notifications ]] && continue
         copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"
     done
     copy_required "$SCRIPT_DIR/system/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"

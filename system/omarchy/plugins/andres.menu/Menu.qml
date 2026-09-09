@@ -148,7 +148,16 @@ Item {
 
   // Shared application engine (entries, hidden filters, icons, launch,
   // removal), owned by the shell and also used by the standalone launcher.
-  readonly property var appLibrary: root.shell ? root.shell.appLibrary : null
+  //
+  // The shell only injects it into plugins whose manifest declares kind "menu",
+  // and it decides that with Array.isArray(manifest.kinds). Since qt6-base
+  // 6.11.2-3 a nested array read back out of PluginRegistry's `property var`
+  // arrives as a V4Sequence, not an Array, so the check fails for every
+  // third-party plugin and we are handed null. First-party omarchy.menu never
+  // hits that path: it is given the whole shell object. Fall back to reading
+  // DesktopEntries ourselves so the Apps submenu survives.
+  readonly property var appLibrary: (root.shell && root.shell.appLibrary)
+    ? root.shell.appLibrary : fallbackAppLibrary
   property bool deleteConfirmOpen: false
   property var deleteTarget: null
   onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
@@ -992,6 +1001,109 @@ Item {
     target: root.appLibrary
     function onAppsChanged() {
       if (root.providersLoaded["apps"]) root.mergeAppRows()
+    }
+  }
+
+  // Stand-in for the shell's AppLibrary, used only when the injection above
+  // fails. Same call surface the Apps rows already use, so nothing downstream
+  // has to know which one it got. Deliberately thinner than the real service:
+  // no icon-index rescan and no launch OSD, because those need shell-side
+  // state a plugin cannot reach.
+  Item {
+    id: fallbackAppLibrary
+
+    signal appsChanged()
+
+    function entryName(entry) {
+      return String((entry && (entry.name || entry.id)) || "")
+    }
+
+    function entrySubtext(entry) {
+      if (!entry) return ""
+      return String(entry.genericName || entry.comment || "")
+    }
+
+    // Ids listed in Omarchy's launcher.hides, which is most of what the real
+    // filter removes: console tools and per-runtime stubs that ship a .desktop
+    // without NoDisplay (btop, footclient, bssh, fcitx5-configtool, ...).
+    property var configuredHides: ({})
+
+    function loadConfiguredHides(rawText) {
+      var next = ({})
+      var lines = String(rawText || "").split(/\n/)
+      for (var i = 0; i < lines.length; i++) {
+        var id = String(lines[i] || "").trim()
+        if (id.slice(-8) === ".desktop") id = id.slice(0, -8)
+        if (id.length > 0) next[id] = true
+      }
+      fallbackAppLibrary.configuredHides = next
+      fallbackAppLibrary.appsChanged()
+    }
+
+    // The shell also runs hidden-entries.sh to honour OnlyShowIn/NotShowIn, but
+    // Quickshell's DesktopEntry exposes neither key, so NoDisplay plus the
+    // configured list is as close as a plugin can get.
+    function isHiddenEntry(entry) {
+      if (!entry) return true
+      if (entry.noDisplay) return true
+      return fallbackAppLibrary.configuredHides[String(entry.id || "")] === true
+    }
+
+    FileView {
+      path: root.omarchyPath + "/default/omarchy/launcher.hides"
+      watchChanges: true
+      printErrors: false
+      onLoaded: fallbackAppLibrary.loadConfiguredHides(text())
+      onFileChanged: fallbackAppLibrary.loadConfiguredHides(text())
+      onLoadFailed: fallbackAppLibrary.loadConfiguredHides("")
+    }
+
+    // mergeAppRows() only reads `.entry` and sorts the rows itself, so the
+    // query argument the real service filters on is unused here.
+    function sortedEntries(query) {
+      var values = []
+      try { values = DesktopEntries.applications.values || [] } catch (e) { return [] }
+      var out = []
+      for (var i = 0; i < values.length; i++) {
+        var entry = values[i]
+        if (!entry || !entry.id) continue
+        if (fallbackAppLibrary.isHiddenEntry(entry)) continue
+        out.push({ entry: entry })
+      }
+      return out
+    }
+
+    function iconSource(icon) {
+      var value = String(icon || "")
+      if (value.length === 0) return Quickshell.iconPath("application-x-executable", true)
+      if (value.indexOf("file://") === 0 || value.indexOf("image://") === 0) return value
+      if (value.charAt(0) === "/") return Util.fileUrl(value)
+      var themed = Quickshell.iconPath(value, true)
+      if (themed.length > 0) return themed
+      return Quickshell.iconPath("application-x-executable", true)
+    }
+
+    function refreshIcons() {}
+
+    // Same launcher the shell uses: a scope under app-graphical.slice, so apps
+    // do not inherit wayland-wm@.service. Keep the .desktop suffix or ids like
+    // org.telegram.desktop will not resolve.
+    function launch(desktopId, name) {
+      var id = String(desktopId || "")
+      if (!id) return
+      Util.execDetached("uwsm-app -- gtk-launch " + Util.shellQuote(id + ".desktop"))
+    }
+
+    function remove(desktopId, name) {
+      var id = String(desktopId || "")
+      if (!id) return
+      Util.execDetached(Util.shellQuote(root.omarchyPath + "/bin/omarchy-remove-launcher-entry")
+        + " " + Util.shellQuote(id) + " " + Util.shellQuote(String(name || id)))
+    }
+
+    Connections {
+      target: DesktopEntries.applications
+      function onValuesChanged() { fallbackAppLibrary.appsChanged() }
     }
   }
 

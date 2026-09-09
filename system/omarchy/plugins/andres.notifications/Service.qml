@@ -104,15 +104,8 @@ Item {
   readonly property int normalPopupDuration: 8000
   readonly property int maxPopupDuration: 30000
 
-  function durationFor(urgency, expireTimeout) {
-    switch (urgency) {
-    case NotificationUrgency.Critical:
-      return 0
-    case NotificationUrgency.Low:
-      return Math.min(maxPopupDuration, Math.max(lowPopupDuration, requestedDuration(expireTimeout)))
-    default:
-      return Math.min(maxPopupDuration, Math.max(normalPopupDuration, requestedDuration(expireTimeout)))
-    }
+  function durationFor(urgency, expireTimeout, loomRecording) {
+    return NotificationLogic.popupDuration(urgency, expireTimeout, loomRecording)
   }
 
   function requestedDuration(expireTimeout) {
@@ -151,11 +144,11 @@ Item {
   // screen; the distinction only decides whether a DND-silenced one is worth
   // recording at all.
   function isEphemeral(notification) {
-    var transient = false
+    var isTransient = false
     try {
-      transient = !!(notification.hints && notification.hints["transient"])
-    } catch (e) { transient = false }
-    return transient || NotificationLogic.isEphemeralApp(String(notification.appName || ""))
+      isTransient = !!(notification.hints && notification.hints["transient"])
+    } catch (e) { isTransient = false }
+    return isTransient || NotificationLogic.isEphemeralApp(String(notification.appName || ""))
   }
 
   function handleNotification(notification) {
@@ -357,6 +350,44 @@ Item {
     while (popupModel.count > 0) dismissPopup(0)
   }
 
+  function invokeRecordingAction(index, action) {
+    if (action !== "play" && action !== "upload") return
+    if (index < 0 || index >= popupModel.count) return
+    var entry = popupModel.get(index)
+    var recording = NotificationLogic.parseLoomRecording(entry ? entry.loomRecording : "")
+    if (!recording) return
+
+    var videoPath = recording.videoPath
+    var uploadBin = service.home + "/.local/bin/loom-upload"
+
+    dismissPopup(index)
+
+    var checkAndExecScript =
+      "video=\"$1\"\n" +
+      "action=\"$2\"\n" +
+      "upload_bin=\"$3\"\n" +
+      "if [[ ! -f \"$video\" ]]; then\n" +
+      "  if command -v omarchy-notification-send >/dev/null 2>&1; then\n" +
+      "    omarchy-notification-send -u normal \"Recording not found\" \"The recording file no longer exists.\"\n" +
+      "  elif command -v notify-send >/dev/null 2>&1; then\n" +
+      "    notify-send -u normal \"Recording not found\" \"The recording file no longer exists.\"\n" +
+      "  fi\n" +
+      "  exit 0\n" +
+      "fi\n" +
+      "if [[ \"$action\" == \"play\" ]]; then\n" +
+      "  exec mpv -- \"$video\"\n" +
+      "elif [[ \"$action\" == \"upload\" ]]; then\n" +
+      "  exec \"$upload_bin\" \"$video\"\n" +
+      "fi\n"
+
+    Quickshell.execDetached([
+      "bash", "-c", checkAndExecScript, "--",
+      videoPath,
+      action,
+      uploadBin
+    ])
+  }
+
   // Run the popup's click action, then dismiss. Omarchy's own toasts carry the
   // action as an argv vector in the `execArgv` role (see execArgvFromHints),
   // which the persistence files preserve, so restored toasts stay clickable.
@@ -365,6 +396,10 @@ Item {
   function invokePopupDefault(index) {
     if (index < 0 || index >= popupModel.count) return
     var entry = popupModel.get(index)
+    if (NotificationLogic.parseLoomRecording(entry ? entry.loomRecording : "")) {
+      invokeRecordingAction(index, "play")
+      return
+    }
 
     // Run the argv (via Util.execArgv, no shell interpretation). Detached so it
     // outlives the shell, which installer toasts depend on: they restart it.
@@ -672,6 +707,7 @@ Item {
         image: row.image,
         glyph: row.glyph || "",
         execArgv: row.execArgv || "",
+        loomRecording: row.loomRecording || "",
         urgency: row.urgency,
         timestamp: row.timestamp
       }, imagesDir).entry)
@@ -696,6 +732,7 @@ Item {
         image: "",
         glyph: "󰂚",
         execArgv: "",
+        loomRecording: "",
         urgency: NotificationUrgency.Low,
         expireTimeout: 0,
         timestamp: Date.now()
@@ -729,7 +766,7 @@ Item {
     var live = []
     for (var i = 0; i < entries.length; i++) {
       var entry = entries[i]
-      var duration = durationFor(entry.urgency, entry.expireTimeout)
+      var duration = durationFor(entry.urgency, entry.expireTimeout, entry.loomRecording)
       if (NotificationLogic.popupExpired(entry, duration, now)) {
         // It would have expired on screen had the shell kept running, so it
         // gets archived exactly like an expiry that happened while it did.
@@ -1087,19 +1124,25 @@ Item {
             required property string body
             required property string image
             required property string glyph
+            required property string loomRecording
             required property int urgency
             required property double expireTimeout
             required property double timestamp
 
+            readonly property var recordingData: NotificationLogic.parseLoomRecording(cardSlot.loomRecording)
+            readonly property bool isRecordingCard: cardSlot.recordingData !== null
+
             // Each card sizes itself based on mode (text vs media); the slot
             // tracks the card so the column auto-fits to whichever is widest.
-            Layout.preferredWidth: card.implicitWidth
+            Layout.preferredWidth: cardLoader.item ? cardLoader.item.implicitWidth : Style.space(360)
             Layout.alignment: Qt.AlignRight
-            implicitHeight: card.implicitHeight
+            implicitWidth: Layout.preferredWidth
+            implicitHeight: cardLoader.item ? cardLoader.item.implicitHeight : (cardSlot.isRecordingCard ? Style.space(208) : Style.space(64))
 
-            readonly property real lifetime: service.durationFor(cardSlot.urgency, cardSlot.expireTimeout)
+            readonly property real lifetime: service.durationFor(cardSlot.urgency, cardSlot.expireTimeout, cardSlot.loomRecording)
             property real remainingLifetime: 1.0
-            readonly property bool ticking: cardSlot.lifetime > 0 && !card.hovered
+            readonly property bool itemHovered: Boolean(cardLoader.item && cardLoader.item.hovered)
+            readonly property bool ticking: cardSlot.lifetime > 0 && !cardSlot.itemHovered
 
             // A client updating this notification in place rewrites the row
             // under the card (see refreshPopup). New text deserves a full look,
@@ -1110,6 +1153,7 @@ Item {
             onSummaryChanged: cardSlot.remainingLifetime = 1.0
             onBodyChanged: cardSlot.remainingLifetime = 1.0
             onImageChanged: cardSlot.remainingLifetime = 1.0
+            onLoomRecordingChanged: cardSlot.remainingLifetime = 1.0
 
             Timer {
               interval: 50
@@ -1125,22 +1169,50 @@ Item {
               }
             }
 
-            NotificationCard {
-              id: card
-              anchors.right: parent.right
-              app: cardSlot.app
-              appIcon: cardSlot.appIcon
-              summary: cardSlot.summary
-              body: cardSlot.body
-              image: cardSlot.image
-              urgency: cardSlot.urgency
-              timestamp: cardSlot.timestamp
-              cornerRadius: service.cornerRadius
-              fontFamily: service.shell && service.shell.bar ? service.shell.bar.fontFamily : ""
-              glyph: cardSlot.glyph
+            Component {
+              id: standardCardComponent
 
-              onCloseRequested: service.dismissPopup(cardSlot.index)
-              onCardClicked: service.invokePopupDefault(cardSlot.index)
+              NotificationCard {
+                anchors.right: parent.right
+                app: cardSlot.app
+                appIcon: cardSlot.appIcon
+                summary: cardSlot.summary
+                body: cardSlot.body
+                image: cardSlot.image
+                urgency: cardSlot.urgency
+                timestamp: cardSlot.timestamp
+                cornerRadius: service.cornerRadius
+                fontFamily: service.shell && service.shell.bar ? service.shell.bar.fontFamily : ""
+                glyph: cardSlot.glyph
+
+                onCloseRequested: service.dismissPopup(cardSlot.index)
+                onCardClicked: service.invokePopupDefault(cardSlot.index)
+              }
+            }
+
+            Component {
+              id: recordingCardComponent
+
+              RecordingNotificationCard {
+                anchors.right: parent.right
+                summary: cardSlot.summary
+                image: cardSlot.image
+                recordingPath: cardSlot.recordingData ? cardSlot.recordingData.videoPath : ""
+                accent: cardSlot.recordingData ? cardSlot.recordingData.accent : Color.urgent
+                cornerRadius: service.cornerRadius
+
+                onPlayRequested: service.invokeRecordingAction(cardSlot.index, "play")
+                onUploadRequested: service.invokeRecordingAction(cardSlot.index, "upload")
+                onCloseRequested: service.dismissPopup(cardSlot.index)
+              }
+            }
+
+            Loader {
+              id: cardLoader
+              anchors.right: parent.right
+              width: item ? item.implicitWidth : Style.space(360)
+              height: item ? item.implicitHeight : (cardSlot.isRecordingCard ? Style.space(208) : Style.space(64))
+              sourceComponent: cardSlot.isRecordingCard ? recordingCardComponent : standardCardComponent
             }
           }
         }

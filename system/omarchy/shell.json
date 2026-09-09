@@ -15,11 +15,11 @@
       "center": [],
       "right": [
         { "id": "andres.pill" },
+        { "id": "andres.linear", "frameStyle": true, "panelPosition": "bottom-right" },
         { "id": "andres.tray" },
         { "id": "omarchy.system-update" },
         { "id": "andres.pill" },
         { "id": "loom.recording" },
-        { "id": "andres.linear", "frameStyle": true, "panelPosition": "top-left" },
         { "id": "andres.idle" },
         { "id": "andres.dnd" },
         { "id": "andres.tailscale" },

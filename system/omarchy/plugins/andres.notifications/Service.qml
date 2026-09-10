@@ -1076,8 +1076,11 @@ Item {
         width: service.cardWidth + service.drawerPadding * 2 + service.frameInset
         height: Math.round(contentHeight * reveal)
         clip: true
-        // Antialias the bottom-left curve bleed
-        layer.enabled: true
+        // No layer: at fractional scale (1.2) the FBO composites at a half
+        // physical pixel and layer.smooth resamples every card, which softens
+        // all notification text against the bar's direct-drawn glyphs. clip
+        // alone still contains the bottom-left curve bleed.
+        layer.enabled: false
         layer.smooth: true
 
         // Animate resolved height rather than reveal alone. Stack growth and

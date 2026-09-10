@@ -55,11 +55,13 @@ Spawn nothing before approval.
 
 ## Phase 2 - Execute
 
-Create the tab once:
+Create the tab once, pinned to your own workspace so it never lands in whatever space the user is currently viewing:
 
 ```bash
-herdr tab create --label "orch:<run-id>" --no-focus
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" --label "orch:<run-id>" --no-focus
 ```
+
+Never create the tab without `--workspace "$HERDR_WORKSPACE_ID"`. Without it the tab lands in the UI-focused workspace, which may belong to the user.
 
 Read `.result.tab.tab_id` and `.result.root_pane.pane_id`. Use the root pane for task 1; split inside that tab for later or parallel tasks. Never split the user's pane. Always `--no-focus`.
 

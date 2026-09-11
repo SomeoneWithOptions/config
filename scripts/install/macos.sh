@@ -38,7 +38,7 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git gh tmux fish vim mise 1password-cli rtk node@24 google-cloud-sdk; do
+  for package in git tmux fish vim mise 1password-cli rtk node@24 google-cloud-sdk; do
     brew_install_formula_if_missing "$package"
   done
 
@@ -46,7 +46,8 @@ install_macos_packages() {
   progress_step 'Installing Go…' 'Go installed' 'Go installation failed' \
     "mise install Go" mise use -g go@latest
   install_rtk
-  install_pi
+  # Owns gh here too, so the formula loop above deliberately omits it.
+  install_agent_clis
 
   log "Ensuring applications are installed with Homebrew Cask."
   local cask

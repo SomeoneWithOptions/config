@@ -210,8 +210,9 @@ install_arch_packages() {
 
   install_arch_1password
   install_rtk
-  # No install_pi here: Omarchy mise-installs `pi` during setup (install/user/mise.sh).
-  # The macOS branch still needs the upstream installer.
+  # pi, gh and Claude Code normally arrive with Omarchy's own user provisioning
+  # (install/user/mise.sh); this confirms them and installs whatever is missing.
+  install_agent_clis
   install_personal_dev_tools
   install_turso
   install_loom_omarchy_linux

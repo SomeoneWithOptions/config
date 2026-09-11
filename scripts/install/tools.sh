@@ -1,10 +1,38 @@
 # Third-party tool installers used on both platforms.
 # Requires lib/report.sh, lib/common.sh and lib/pkg.sh sourced first.
 
+# Installs a tool the way Omarchy provisions it: a small mise-backed wrapper in
+# ~/.local/bin that resolves and upgrades the real binary on first run. The
+# wrapper existing is what counts as installed, the same thing Omarchy's own
+# omarchy-cmd-missing checks during user provisioning.
+omarchy_mise_install() {
+  local package="$1" command_name="$2" label="$3"
+
+  progress_step "Installing ${label}…" "${label} installed" \
+    "${label} installation failed" \
+    "omarchy mise install ${package}" omarchy-mise-install "$package" "$command_name"
+}
+
+# pi, gh and Claude Code are daily drivers on both machine types. Omarchy
+# mise-installs all three in its own user provisioning (install/user/mise.sh),
+# so on a current Omarchy laptop this only confirms them; a skipped, failed or
+# pre-Quattro provision gets them installed here instead. macOS has no
+# equivalent step, so there they are installed from scratch.
+install_agent_clis() {
+  install_pi
+  install_gh
+  install_claude_code
+}
+
 install_pi() {
   if has_command pi; then
     log "pi is already installed."
     report_software_progress skip 'pi already installed'
+    return 0
+  fi
+
+  if [ "$(uname -s)" = "Linux" ] && has_command omarchy-mise-install; then
+    omarchy_mise_install pi pi 'pi'
     return 0
   fi
 
@@ -17,6 +45,50 @@ install_pi() {
   else
     warn "Pi official installer failed."
     report_software_progress fail 'pi installation failed'
+  fi
+}
+
+install_gh() {
+  if has_command gh; then
+    log "gh is already installed."
+    report_software_progress skip 'gh already installed'
+    return 0
+  fi
+
+  if [ "$(uname -s)" = "Linux" ] && has_command omarchy-mise-install; then
+    omarchy_mise_install gh gh 'gh'
+  elif has_command brew; then
+    brew_install_formula_if_missing gh
+  elif has_command pacman; then
+    # Arch without Omarchy's helper: the repo package is the other gh source.
+    arch_install_if_missing github-cli
+  else
+    warn "Neither omarchy-mise-install, brew nor pacman found; cannot install gh."
+    report_software_progress fail 'gh not installed'
+  fi
+}
+
+install_claude_code() {
+  if has_command claude; then
+    log "Claude Code is already installed."
+    report_software_progress skip 'Claude Code already installed'
+    return 0
+  fi
+
+  if [ "$(uname -s)" = "Linux" ] && has_command omarchy-mise-install; then
+    omarchy_mise_install claude claude 'Claude Code'
+    return 0
+  fi
+
+  log "Installing Claude Code using the official installer."
+  report_software_progress start 'Installing Claude Code…'
+  # Same pipefail note as pi. The official installer writes ~/.local/bin/claude
+  # and leaves shell rc files alone, which is what this repo wants to own.
+  if curl -fsSL https://claude.ai/install.sh | bash; then
+    report_software_progress done 'Claude Code installed'
+  else
+    warn "Claude Code official installer failed."
+    report_software_progress fail 'Claude Code installation failed'
   fi
 }
 

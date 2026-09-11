@@ -65,9 +65,20 @@ if [ "$1 $2" = 'pkg add' ]; then
 fi
 exit 0
 SH
-  for tool in mise omarchy-mise-install omarchy-webapp-install systemctl pi clasp vercel rtk brew yay; do
+  for tool in mise omarchy-webapp-install systemctl pi clasp vercel rtk brew yay; do
     printf '#!/bin/sh\nprintf "%s %%s\\n" "%s" "$*" >>"$MOCK_CALLS"\nexit 0\n' "$tool" "$tool" >"$SOFT/bin/$tool"
   done
+  # Mirrors the real helper: writes a mise-backed wrapper into ~/.local/bin, so
+  # a second run of the installer sees the command and reports it as present.
+  cat >"$SOFT/bin/omarchy-mise-install" <<'SH'
+#!/bin/bash
+printf 'omarchy-mise-install %s\n' "$*" >>"$MOCK_CALLS"
+command=${2:-$1}
+mkdir -p "$HOME/.local/bin"
+printf '#!/bin/sh\nexit 0\n' >"$HOME/.local/bin/$command"
+chmod +x "$HOME/.local/bin/$command"
+exit "${MOCK_MISE_INSTALL_STATUS:-0}"
+SH
   cat >"$SOFT/bin/turso" <<'SH'
 #!/bin/sh
 printf 'turso %s\n' "$*" >>"$MOCK_CALLS"
@@ -169,6 +180,11 @@ grep -q $'start\tConfiguring Tailscale…' "$SOFT/software-events"
 grep -q $'done\tTailscale configured' "$SOFT/software-events"
 grep -q $'start\tConfiguring 1Password…' "$SOFT/software-events"
 grep -q $'done\t1Password configured' "$SOFT/software-events"
+grep -q $'skip\tpi already installed' "$SOFT/software-events"
+grep -q $'done\tgh installed' "$SOFT/software-events"
+grep -q $'done\tClaude Code installed' "$SOFT/software-events"
+grep -q '^omarchy-mise-install gh gh$' "$SOFT/calls"
+grep -q '^omarchy-mise-install claude claude$' "$SOFT/calls"
 grep -q $'done\tcommiter installed' "$SOFT/software-events"
 grep -q $'done\tclasp installed' "$SOFT/software-events"
 grep -q $'done\tloom-omarchy-linux installed' "$SOFT/software-events"
@@ -189,6 +205,10 @@ MOCK_INSTALLED='fish alacritty ghostty herdr vim terraform aws-cli-v2 google-clo
 MOCK_TURSO_STATUS=1
 export MOCK_INSTALLED MOCK_TURSO_STATUS
 printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/loom"
+for present in gh claude; do
+  printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/$present"
+  chmod +x "$SOFT/bin/$present"
+done
 chmod +x "$SOFT/bin/loom"
 mkdir -p "$SOFT/home/.local/bin"
 touch "$SOFT/home/.local/bin/c"
@@ -208,6 +228,11 @@ grep -q $'skip\tTailscale already installed' "$SOFT/software-events"
 grep -q $'start\tConfiguring 1Password…' "$SOFT/software-events"
 grep -q $'done\t1Password configured' "$SOFT/software-events"
 grep -q $'skip\trtk already installed' "$SOFT/software-events"
+grep -q $'skip\tpi already installed' "$SOFT/software-events"
+grep -q $'skip\tgh already installed' "$SOFT/software-events"
+grep -q $'skip\tClaude Code already installed' "$SOFT/software-events"
+soft_assert_absent '^omarchy-mise-install gh' "$SOFT/calls"
+soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tcommiter already installed' "$SOFT/software-events"
 grep -q $'done\tclasp installed' "$SOFT/software-events"
 grep -q $'skip\tloom-omarchy-linux already installed' "$SOFT/software-events"
@@ -325,6 +350,10 @@ grep -q $'done\tZed installed' "$SOFT/software-events"
 grep -q $'done\t1Password installed' "$SOFT/software-events"
 grep -q $'done\tcommiter installed' "$SOFT/software-events"
 grep -q $'skip\tpi already installed' "$SOFT/software-events"
+grep -q $'skip\tgh already installed' "$SOFT/software-events"
+grep -q $'done\tClaude Code installed' "$SOFT/software-events"
+# The Omarchy wrapper is never used off Omarchy, even when it is on PATH.
+soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tclasp already installed' "$SOFT/software-events"
 grep -q '^brew install tursodatabase/tap/turso$' "$SOFT/calls"
 grep -q $'done\tturso installed' "$SOFT/software-events"

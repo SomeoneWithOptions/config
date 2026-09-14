@@ -67,6 +67,7 @@ copy_required "$SCRIPT_DIR/shell/fish/conf.d/key_bindings.fish" "$HOME/.config/f
 copy_required "$SCRIPT_DIR/shell/fish/conf.d/turso.fish" "$HOME/.config/fish/conf.d/turso.fish"
 copy_required "$SCRIPT_DIR/shell/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
 copy_required "$SCRIPT_DIR/shell/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
+copy_required "$SCRIPT_DIR/shell/fish/functions/with-openrouter.fish" "$HOME/.config/fish/functions/with-openrouter.fish"
 
 # Fontconfig / GTK Configuration
 copy_required "$SCRIPT_DIR/theme/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"

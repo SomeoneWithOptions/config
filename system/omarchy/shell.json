@@ -9,39 +9,86 @@
     "transparent": false,
     "layout": {
       "left": [
-        { "id": "omarchy.spacer", "size": 3 },
-        { "id": "andres.workspaces" }
+        {
+          "id": "omarchy.spacer",
+          "size": 3
+        },
+        {
+          "id": "andres.workspaces"
+        }
       ],
       "center": [],
       "right": [
-        { "id": "andres.pill" },
-        { "id": "andres.linear", "frameStyle": true, "panelPosition": "bottom-right" },
-        { "id": "andres.tray" },
-        { "id": "omarchy.system-update" },
-        { "id": "andres.pill" },
-        { "id": "loom.recording" },
-        { "id": "andres.idle" },
-        { "id": "andres.dnd" },
-        { "id": "andres.tailscale" },
-        { "id": "andres.bluetooth" },
-        { "id": "andres.network" },
-        { "id": "andres.audio" },
-        { "id": "andres.monitor" },
-        { "id": "andres.power", "showPercentage": true },
-        { "id": "andres.pill" },
+        {
+          "id": "andres.pill"
+        },
+        {
+          "id": "andres.linear",
+          "frameStyle": true,
+          "panelPosition": "bottom-right"
+        },
+        {
+          "id": "andres.tray"
+        },
+        {
+          "id": "omarchy.system-update"
+        },
+        {
+          "id": "andres.pill"
+        },
+        {
+          "id": "loom.recording"
+        },
+        {
+          "id": "andres.idle"
+        },
+        {
+          "id": "andres.dnd"
+        },
+        {
+          "id": "andres.tailscale"
+        },
+        {
+          "id": "andres.bluetooth"
+        },
+        {
+          "id": "andres.network"
+        },
+        {
+          "id": "andres.audio"
+        },
+        {
+          "id": "andres.monitor"
+        },
+        {
+          "id": "andres.power",
+          "showPercentage": true
+        },
+        {
+          "id": "andres.pill"
+        },
         {
           "id": "andres.clock",
           "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy"
         },
-        { "id": "omarchy.spacer", "size": 11 }
+        {
+          "id": "omarchy.spacer",
+          "size": 11
+        }
       ]
     }
   },
   "plugins": [
-    { "id": "andres.desktop-frame" },
-    { "id": "andres.menu" },
-    { "id": "andres.notifications" }
+    {
+      "id": "andres.desktop-frame"
+    },
+    {
+      "id": "andres.menu"
+    },
+    {
+      "id": "andres.notifications"
+    }
   ],
   "disabledPlugins": [
     "omarchy.idle",

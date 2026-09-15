@@ -10,7 +10,7 @@ auto_switch = false
 [theme.custom]
 # The active tab is drawn as panel_bg text on an accent background, so panel_bg
 # has to be dark for it to read - same colors as status-left's "#[fg=black,bg=blue]"
-panel_bg = "black"
+panel_bg = "#252a33"
 
 [terminal]
 # Matches -c "#{pane_current_path}" on every split, window, and session
@@ -73,9 +73,10 @@ next_workspace = ["prefix+shift+n", "alt+down"]
 accent = "blue"
 mouse_scroll_lines = 21
 
-# tmux drew single-line dividers between adjacent panes and no outer frame
-pane_gaps = false
-pane_outer_borders = false
+# Give every pane a defined frame with breathing room between panes
+pane_borders = "always"
+pane_gaps = true
+pane_outer_borders = true
 
 # tmux had no scrollbar column beside its panes
 pane_scrollbars = false

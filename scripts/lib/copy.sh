@@ -74,6 +74,44 @@ copy_executable_required() {
     (( CHECK )) || chmod +x "$dest_path"
 }
 
+# JSON with sorted keys and 2-space indent. Falls back to raw bytes when
+# either file is not valid JSON (e.g. JSONC with comments).
+json_canonical() {
+    python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])), sort_keys=True, indent=2) + chr(10))' "$1" 2>/dev/null
+}
+
+# Like copy_required, but compares canonical JSON so key-order-only rewrites
+# (omarchy update normalizes shell.json to alphabetical keys via jq) do not
+# count as drift and are not rewritten on apply.
+copy_json_required() {
+    local source_path="$1"
+    local dest_path="$2"
+
+    if [[ ! -f "$source_path" ]]; then
+        printf 'Missing required config file: %s\n' "$source_path" >&2
+        exit 1
+    fi
+
+    if [[ -f "$dest_path" ]]; then
+        if cmp -s "$source_path" "$dest_path"; then
+            return
+        fi
+        source_canon=$(json_canonical "$source_path" || true)
+        dest_canon=$(json_canonical "$dest_path" || true)
+        if [[ -n "$source_canon" && -n "$dest_canon" ]] && [[ "$source_canon" == "$dest_canon" ]]; then
+            return
+        fi
+    fi
+    if (( CHECK )); then
+        report_drift "$dest_path" "$source_path"
+        return
+    fi
+
+    mkdir -p "$(dirname "$dest_path")"
+    cp "$source_path" "$dest_path"
+    printf 'Updated %s\n' "$dest_path"
+}
+
 copy_dir_required() {
     local source_path="$1"
     local dest_path="$2"

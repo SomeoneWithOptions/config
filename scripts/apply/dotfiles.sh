@@ -139,7 +139,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         copy_dir_required "$plugin" "$HOME/.config/omarchy/plugins/$(basename "$plugin")"
     done
     copy_required "$SCRIPT_DIR/system/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
-    copy_required "$SCRIPT_DIR/system/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
+    copy_json_required "$SCRIPT_DIR/system/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
     copy_required "$SCRIPT_DIR/system/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
 
     # XDG defaults

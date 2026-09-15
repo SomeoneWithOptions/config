@@ -88,7 +88,6 @@ test -f "$ROOT/agents/pi/agent/extensions/web-research.ts"
 grep -q 'name: "web_search"' "$ROOT/agents/pi/agent/extensions/web-research.ts"
 grep -q 'for extension in "\$SCRIPT_DIR"/agents/pi/agent/extensions/\*.ts' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/scripts/apply/dotfiles.sh"
-node "$ROOT/agents/pi/agent/extensions/worktree.ts" --self-test >/dev/null
 node --input-type=module - "$ROOT/agents/pi/agent/extensions/omarchy-system-theme.ts" <<'JS'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";

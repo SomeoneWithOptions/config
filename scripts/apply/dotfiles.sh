@@ -2,7 +2,6 @@
 # Requires CHECK/DRIFT/OS_NAME/SCRIPT_DIR and lib/copy.sh.
 
 # Pi Configuration
-(( CHECK )) || mkdir -p "$HOME/code/worktrees" # /worktree extension creates worktrees here
 copy_required "$SCRIPT_DIR/agents/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
 for extension in "$SCRIPT_DIR"/agents/pi/agent/extensions/*.ts; do
     copy_required "$extension" "$HOME/.pi/agent/extensions/$(basename "$extension")"

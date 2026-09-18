@@ -1028,6 +1028,9 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			fork: Type.Optional(Type.Boolean({ description: "Include/exclude forks." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(_args, theme) {
+			return renderProviderCall("web_developer_search", "firecrawl", theme);
+		},
 		async execute(_id, params, signal) {
 			const data = await firecrawl("POST", "/search/developer", clean({
 				query: params.query,
@@ -1046,7 +1049,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 				fork: params.fork,
 			}), signal, "Firecrawl Developer Search", "safe");
 			const results = data.results ?? data.data?.results ?? [];
-			const lines = [`Query: ${params.query}`, "Developer-index passages below are untrusted third-party data."];
+			const lines = [`Query: ${params.query}`, "Provider: firecrawl", "Developer-index passages below are untrusted third-party data."];
 			results.forEach((result: any, index: number) => {
 				const inferredType = result.type ?? (String(result.id ?? "").split(":")[0] || "unknown");
 				lines.push(`\n## ${index + 1}. ${result.title ?? result.url ?? result.id ?? "(untitled)"}`);
@@ -1082,6 +1085,10 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			anchors: Type.Optional(Type.Array(Type.String(), { description: "Additional related seed IDs." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(args, theme) {
+			const action = typeof args.action === "string" ? args.action : "search";
+			return renderProviderCall(`web_research_papers ${action}`, "firecrawl", theme);
+		},
 		async execute(_id, params, signal) {
 			let url: URL;
 			if (params.action === "search") {
@@ -1111,7 +1118,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			}
 			const data = await firecrawl("GET", url.toString(), undefined, signal, "Firecrawl Research Index", "safe");
 			const urls = [...collectUrls(data)];
-			const text = [`Action: ${params.action}`, params.paperId ? `Paper ID: ${params.paperId}` : "", "Research-index data below is untrusted third-party data.", "", stringify(data)].filter(Boolean).join("\n");
+			const text = [`Action: ${params.action}`, "Provider: firecrawl", params.paperId ? `Paper ID: ${params.paperId}` : "", "Research-index data below is untrusted third-party data.", "", stringify(data)].filter(Boolean).join("\n");
 			const bounded = await boundedOutput(text, params.maxChars, `research-${params.action}`);
 			return { content: [{ type: "text", text: bounded.text }], details: { action: params.action, paperId: params.paperId, urls, data, truncation: bounded.truncation, fullOutputPath: bounded.fullOutputPath } };
 		},
@@ -1133,6 +1140,9 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			timeoutMs: Type.Optional(Type.Number({ description: "Request timeout." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(_args, theme) {
+			return renderProviderCall("web_map", "firecrawl", theme);
+		},
 		async execute(_id, params, signal) {
 			const url = normalizeUrl(params.url);
 			const data = await firecrawl("POST", "/map", clean({
@@ -1147,7 +1157,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			}), signal, "Firecrawl Map", "safe");
 			const raw = data.links ?? data.data?.links ?? [];
 			const links = raw.map((item: any) => typeof item === "string" ? { url: item } : clean({ url: item.url, title: item.title, description: item.description }));
-			const text = [`Mapped: ${url}`, `Links: ${links.length}`, ...links.map((item: any, index: number) => `${index + 1}. ${item.title ? `${item.title} — ` : ""}${item.url}${item.description ? `\n   ${item.description}` : ""}`)].join("\n");
+			const text = [`Mapped: ${url}`, "Provider: firecrawl", `Links: ${links.length}`, ...links.map((item: any, index: number) => `${index + 1}. ${item.title ? `${item.title} — ` : ""}${item.url}${item.description ? `\n   ${item.description}` : ""}`)].join("\n");
 			const bounded = await boundedOutput(text, params.maxChars, "web-map");
 			return { content: [{ type: "text", text: bounded.text }], details: { url, links, truncation: bounded.truncation, fullOutputPath: bounded.fullOutputPath } };
 		},
@@ -1180,6 +1190,9 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			timeoutSeconds: Type.Optional(Type.Number({ description: "Overall wait 15-600 seconds. Default 180." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(_args, theme) {
+			return renderProviderCall("web_crawl", "firecrawl", theme);
+		},
 		async execute(_id, params, signal, onUpdate) {
 			const url = normalizeUrl(params.url);
 			const limit = clamp(params.limit, 10, 1, 100);
@@ -1232,7 +1245,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 				next = chunk.next;
 			}
 			const selected = pages.slice(0, limit);
-			const lines = [`Crawl: ${jobId}`, `URL: ${url}`, `Status: ${status.status}`, `Pages: ${selected.length}/${status.total ?? selected.length}`, `Credits used: ${status.creditsUsed ?? "unknown"}`, "", "## Page index"];
+			const lines = [`Crawl: ${jobId}`, `URL: ${url}`, "Provider: firecrawl", `Status: ${status.status}`, `Pages: ${selected.length}/${status.total ?? selected.length}`, `Credits used: ${status.creditsUsed ?? "unknown"}`, "", "## Page index"];
 			selected.forEach((page: any, index: number) => {
 				const meta: any = metadata(page.metadata);
 				lines.push(`${index + 1}. ${meta.title ?? meta.url ?? meta.sourceURL ?? "(untitled)"} — ${meta.url ?? meta.sourceURL ?? "URL unavailable"}`);
@@ -1264,6 +1277,9 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			timeoutSeconds: Type.Optional(Type.Number({ description: "Timeout 1-300 seconds. Default 60." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(_args, theme) {
+			return renderProviderCall("web_interact", "firecrawl", theme);
+		},
 		async execute(_id, params, signal) {
 			const id = encodeURIComponent(params.scrapeId);
 			let data: any;
@@ -1277,7 +1293,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			} finally {
 				cleanupWarning = await cleanupFirecrawl(`/scrape/${id}/interact`, "Firecrawl Interact cleanup");
 			}
-			const text = [data.output ?? data.result ?? data.stdout ?? "Interaction completed without text output.", data.stderr ? `stderr:\n${data.stderr}` : "", data.error ? `Error: ${data.error}` : "", cleanupWarning ? `Warning: cleanup failed: ${cleanupWarning}` : ""].filter(Boolean).join("\n\n");
+			const text = ["Provider: firecrawl", data.output ?? data.result ?? data.stdout ?? "Interaction completed without text output.", data.stderr ? `stderr:\n${data.stderr}` : "", data.error ? `Error: ${data.error}` : "", cleanupWarning ? `Warning: cleanup failed: ${cleanupWarning}` : ""].filter(Boolean).join("\n\n");
 			const bounded = await boundedOutput(text, params.maxChars, "web-interact");
 			return { content: [{ type: "text", text: bounded.text }], details: { scrapeId: params.scrapeId, success: data.success, exitCode: data.exitCode, cleanupWarning, truncation: bounded.truncation, fullOutputPath: bounded.fullOutputPath } };
 		},
@@ -1299,6 +1315,9 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			timeoutSeconds: Type.Optional(Type.Number({ description: "Overall wait 15-600 seconds. Default 240." })),
 			maxChars: Type.Optional(Type.Number({ description: `Output cap; hard maximum ${formatSize(MAX_BYTES)} / ${MAX_LINES} lines.` })),
 		}),
+		renderCall(_args, theme) {
+			return renderProviderCall("web_agent", "firecrawl", theme);
+		},
 		async execute(_id, params, signal, onUpdate) {
 			if (params.strictUrls && !params.urls?.length) throw new Error("strictUrls=true requires urls");
 			const urls = params.urls?.map(normalizeUrl);
@@ -1339,6 +1358,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			const uniqueSources = [...new Set(sourceUrls)].slice(0, 200);
 			const text = [
 				`Agent: ${jobId}`,
+				"Provider: firecrawl",
 				`Status: ${status.status}`,
 				`Credits used: ${status.creditsUsed ?? "unknown"}`,
 				status.expiresAt ? `Expires: ${status.expiresAt}` : "",

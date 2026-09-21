@@ -2,16 +2,15 @@ import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Text } from "@earendil-works/pi-tui";
-import { existsSync, readFileSync } from "node:fs";
+import { execFile } from "node:child_process";
 import { mkdtemp, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Type } from "typebox";
 
 const EXA_BASE = "https://api.exa.ai";
 const FIRECRAWL_BASE = "https://api.firecrawl.dev/v2";
 const BRAVE_SEARCH_BASE = "https://api.search.brave.com/res/v1/web/search";
-const SECRETS_DIR = join(homedir(), ".pi", "agent", "secrets");
 const MAX_BYTES = DEFAULT_MAX_BYTES;
 const MAX_LINES = DEFAULT_MAX_LINES;
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
@@ -20,7 +19,6 @@ const BRAVE_INTERVAL_MS = boundedEnv("BRAVE_MIN_INTERVAL_MS", 1100, 0, 60_000);
 
 type SearchProvider = "exa" | "firecrawl" | "brave";
 
-interface SecretSource { env?: string; file?: string }
 interface SearchItem {
 	provider: SearchProvider;
 	kind: string;
@@ -43,27 +41,17 @@ interface SearchRun {
 	moreResults?: boolean;
 }
 
-const EXA_KEYS: SecretSource[] = [
-	{ env: "EXA_API_KEY" },
-	{ file: join(SECRETS_DIR, "exa-api-key") },
-];
-const FIRECRAWL_KEYS: SecretSource[] = [
-	{ env: "FIRECRAWL_API_KEY" },
-	{ file: join(SECRETS_DIR, "firecrawl-api-key") },
-];
-const BRAVE_SEARCH_KEYS: SecretSource[] = [
-	{ env: "BRAVE_SEARCH_API_KEY" },
-	{ env: "BRAVE_FREE_API_KEY" },
-	{ env: "BRAVE_API_KEY" },
-	{ file: join(SECRETS_DIR, "brave-api-key") },
-];
-const BRAVE_AI_KEYS: SecretSource[] = [
-	{ env: "BRAVE_AI_API_KEY" },
-	{ env: "BRAVE_DATA_FOR_AI_API_KEY" },
-	{ file: join(SECRETS_DIR, "brave-ai-api-key") },
-];
-
-const secretCache = new Map<string, string>();
+// Non-secret IDs stay stable across computers and item/vault renames.
+const OP_ACCOUNT = process.env.WEB_RESEARCH_OP_ACCOUNT || "FXKJFB4RCFFPHAHT4SRYTQDKSY";
+const OP_VAULT = process.env.WEB_RESEARCH_OP_VAULT || "eiimzbiscziwayqhndjwh36tpy";
+const OP_ITEM = process.env.WEB_RESEARCH_OP_ITEM || "5vdjlcxrhqfegffhp2hxye6cle";
+const SECRET_NAMES = ["EXA_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_SEARCH_API_KEY", "BRAVE_AI_API_KEY"] as const;
+type SecretName = typeof SECRET_NAMES[number];
+type Secrets = Partial<Record<SecretName, string>>;
+const SECRET_TTL_MS = 5 * 60_000;
+let secretCache: { values: Secrets; expiresAt: number } | undefined;
+let secretLoad: Promise<Secrets> | undefined;
+let secretExpiry: ReturnType<typeof setTimeout> | undefined;
 let exaQueue = Promise.resolve();
 const braveQueues = new Map<string, Promise<void>>();
 
@@ -83,23 +71,73 @@ function clean<T extends Record<string, unknown>>(object: T): Partial<T> {
 	)) as Partial<T>;
 }
 
-function secret(name: string, sources: SecretSource[], required = true): string | undefined {
-	const cached = secretCache.get(name);
-	if (cached) return cached;
-	for (const source of sources) {
-		const raw = source.env
-			? process.env[source.env]
-			: source.file && existsSync(source.file)
-				? readFileSync(source.file, "utf8")
-				: undefined;
-		const value = (raw ?? "").replace(/\s+/g, "");
-		if (!value) continue;
-		secretCache.set(name, value);
-		return value;
+async function loadSecrets(): Promise<Secrets> {
+	if (secretCache && Date.now() < secretCache.expiresAt) return secretCache.values;
+	if (secretLoad) return secretLoad;
+	secretCache = undefined;
+	if (secretExpiry) clearTimeout(secretExpiry);
+	const args = ["item", "get", OP_ITEM, "--vault", OP_VAULT, "--format=json", "--reveal"];
+	// Service-account authentication must not select a desktop user account.
+	const env = { ...process.env };
+	// This extension uses direct CLI authentication, never an ambient Connect server.
+	delete env.OP_CONNECT_HOST;
+	delete env.OP_CONNECT_TOKEN;
+	if (env.OP_SERVICE_ACCOUNT_TOKEN) {
+		delete env.OP_ACCOUNT;
+		env.OP_BIOMETRIC_UNLOCK_ENABLED = "false";
+	} else {
+		args.push("--account", OP_ACCOUNT);
 	}
+	secretLoad = new Promise<Secrets>((resolve, reject) => {
+		const child = execFile("op", args, {
+			env, encoding: "utf8", timeout: 30_000, killSignal: "SIGKILL", maxBuffer: 1024 * 1024,
+		}, (error, stdout) => {
+			// Never propagate CLI stderr/stdout or attach the original error: these may contain secrets.
+			if (error) {
+				const reason = (error as NodeJS.ErrnoException).code === "ENOENT"
+					? "Install 1Password CLI (op) and ensure it is on PATH."
+					: "Unlock/sign in to 1Password, or supply a read-only OP_SERVICE_ACCOUNT_TOKEN with vault access. Check WEB_RESEARCH_OP_ACCOUNT/VAULT/ITEM settings.";
+				reject(new Error(`Web research could not read 1Password credentials. ${reason}`));
+				return;
+			}
+			try {
+				const item = JSON.parse(stdout);
+				if (!Array.isArray(item.fields)) throw new Error();
+				const values: Secrets = {};
+				for (const name of SECRET_NAMES) {
+					const fields = item.fields.filter((field: any) => field.label === name);
+					if (fields.length > 1) throw new Error();
+					const field = fields[0];
+					if (!field) continue;
+					if (field.type !== "CONCEALED" || typeof field.value !== "string") throw new Error();
+					const value = field.value.trim();
+					if (/\s/.test(value)) throw new Error();
+					if (value) values[name] = value;
+				}
+				resolve(values);
+			} catch {
+				reject(new Error("Invalid 1Password web research item: use unique, concealed API-key fields with the documented names."));
+			}
+		});
+		// Never allow a headless process to wait for a terminal password prompt.
+		child.stdin?.end();
+	});
+	try {
+		const values = await secretLoad;
+		secretCache = { values, expiresAt: Date.now() + SECRET_TTL_MS };
+		secretExpiry = setTimeout(() => { secretCache = undefined; }, SECRET_TTL_MS);
+		secretExpiry.unref();
+		return values;
+	} finally {
+		secretLoad = undefined;
+	}
+}
+
+async function secret(name: SecretName, required = true): Promise<string | undefined> {
+	const value = (await loadSecrets())[name];
+	if (value) return value;
 	if (!required) return undefined;
-	const choices = sources.map((source) => source.env ? `$${source.env}` : source.file).join(", ");
-	throw new Error(`Missing ${name}; configure one of: ${choices}`);
+	throw new Error(`Missing ${name} in the 1Password web research item; add a concealed field with this name.`);
 }
 
 function normalizeUrl(input: string) {
@@ -161,8 +199,12 @@ function sleep(ms: number, signal?: AbortSignal | null) {
 }
 
 class HttpError extends Error {
-	constructor(message: string, readonly status: number, readonly body: unknown) {
+	readonly status: number;
+	readonly body: unknown;
+	constructor(message: string, status: number, body: unknown) {
 		super(message);
+		this.status = status;
+		this.body = body;
 	}
 }
 
@@ -211,9 +253,9 @@ async function requestJson(
 	throw lastError instanceof Error ? lastError : new Error(`${service} failed`);
 }
 
-function exaHeaders() {
+async function exaHeaders() {
 	return {
-		"x-api-key": secret("EXA_API_KEY", EXA_KEYS)!,
+		"x-api-key": (await secret("EXA_API_KEY"))!,
 		"Content-Type": "application/json",
 		Accept: "application/json",
 	};
@@ -229,7 +271,7 @@ async function exa(path: string, body: unknown, signal: AbortSignal | undefined,
 	try {
 		return await requestJson(url.toString(), {
 			method: "POST",
-			headers: exaHeaders(),
+			headers: await exaHeaders(),
 			body: JSON.stringify(body),
 			signal,
 		}, service, 2, "safe");
@@ -238,9 +280,9 @@ async function exa(path: string, body: unknown, signal: AbortSignal | undefined,
 	}
 }
 
-function firecrawlHeaders() {
+async function firecrawlHeaders() {
 	return {
-		Authorization: `Bearer ${secret("FIRECRAWL_API_KEY", FIRECRAWL_KEYS)}`,
+		Authorization: `Bearer ${await secret("FIRECRAWL_API_KEY")}`,
 		"Content-Type": "application/json",
 		Accept: "application/json",
 	};
@@ -262,7 +304,7 @@ async function firecrawl(
 ) {
 	return requestJson(firecrawlUrl(pathOrUrl), {
 		method,
-		headers: firecrawlHeaders(),
+		headers: await firecrawlHeaders(),
 		body: body === undefined ? undefined : JSON.stringify(body),
 		signal,
 	}, service, mode === "submission" ? 1 : 2, mode);
@@ -566,8 +608,8 @@ async function braveRequestWithLocation(
 	useAiKey: boolean,
 	locationHeaders: Partial<Record<string, unknown>>,
 ) {
-	const aiKey = useAiKey ? secret("BRAVE_AI_API_KEY", BRAVE_AI_KEYS, false) : undefined;
-	const key = aiKey ?? secret("BRAVE_SEARCH_API_KEY", BRAVE_SEARCH_KEYS);
+	const aiKey = useAiKey ? await secret("BRAVE_AI_API_KEY", false) : undefined;
+	const key = aiKey ?? await secret("BRAVE_SEARCH_API_KEY");
 	const keyName = aiKey ? "ai" : "search";
 	const headers = Object.fromEntries(Object.entries(locationHeaders).map(([name, value]) => [name, String(value)]));
 	return withBraveLimit(keyName, () => requestJson(url.toString(), {
@@ -727,7 +769,7 @@ function isExaFetchCompatible(params: any) {
 
 function fetchProviderDisplay(params: any) {
 	if (params.provider && params.provider !== "auto") return params.provider;
-	return isExaFetchCompatible(params) && secret("EXA_API_KEY", EXA_KEYS, false) ? "exa" : "firecrawl";
+	return isExaFetchCompatible(params) ? "auto (exa preferred)" : "firecrawl";
 }
 
 function renderProviderCall(tool: string, provider: string, theme: Theme) {
@@ -835,11 +877,11 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			}
 			if (!specs.length) throw new Error(`No provider supports requested sources: ${requested.join(", ")}`);
 
-			const available = (name: SearchProvider) => name === "exa"
-				? Boolean(secret("EXA_API_KEY", EXA_KEYS, false))
+			const available = async (name: SearchProvider) => name === "exa"
+				? Boolean(await secret("EXA_API_KEY", false))
 				: name === "firecrawl"
-					? Boolean(secret("FIRECRAWL_API_KEY", FIRECRAWL_KEYS, false))
-					: Boolean(secret("BRAVE_SEARCH_API_KEY", BRAVE_SEARCH_KEYS, false));
+					? Boolean(await secret("FIRECRAWL_API_KEY", false))
+					: Boolean(await secret("BRAVE_SEARCH_API_KEY", false));
 			const compatible = (name: SearchProvider, sources: string[]) => {
 				if (name === "exa") return sources.every((source) => ["web", "news"].includes(source))
 					&& !params.categories?.length && params.content !== "snippets" && params.offset === undefined && !params.goggles;
@@ -852,8 +894,14 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			const routingWarnings: string[] = [];
 			if (provider === "auto") {
 				for (const spec of specs) {
-					if (available(spec.provider)) continue;
-					const replacement = fallbackOrder.find((name) => name !== spec.provider && available(name) && compatible(name, spec.sources));
+					if (await available(spec.provider)) continue;
+					let replacement: SearchProvider | undefined;
+					for (const name of fallbackOrder) {
+						if (name !== spec.provider && compatible(name, spec.sources) && await available(name)) {
+							replacement = name;
+							break;
+						}
+					}
 					if (!replacement) throw new Error(`Missing ${spec.provider} API key required for sources/features: ${spec.sources.join(", ")}`);
 					routingWarnings.push(`${spec.provider} key unavailable; routed compatible search to ${replacement}.`);
 					spec.provider = replacement;
@@ -958,7 +1006,7 @@ export default function webResearchExtension(pi: ExtensionAPI) {
 			if (provider === "exa" && !exaCompatible) throw new Error("provider=exa supports markdown/highlights/summary without Firecrawl-only browser, PDF-limit, cache, or privacy controls");
 
 			let fallbackWarning: string | undefined;
-			const useExa = provider === "exa" || (provider === "auto" && exaCompatible && Boolean(secret("EXA_API_KEY", EXA_KEYS, false)));
+			const useExa = provider === "exa" || (provider === "auto" && exaCompatible && Boolean(await secret("EXA_API_KEY", false)));
 			if (useExa) {
 				try {
 					const fetched = await fetchExaPage(url, output as "markdown" | "summary" | "highlights", params, signal);

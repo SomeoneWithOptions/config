@@ -85,6 +85,7 @@ python -m json.tool "$ROOT/agents/pi/agent/settings.json" >/dev/null
 # Pi web research source must ship in repo; ConfigFiles installs every tracked
 # extension on fresh machines and config replays.
 test -f "$ROOT/agents/pi/agent/extensions/web-research.ts"
+node "$ROOT/tests/web-research-auth.mjs"
 grep -q 'name: "web_search"' "$ROOT/agents/pi/agent/extensions/web-research.ts"
 grep -q 'for extension in "\$SCRIPT_DIR"/agents/pi/agent/extensions/\*.ts' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/scripts/apply/dotfiles.sh"

@@ -1,19 +1,15 @@
 onboarding = false
-# Mirrors the Omarchy tmux config in config/tmux/tmux.conf
-# tmux session -> herdr workspace, tmux window -> herdr tab, tmux pane -> herdr pane
-
 [theme]
-# tmux ran on the terminal's own palette (bg=default, fg=default, ANSI blue accents)
 name = "one-dark"
 
 auto_switch = false
 [theme.custom]
 # The active tab is drawn as panel_bg text on an accent background, so panel_bg
-# has to be dark for it to read - same colors as status-left's "#[fg=black,bg=blue]"
+# has to be dark for it to read.
 panel_bg = "#252a33"
 
 [terminal]
-# Matches -c "#{pane_current_path}" on every split, window, and session
+# New panes, tabs, and workspaces inherit the current directory.
 new_cwd = "follow"
 
 [keys]
@@ -41,16 +37,15 @@ focus_pane_right = "ctrl+alt+right"
 
 resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
 
-# Like resize-pane on C-M-S-arrows
 resize_pane_left = "ctrl+alt+shift+left"
 resize_pane_down = "ctrl+alt+shift+down"
 resize_pane_up = "ctrl+alt+shift+up"
 resize_pane_right = "ctrl+alt+shift+right"
 
-# No tmux equivalent; herdr's default prefix+shift+p is taken by previous session
+# Herdr's default prefix+shift+p is taken by previous workspace.
 rename_pane = "prefix+shift+o"
 
-# Windows -> tabs
+# Tabs
 new_tab = "prefix+c"
 rename_tab = "prefix+r"
 close_tab = "prefix+k"
@@ -58,11 +53,10 @@ switch_tab = ["prefix+1..9", "alt+1..9"]
 previous_tab = ["prefix+p", "alt+left"]
 next_tab = ["prefix+n", "alt+right"]
 
-# Like swap-window -t -1/+1 on M-S-Left/Right
 move_tab_previous = "alt+shift+left"
 move_tab_next = "alt+shift+right"
 
-# Sessions -> workspaces
+# Workspaces
 new_workspace = "prefix+shift+c"
 rename_workspace = "prefix+shift+r"
 close_workspace = "prefix+shift+k"
@@ -78,24 +72,17 @@ pane_borders = "always"
 pane_gaps = true
 pane_outer_borders = true
 
-# tmux had no scrollbar column beside its panes
 pane_scrollbars = false
 
-# kill-window and kill-session never asked
 confirm_close = false
 
-# automatic-rename gave windows a name without prompting
 prompt_new_tab_name = false
 
-# set -g mouse on
 mouse_capture = true
 
-# status-right had the zoom flag followed by #h
 tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
 
-# set -g set-titles on / set -g set-titles-string '#h:#W', where tmux's #W was
-# the basename of the pane cwd. This is what Hyprland shows in the group bar,
-# and it resolves on the server so remote sessions name the remote host.
+# Hyprland shows this title in the group bar; remote workspaces show remote host.
 window_title = "{hostname}: {workspace}"
 agent_panel_sort = "spaces"
 

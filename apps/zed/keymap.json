@@ -28,5 +28,27 @@
       "ctrl-insert": "terminal::Copy",
       "shift-insert": "terminal::Paste"
     }
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-shift-k ctrl-shift-o": [
+        "projects::OpenRemote",
+        {
+          "from_existing_connection": false
+        }
+      ]
+    }
+  },
+  {
+    "context": "Workspace",
+    "unbind": {
+      "ctrl-alt-shift-o": [
+        "projects::OpenRemote",
+        {
+          "from_existing_connection": false
+        }
+      ]
+    }
   }
 ]

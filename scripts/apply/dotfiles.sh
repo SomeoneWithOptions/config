@@ -74,9 +74,6 @@ copy_required "$SCRIPT_DIR/theme/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/se
 copy_required "$SCRIPT_DIR/theme/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
 copy_required "$SCRIPT_DIR/shell/git/ignore" "$HOME/.config/git/ignore"
 
-# Alacritty Configuration
-copy_required "$SCRIPT_DIR/apps/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
-
 # Ghostty Configuration
 copy_required "$SCRIPT_DIR/apps/ghostty/config" "$HOME/.config/ghostty/config"
 

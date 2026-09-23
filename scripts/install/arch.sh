@@ -134,7 +134,7 @@ install_arch_packages() {
 
   log "Ensuring packages are installed with pacman/yay."
   local package
-  # Omarchy's own base/hardware installs already cover git, tmux, quickshell(-git)
+  # Omarchy's own base/hardware installs already cover git, quickshell(-git)
   # and vulkan-{intel,radeon,asahi} for the detected GPU; curl/gnupg/openssh arrive
   # as dependencies. Listing them here was a no-op.
   #
@@ -146,7 +146,6 @@ install_arch_packages() {
   # prompt N and aborts the whole step -- and it is a downgrade besides.
   for package in \
     fish \
-    alacritty \
     ghostty \
     herdr \
     vim \

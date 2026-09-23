@@ -1,7 +1,7 @@
 # Dynamic Omarchy theme colors
 config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"
 
-# Match current Alacritty profile
+# Font profile
 font-family = "Azeret Mono"
 font-style = Regular
 font-size = 13
@@ -34,7 +34,7 @@ keybind = shift+insert=paste_from_clipboard
 keybind = control+insert=copy_to_clipboard
 # Send Shift+Enter as CSI-u so TUIs can distinguish it from Enter.
 keybind = shift+enter=csi:13;2u
-# Legacy encoding sends Alt+Shift+Enter the same as Alt+Enter; send CSI-u so tmux can match M-S-Enter.
+# Legacy encoding sends Alt+Shift+Enter the same as Alt+Enter; send CSI-u for distinct shortcuts.
 keybind = alt+shift+enter=csi:13;4u
 keybind = shift+arrow_up=scroll_page_up
 keybind = shift+arrow_down=scroll_page_down

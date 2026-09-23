@@ -200,7 +200,7 @@ unset MOCK_INSTALLED MOCK_NOT_IN_REPO
 # Omarchy: everything already installed reports skip where detection exists
 # and runs no package installers.
 soft_new_env
-MOCK_INSTALLED='fish alacritty ghostty herdr vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli turso-cli-bin'
+MOCK_INSTALLED='fish ghostty herdr vim terraform aws-cli-v2 google-cloud-cli bind fwupd cmatrix vlc gsfonts ttf-liberation libfprint fprintd usbutils libcamera libcamera-ipa libcamera-tools pipewire-libcamera gst-plugin-libcamera v4l2loopback-dkms zed omazed zen-browser-bin tailscale 1password 1password-cli turso-cli-bin'
 # turso whoami fails, so the sign-in follow-up note must be written.
 MOCK_TURSO_STATUS=1
 export MOCK_INSTALLED MOCK_TURSO_STATUS
@@ -334,7 +334,7 @@ unset MOCK_CURL_STATUS
 soft_new_env
 SOFT_UNAME=Darwin
 export SOFT_UNAME
-MOCK_INSTALLED='git gh tmux fish vim mise alacritty ghostty'
+MOCK_INSTALLED='git gh fish vim mise ghostty'
 export MOCK_INSTALLED
 soft_run
 [[ $status == 0 ]]

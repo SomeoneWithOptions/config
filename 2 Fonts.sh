@@ -59,5 +59,5 @@ else
 fi
 
 # No `omarchy font set` here: it only handles monospace, and the terminal font is
-# already pinned by alacritty/ghostty config in this repo.
+# already pinned by Ghostty and Foot config in this repo.
 echo "Fonts installed to $INSTALL_DIR"

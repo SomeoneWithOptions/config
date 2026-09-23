@@ -42,17 +42,6 @@ if [[ -n "${FISH_PATH:-}" ]]; then
     fi
 fi
 
-if [[ "$OS_NAME" == "Darwin" ]]; then
-    # Disable font smoothing for crisp text rendering in Alacritty.
-    if [[ "$(defaults read org.alacritty AppleFontSmoothing 2>/dev/null || true)" != "0" ]]; then
-        if (( CHECK )); then
-            report_drift "defaults org.alacritty AppleFontSmoothing" "" "not 0"
-        else
-            defaults write org.alacritty AppleFontSmoothing -int 0
-        fi
-    fi
-fi
-
 if [[ "$OS_NAME" == "Linux" ]]; then
     if (( ! CHECK )); then
         if command -v hyprctl >/dev/null 2>&1; then

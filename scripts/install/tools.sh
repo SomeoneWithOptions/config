@@ -13,13 +13,14 @@ omarchy_mise_install() {
     "omarchy mise install ${package}" omarchy-mise-install "$package" "$command_name"
 }
 
-# pi, gh, Claude Code and Codex are daily drivers on both machine types.
-# Omarchy provisions the first three; install any missing CLI here.
+# Agent CLIs used on both machine types. Omarchy provisions pi, gh and Claude
+# Code; install any missing CLI here.
 install_agent_clis() {
   install_pi
   install_gh
   install_claude_code
   install_codex
+  install_opencode
 }
 
 install_codex() {
@@ -32,6 +33,22 @@ install_codex() {
   else
     warn "npm not found; cannot install Codex."
     report_software_progress fail 'Codex not installed'
+  fi
+}
+
+install_opencode() {
+  if has_command opencode; then
+    log "OpenCode is already installed."
+    report_software_progress skip 'OpenCode already installed'
+  elif [ "$(uname -s)" = "Linux" ]; then
+    # OpenCode publishes a stable package in the Arch repositories.
+    arch_install_if_missing opencode
+  elif has_command brew; then
+    progress_step 'Installing OpenCode…' 'OpenCode installed' 'OpenCode installation failed' \
+      'Homebrew install OpenCode' brew install anomalyco/tap/opencode
+  else
+    warn "Neither pacman nor brew found; cannot install OpenCode."
+    report_software_progress fail 'OpenCode not installed'
   fi
 }
 

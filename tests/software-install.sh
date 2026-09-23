@@ -189,7 +189,9 @@ grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'done\tgh installed' "$SOFT/software-events"
 grep -q $'done\tClaude Code installed' "$SOFT/software-events"
 grep -q $'done\tCodex installed' "$SOFT/software-events"
+grep -q $'done\topencode installed' "$SOFT/software-events"
 grep -q '^npm install --global @openai/codex$' "$SOFT/calls"
+grep -q '^sudo pacman -S --needed --noconfirm opencode$' "$SOFT/calls"
 grep -q '^omarchy-mise-install gh gh$' "$SOFT/calls"
 grep -q '^omarchy-mise-install claude claude$' "$SOFT/calls"
 grep -q $'done\tcommiter installed' "$SOFT/software-events"
@@ -212,7 +214,7 @@ MOCK_INSTALLED='fish ghostty herdr vim terraform aws-cli-v2 google-cloud-cli bin
 MOCK_TURSO_STATUS=1
 export MOCK_INSTALLED MOCK_TURSO_STATUS
 printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/loom"
-for present in gh claude codex; do
+for present in gh claude codex opencode; do
   printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/$present"
   chmod +x "$SOFT/bin/$present"
 done
@@ -239,7 +241,9 @@ grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'skip\tgh already installed' "$SOFT/software-events"
 grep -q $'skip\tClaude Code already installed' "$SOFT/software-events"
 grep -q $'skip\tCodex already installed' "$SOFT/software-events"
+grep -q $'skip\tOpenCode already installed' "$SOFT/software-events"
 soft_assert_absent '^npm install --global @openai/codex$' "$SOFT/calls"
+soft_assert_absent '^sudo pacman -S --needed --noconfirm opencode$' "$SOFT/calls"
 soft_assert_absent '^omarchy-mise-install gh' "$SOFT/calls"
 soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tcommiter already installed' "$SOFT/software-events"
@@ -259,7 +263,7 @@ unset MOCK_INSTALLED MOCK_TURSO_STATUS
 # Omarchy: a failing optional package warns and reports failure, later packages
 # continue, and no success is ever claimed for the failed operation.
 soft_new_env
-MOCK_FAIL_PACKAGES='fish'
+MOCK_FAIL_PACKAGES='fish opencode'
 MOCK_NOT_IN_REPO='libfprint turso-cli-bin'
 MOCK_YAY_STATUS=1
 export MOCK_FAIL_PACKAGES MOCK_NOT_IN_REPO MOCK_YAY_STATUS
@@ -267,6 +271,8 @@ soft_run
 [[ $status == 0 ]]
 grep -q $'fail\tfish installation failed' "$SOFT/software-events"
 ! grep -q $'done\tfish installed' "$SOFT/software-events"
+grep -q $'fail\topencode installation failed' "$SOFT/software-events"
+! grep -q $'done\topencode installed' "$SOFT/software-events"
 grep -q $'fail\tlibfprint installation failed' "$SOFT/software-events"
 grep -q $'done\tvim installed' "$SOFT/software-events"
 grep -q 'pacman install fish failed.' "$SOFT/report/warnings"
@@ -362,7 +368,9 @@ grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'skip\tgh already installed' "$SOFT/software-events"
 grep -q $'done\tClaude Code installed' "$SOFT/software-events"
 grep -q $'done\tCodex installed' "$SOFT/software-events"
+grep -q $'done\tOpenCode installed' "$SOFT/software-events"
 grep -q '^npm install --global @openai/codex$' "$SOFT/calls"
+grep -q '^brew install anomalyco/tap/opencode$' "$SOFT/calls"
 # The Omarchy wrapper is never used off Omarchy, even when it is on PATH.
 soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tclasp already installed' "$SOFT/software-events"

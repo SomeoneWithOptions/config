@@ -38,7 +38,7 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git fish vim mise 1password-cli rtk node@24 google-cloud-sdk; do
+  for package in git fish bat vim mise 1password-cli rtk node@24 google-cloud-sdk; do
     brew_install_formula_if_missing "$package"
   done
 

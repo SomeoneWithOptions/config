@@ -115,6 +115,11 @@ SH
 printf 'curl %s\n' "$*" >>"$MOCK_CALLS"
 exit "${MOCK_CURL_STATUS:-0}"
 SH
+  cat >"$SOFT/bin/npm" <<'SH'
+#!/bin/sh
+printf 'npm %s\n' "$*" >>"$MOCK_CALLS"
+exit "${MOCK_NPM_STATUS:-0}"
+SH
   chmod +x "$SOFT/bin/"*
 }
 
@@ -183,6 +188,8 @@ grep -q $'done\t1Password configured' "$SOFT/software-events"
 grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'done\tgh installed' "$SOFT/software-events"
 grep -q $'done\tClaude Code installed' "$SOFT/software-events"
+grep -q $'done\tCodex installed' "$SOFT/software-events"
+grep -q '^npm install --global @openai/codex$' "$SOFT/calls"
 grep -q '^omarchy-mise-install gh gh$' "$SOFT/calls"
 grep -q '^omarchy-mise-install claude claude$' "$SOFT/calls"
 grep -q $'done\tcommiter installed' "$SOFT/software-events"
@@ -205,7 +212,7 @@ MOCK_INSTALLED='fish ghostty herdr vim terraform aws-cli-v2 google-cloud-cli bin
 MOCK_TURSO_STATUS=1
 export MOCK_INSTALLED MOCK_TURSO_STATUS
 printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/loom"
-for present in gh claude; do
+for present in gh claude codex; do
   printf '#!/bin/sh\nexit 0\n' >"$SOFT/bin/$present"
   chmod +x "$SOFT/bin/$present"
 done
@@ -231,6 +238,8 @@ grep -q $'skip\trtk already installed' "$SOFT/software-events"
 grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'skip\tgh already installed' "$SOFT/software-events"
 grep -q $'skip\tClaude Code already installed' "$SOFT/software-events"
+grep -q $'skip\tCodex already installed' "$SOFT/software-events"
+soft_assert_absent '^npm install --global @openai/codex$' "$SOFT/calls"
 soft_assert_absent '^omarchy-mise-install gh' "$SOFT/calls"
 soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tcommiter already installed' "$SOFT/software-events"
@@ -352,6 +361,8 @@ grep -q $'done\tcommiter installed' "$SOFT/software-events"
 grep -q $'skip\tpi already installed' "$SOFT/software-events"
 grep -q $'skip\tgh already installed' "$SOFT/software-events"
 grep -q $'done\tClaude Code installed' "$SOFT/software-events"
+grep -q $'done\tCodex installed' "$SOFT/software-events"
+grep -q '^npm install --global @openai/codex$' "$SOFT/calls"
 # The Omarchy wrapper is never used off Omarchy, even when it is on PATH.
 soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tclasp already installed' "$SOFT/software-events"

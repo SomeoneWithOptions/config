@@ -13,15 +13,26 @@ omarchy_mise_install() {
     "omarchy mise install ${package}" omarchy-mise-install "$package" "$command_name"
 }
 
-# pi, gh and Claude Code are daily drivers on both machine types. Omarchy
-# mise-installs all three in its own user provisioning (install/user/mise.sh),
-# so on a current Omarchy laptop this only confirms them; a skipped, failed or
-# pre-Quattro provision gets them installed here instead. macOS has no
-# equivalent step, so there they are installed from scratch.
+# pi, gh, Claude Code and Codex are daily drivers on both machine types.
+# Omarchy provisions the first three; install any missing CLI here.
 install_agent_clis() {
   install_pi
   install_gh
   install_claude_code
+  install_codex
+}
+
+install_codex() {
+  if has_command codex; then
+    log "Codex is already installed."
+    report_software_progress skip 'Codex already installed'
+  elif has_command npm; then
+    progress_step 'Installing Codex…' 'Codex installed' 'Codex installation failed' \
+      'npm install @openai/codex' npm install --global @openai/codex
+  else
+    warn "npm not found; cannot install Codex."
+    report_software_progress fail 'Codex not installed'
+  fi
 }
 
 install_pi() {

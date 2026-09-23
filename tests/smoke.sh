@@ -150,6 +150,7 @@ HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
 test -z "$(ls -A "$check_home")"
 grep -q "^== $check_home/.config/fish/config.fish: missing" "$check_out"
 grep -q "^== $check_home/.pi/agent/AGENTS.md: missing" "$check_out"
+grep -q "^== $check_home/.codex/config.toml: missing" "$check_out"
 grep -q "^== $check_home/.config/herdr/config.toml: missing" "$check_out"
 grep -q "^== $check_home/.claude/skills/herdr: missing" "$check_out"
 grep -q "^== $check_home/.pi/agent/skills/herdr: missing" "$check_out"
@@ -196,6 +197,9 @@ grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/scripts
 # Claude skill links must not wait on ~/.claude already existing.
 ! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/scripts/apply/dotfiles.sh"
 [[ -f "$ROOT/apps/herdr/config.toml" ]]
+[[ -f "$ROOT/agents/codex/config.toml" ]]
+grep -q 'copy_required_if_missing "\$SCRIPT_DIR/agents/codex/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
+python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/agents/codex/config.toml"
 grep -q 'copy_required "\$SCRIPT_DIR/apps/herdr/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
 python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/apps/herdr/config.toml"
 grep -q 'arch_install_if_missing "\$package"' "$ROOT/scripts/install/arch.sh"

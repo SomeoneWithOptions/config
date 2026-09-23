@@ -146,6 +146,7 @@ install_arch_packages() {
   # prompt N and aborts the whole step -- and it is a downgrade besides.
   for package in \
     fish \
+    bat \
     ghostty \
     herdr \
     vim \

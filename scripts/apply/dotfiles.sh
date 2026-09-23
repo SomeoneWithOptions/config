@@ -1,7 +1,7 @@
 # Managed config file copies; no live system state is changed here.
 # Requires CHECK/DRIFT/OS_NAME/SCRIPT_DIR and lib/copy.sh.
 
-# Pi Configuration
+# Agent Configuration
 copy_required "$SCRIPT_DIR/agents/pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
 for extension in "$SCRIPT_DIR"/agents/pi/agent/extensions/*.ts; do
     copy_required "$extension" "$HOME/.pi/agent/extensions/$(basename "$extension")"
@@ -9,6 +9,10 @@ done
 # Seed only: pi writes this file itself (lastChangelogVersion, model picks made in
 # the TUI). Overwriting it on every update replayed the changelog and reset models.
 copy_required_if_missing "$SCRIPT_DIR/agents/pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
+
+# Codex updates its own user config; seed fresh machines without overwriting live choices.
+copy_required_if_missing "$SCRIPT_DIR/agents/codex/config.toml" "$HOME/.codex/config.toml"
+
 for skill in "$SCRIPT_DIR"/agents/pi/agent/skills/*; do
     skill_name="$(basename "$skill")"
     # a-front is user-updatable: seed it once, never overwrite local edits on replay.

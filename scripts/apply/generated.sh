@@ -2,6 +2,14 @@
 # compared/regenerated rather than copied; also owns the shell restart that
 # the regeneration requires. The framed notifications clone is copied here so
 # Loom can reapply its rich-card overlay after rsync --delete.
+#
+# The repo clone already vendors the overlay (card + patched core files) with
+# local edits on top, so the Loom helper would classify it `unknown` and
+# refuse. Only hand the clone to Loom when the repo ships a plain baseline.
+
+repo_vendors_loom_card() {
+    [[ -f $SCRIPT_DIR/system/omarchy/plugins/andres.notifications/components/RecordingNotificationCard.qml ]]
+}
 
 loom_notifications_overlay() {
     local helper="" loom_bin="" source_root=""
@@ -27,6 +35,7 @@ expected_notifications_tree() {
     local dest=$1 helper=""
     mkdir -p "$dest"
     cp -a "$SCRIPT_DIR/system/omarchy/plugins/andres.notifications/." "$dest/"
+    repo_vendors_loom_card && return 0
     helper=$(loom_notifications_overlay) || return 0
     # Hash mismatch leaves dest as the config baseline so --check reports drift
     # instead of aborting the whole replay.
@@ -76,7 +85,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
             rm -rf "$notifications_expected"
             copy_dir_required "$notifications_src" "$notifications_live"
             overlay_helper=""
-            if overlay_helper=$(loom_notifications_overlay); then
+            if ! repo_vendors_loom_card && overlay_helper=$(loom_notifications_overlay); then
                 overlay_status=0
                 overlay_result=
                 overlay_result=$("$overlay_helper" apply --target "$notifications_live" --no-restart) || overlay_status=$?

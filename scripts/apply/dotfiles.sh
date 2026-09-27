@@ -13,6 +13,21 @@ copy_required_if_missing "$SCRIPT_DIR/agents/pi/agent/settings.json" "$HOME/.pi/
 # Codex updates its own user config; seed fresh machines without overwriting live choices.
 copy_required_if_missing "$SCRIPT_DIR/agents/codex/config.toml" "$HOME/.codex/config.toml"
 
+# Same for Claude Code: the /config screen, plugin updates, and theme picks rewrite
+# settings.json, so seed it and leave live edits alone. The SessionStart hook points
+# at the herdr-owned ~/.claude/hooks/herdr-agent-state.sh, not a repo file.
+copy_required_if_missing "$SCRIPT_DIR/agents/claude/settings.json" "$HOME/.claude/settings.json"
+
+# Global rule for Claude Code, Codex, and OpenCode (pi gets it from its tracked
+# AGENTS.md). Append-only: these files also hold local, unmanaged instructions.
+NO_COMMIT_RULE="- Never commit code unless asked to."
+for agent_instructions in \
+    "$HOME/.claude/CLAUDE.md" \
+    "$HOME/.codex/AGENTS.md" \
+    "$HOME/.config/opencode/AGENTS.md"; do
+    append_line_once "$NO_COMMIT_RULE" "$agent_instructions"
+done
+
 for skill in "$SCRIPT_DIR"/agents/pi/agent/skills/*; do
     skill_name="$(basename "$skill")"
     # a-front is user-updatable: seed it once, never overwrite local edits on replay.

@@ -153,7 +153,7 @@ append_line_once() {
     local line="$1"
     local file="$2"
 
-    if [[ -f "$file" ]] && grep -qxF "$line" "$file"; then
+    if [[ -f "$file" ]] && grep -qxF -- "$line" "$file"; then
         return
     fi
     if (( CHECK )); then

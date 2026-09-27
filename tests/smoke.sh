@@ -150,7 +150,12 @@ HOME="$check_home" bash "$ROOT/4 ConfigFiles.sh" --check >"$check_out" 2>&1
 test -z "$(ls -A "$check_home")"
 grep -q "^== $check_home/.config/fish/config.fish: missing" "$check_out"
 grep -q "^== $check_home/.pi/agent/AGENTS.md: missing" "$check_out"
+grep -qxF -- '- Never commit code unless asked to.' "$ROOT/agents/pi/agent/AGENTS.md"
 grep -q "^== $check_home/.codex/config.toml: missing" "$check_out"
+grep -q "^== $check_home/.claude/settings.json: missing" "$check_out"
+for agent_instructions in .claude/CLAUDE.md .codex/AGENTS.md .config/opencode/AGENTS.md; do
+  grep -qxF "== $check_home/$agent_instructions: missing line: - Never commit code unless asked to." "$check_out"
+done
 grep -q "^== $check_home/.config/herdr/config.toml: missing" "$check_out"
 grep -q "^== $check_home/.claude/skills/herdr: missing" "$check_out"
 grep -q "^== $check_home/.pi/agent/skills/herdr: missing" "$check_out"
@@ -200,6 +205,10 @@ grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/scripts
 [[ -f "$ROOT/agents/codex/config.toml" ]]
 grep -q 'copy_required_if_missing "\$SCRIPT_DIR/agents/codex/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
 python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/agents/codex/config.toml"
+# Claude Code rewrites its own settings.json; config replay seeds it, never clobbers it.
+python -m json.tool "$ROOT/agents/claude/settings.json" >/dev/null
+grep -q 'copy_required_if_missing "\$SCRIPT_DIR/agents/claude/settings.json"' "$ROOT/scripts/apply/dotfiles.sh"
+! grep -q 'copy_required "\$SCRIPT_DIR/agents/claude/settings.json"' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'copy_required "\$SCRIPT_DIR/apps/herdr/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
 python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/apps/herdr/config.toml"
 grep -q 'arch_install_if_missing "\$package"' "$ROOT/scripts/install/arch.sh"

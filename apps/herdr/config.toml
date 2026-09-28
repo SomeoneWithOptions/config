@@ -9,8 +9,8 @@ auto_switch = false
 panel_bg = "#252a33"
 
 [terminal]
-# New panes, tabs, and workspaces inherit the current directory.
-new_cwd = "follow"
+# Start new panes, tabs, and workspaces in this machine's home directory.
+new_cwd = "home"
 
 [keys]
 prefix = "ctrl+space"

@@ -55,6 +55,20 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         omarchy restart hyprsunset {OMARCHY_UPDATE_LOCK_FD}>&- || true
     fi
 
+    # The Azeret Mono spacing rule in fonts.conf runs at scan time, and
+    # "2 Fonts.sh" builds the cache before that file is installed. Rebuild
+    # whenever the cache still has the untagged faces.
+    if command -v fc-list >/dev/null 2>&1; then
+        azeret_spacing="$(fc-list 'Azeret Mono' spacing | sort -u)"
+        if [[ -n "$azeret_spacing" && "$azeret_spacing" != ":spacing=100" ]]; then
+            if (( CHECK )); then
+                report_drift "fontconfig cache" "" "Azeret Mono not tagged spacing=mono; repo would run fc-cache -f"
+            else
+                fc-cache -f || true
+            fi
+        fi
+    fi
+
     if command -v xdg-settings >/dev/null 2>&1 && command -v zen-browser >/dev/null 2>&1; then
         # Omarchy shells export BROWSER=omarchy-launch-browser (default/bash/envs);
         # xdg-settings refuses `set` and skews `get` while BROWSER is in the env.

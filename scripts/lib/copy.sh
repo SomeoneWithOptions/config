@@ -112,6 +112,46 @@ copy_json_required() {
     printf 'Updated %s\n' "$dest_path"
 }
 
+# Keep selected top-level JSON keys machine-local while managing everything else.
+# Build the expected file with live values so both --check and apply preserve them.
+copy_json_preserving_keys_required() {
+    local source_path="$1" dest_path="$2" expected status=0
+    shift 2
+
+    if [[ ! -f "$source_path" || ! -f "$dest_path" ]]; then
+        copy_json_required "$source_path" "$dest_path"
+        return
+    fi
+
+    expected=$(mktemp)
+    if ! python3 - "$source_path" "$dest_path" "$expected" "$@" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source, dest, expected, *local_keys = sys.argv[1:]
+try:
+    repo = json.loads(Path(source).read_text())
+    live = json.loads(Path(dest).read_text())
+    if not isinstance(repo, dict) or not isinstance(live, dict):
+        raise ValueError("settings must be JSON objects")
+    for key in local_keys:
+        repo.pop(key, None)
+        if key in live:
+            repo[key] = live[key]
+    Path(expected).write_text(json.dumps(repo, indent=2) + "\n")
+except (OSError, ValueError) as error:
+    sys.exit(f"Cannot preserve local settings in {dest}: {error}")
+PY
+    then
+        rm -f "$expected"
+        return 1
+    fi
+    copy_json_required "$expected" "$dest_path" || status=$?
+    rm -f "$expected"
+    return "$status"
+}
+
 copy_dir_required() {
     local source_path="$1"
     local dest_path="$2"
@@ -191,4 +231,3 @@ link_agent_skill() {
     ln -s "$rel_target/$name" "$link"
     printf 'Linked %s -> %s\n' "$link" "$rel_target/$name"
 }
-

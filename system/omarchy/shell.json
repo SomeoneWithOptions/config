@@ -37,13 +37,13 @@
           "id": "andres.pill"
         },
         {
-          "id": "loom.recording"
-        },
-        {
           "id": "andres.idle"
         },
         {
           "id": "andres.dnd"
+        },
+        {
+          "id": "loom.recording"
         },
         {
           "id": "andres.tailscale"

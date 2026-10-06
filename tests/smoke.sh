@@ -20,6 +20,7 @@ for module in "$ROOT"/scripts/lib/*.sh "$ROOT"/scripts/install/*.sh "$ROOT"/scri
 done
 shopt -u nullglob
 sh -n "$ROOT/bootstrap.sh"
+python3 "$ROOT/tests/config-json.py"
 bash "$ROOT/tests/bootstrap.sh"
 bash "$ROOT/tests/software-install.sh"
 python -m json.tool "$ROOT/system/omarchy/shell.json" >/dev/null

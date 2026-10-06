@@ -103,7 +103,8 @@ copy_required "$SCRIPT_DIR/apps/foot/foot.ini" "$HOME/.config/foot/foot.ini"
 copy_required "$SCRIPT_DIR/apps/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 # Zed Configuration
-copy_required "$SCRIPT_DIR/apps/zed/settings.json" "$HOME/.config/zed/settings.json"
+# Zed maintains remote connection/project history; keep it local on check and apply.
+copy_json_preserving_keys_required "$SCRIPT_DIR/apps/zed/settings.json" "$HOME/.config/zed/settings.json" ssh_connections
 copy_required "$SCRIPT_DIR/apps/zed/keymap.json" "$HOME/.config/zed/keymap.json"
 
 if [[ "$OS_NAME" == "Darwin" ]]; then

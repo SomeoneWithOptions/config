@@ -101,4 +101,7 @@ o.bind("ALT + Z", "Undo", send_shortcut_once("CTRL", "Z"))
 
 -- Linear ticket capture. Toggles the andres.linear bar popup in place, so the
 -- keybind and the bar icon land on the same panel rather than two surfaces.
+-- >>> linear-omarchy-plugin (managed keybind) >>>
+hl.unbind("SUPER + SHIFT + L")
 o.bind("SUPER + SHIFT + L", "New Linear issue", "omarchy-shell andres.linear toggle")
+-- <<< linear-omarchy-plugin <<<

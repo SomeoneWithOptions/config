@@ -9,8 +9,9 @@ auto_switch = false
 panel_bg = "#252a33"
 
 [terminal]
-# Start new panes, tabs, and workspaces in this machine's home directory.
-new_cwd = "home"
+# New panes and tabs start in the source pane's cwd. new_cwd also covers
+# workspaces, so prefix+shift+c opens them in $HOME via [[keys.command]] below.
+new_cwd = "follow"
 
 [keys]
 prefix = "ctrl+space"
@@ -57,11 +58,16 @@ move_tab_previous = "alt+shift+left"
 move_tab_next = "alt+shift+right"
 
 # Workspaces
-new_workspace = "prefix+shift+c"
+new_workspace = ""
 rename_workspace = "prefix+shift+r"
 close_workspace = "prefix+shift+k"
 previous_workspace = ["prefix+shift+p", "alt+up"]
 next_workspace = ["prefix+shift+n", "alt+down"]
+
+[[keys.command]]
+key = "prefix+shift+c"
+type = "shell"
+command = 'herdr workspace create --cwd "$HOME" --focus'
 
 [ui]
 accent = "blue"
@@ -87,6 +93,7 @@ window_title = "{hostname}: {workspace}"
 agent_panel_sort = "spaces"
 
 show_agent_labels_on_pane_borders = false
+status_indicators = "symbols"
 [ui.toast]
 delivery = "off"
 

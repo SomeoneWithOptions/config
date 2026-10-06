@@ -14,6 +14,13 @@ case "$mode" in
     ;;
 esac
 
+editor="${OMARCHY_SCREENSHOT_EDITOR:-omasnap}"
+for arg in "$@"; do
+  if [[ "$arg" == --editor=* ]]; then
+    editor="${arg#--editor=}"
+  fi
+done
+
 capture_path="$PATH"
 if command -v quickshell >/dev/null 2>&1 \
   && [[ -x "$HOME/.local/lib/flicko-picker/slurp" ]] \
@@ -21,19 +28,39 @@ if command -v quickshell >/dev/null 2>&1 \
   capture_path="$HOME/.local/lib/flicko-picker:$capture_path"
 fi
 
-filepath="$(OMARCHY_SCREENSHOT_DIR="$HOME/Pictures/Screenshots" PATH="$capture_path" omarchy-capture-screenshot "$mode" save "$@" | tail -n 1)"
-[[ -n "$filepath" && -f "$filepath" ]] || exit 0
+# The Omarchy screenshot command now delegates to Omasnap: it bypasses slurp
+# and --save no longer prints a path. Keep Flicko by picking geometry directly.
+freeze_pid=""
+cleanup() {
+  if [[ -n "$freeze_pid" ]]; then
+    kill "$freeze_pid" 2>/dev/null || true
+    freeze_pid=""
+  fi
+}
+trap cleanup EXIT
+
+{ read -r freeze_pid; read -r selection; } < <(PATH="$capture_path" omarchy-capture-region "$mode" --keep-freeze) || true
+[[ -n "${selection:-}" ]] || exit 0
+
+output_dir="${OMARCHY_SCREENSHOT_DIR:-$HOME/Pictures/Screenshots}"
+mkdir -p "$output_dir"
+filepath="$(mktemp "$output_dir/screenshot-$(date +'%Y-%m-%d_%H-%M-%S')-XXXXXX.png")"
+if ! grim -g "$selection" "$filepath"; then
+  rm -f "$filepath"
+  exit 1
+fi
+cleanup
+
+# Always publish image bytes first. They remain available if the richer
+# file/image helper is missing or fails to start.
+wl-copy --type image/png <"$filepath"
 
 clipboard_helper="$HOME/.local/bin/copy-file-to-clipboard"
 if [[ -x "$clipboard_helper" ]]; then
   setsid -f "$clipboard_helper" "$filepath" >/dev/null 2>&1
-else
-  # Minimal fallback: GNOME file-copy format only.
-  uri="$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().as_uri())' "$filepath")"
-  printf 'copy\n%s\n' "$uri" | wl-copy --type x-special/gnome-copied-files
 fi
 
 printf '%s\n' "$filepath"
 omarchy-notification-send "Screenshot copied" "Click to edit, or paste to attach it." \
   --image "$filepath" -t 3000 \
-  --exec "${OMARCHY_SCREENSHOT_EDITOR:-tensaku-edit}" "$filepath"
+  --exec "$editor" "$filepath" || true

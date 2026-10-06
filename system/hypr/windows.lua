@@ -5,7 +5,8 @@ o.window(".*", { opacity = "1.0 override 1.0 override" })
 o.window([=[^org\.omarchy\.btop$]=], { size = { 1200, 800 }, center = true })
 
 -- Keep 1Password tiled while retaining Omarchy's no-screen-share rule.
-o.window("^1[Pp]assword$", { tag = "-floating-window", tile = true })
+-- Match both the legacy class and the app id introduced in 1Password 8.12.
+o.window([=[^(1[Pp]assword|com\.onepassword\.OnePassword)$]=], { tag = "-floating-window", tile = true })
 
 -- Movable Zen picture-in-picture.
 o.window({ class = "^zen$", title = "^Picture-in-Picture$" }, {

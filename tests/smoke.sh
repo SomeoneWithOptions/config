@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'printf "smoke failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SMOKE_TMP="$(mktemp -d)"
+trap 'rm -rf "$SMOKE_TMP"' EXIT
 
 for script in "$ROOT/1 SoftwareInstall.sh" "$ROOT/2 Fonts.sh" "$ROOT/3 Git.sh" \
   "$ROOT/4 ConfigFiles.sh" "$ROOT/5 Keys.sh" "$ROOT/bootstrap.sh" \
@@ -87,6 +90,7 @@ python -m json.tool "$ROOT/agents/pi/agent/settings.json" >/dev/null
 # extension on fresh machines and config replays.
 test -f "$ROOT/agents/pi/agent/extensions/web-research.ts"
 node "$ROOT/tests/web-research-auth.mjs"
+node "$ROOT/tests/omarchy-plugins.mjs"
 grep -q 'name: "web_search"' "$ROOT/agents/pi/agent/extensions/web-research.ts"
 grep -q 'for extension in "\$SCRIPT_DIR"/agents/pi/agent/extensions/\*.ts' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'copy_required "\$extension" "\$HOME/.pi/agent/extensions/\$(basename "\$extension")"' "$ROOT/scripts/apply/dotfiles.sh"
@@ -99,8 +103,11 @@ assert.equal(themeMode('mode = "dark"'), "dark");
 JS
 
 if [[ -d /usr/share/omarchy/shell/plugins ]]; then
-  (cd /usr/share/omarchy/shell/plugins &&
-    sha256sum --quiet -c "$ROOT/system/omarchy/plugins/UPSTREAM.sha256")
+  if ! (cd /usr/share/omarchy/shell/plugins &&
+    sha256sum --quiet -c "$ROOT/system/omarchy/plugins/UPSTREAM.sha256"); then
+    echo 'Upstream Omarchy sources changed; review clone behavior before updating UPSTREAM.sha256. See system/omarchy/plugins/README.md.' >&2
+    exit 1
+  fi
 fi
 if [[ -x /usr/bin/omazed-generator.sh ]]; then
   omazed_tmp="$(mktemp -d)"
@@ -119,15 +126,43 @@ fi
 if command -v qmllint >/dev/null 2>&1; then
   QMLLINT=/usr/lib/qt6/bin/qmllint
   [[ -x $QMLLINT ]] || QMLLINT=$(command -v qmllint)
-  "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/system/quickshell/flicko-picker/shell.qml"
-  for qml in FrameStyle.qml FrameJoin.qml FrameService.qml; do
-    "$QMLLINT" -I /usr/lib/qt6/qml "$ROOT/system/omarchy/plugins/andres.desktop-frame/$qml"
+  # Quickshell supplies qs.* imports at runtime. qmllint needs the matching
+  # directory hierarchy; pointing it at shell/ alone cannot resolve qs.Ui.
+  mkdir -p "$SMOKE_TMP/imports/qs"
+  for module in Commons Ui services; do
+    [[ ! -d /usr/share/omarchy/shell/$module ]] ||
+      ln -s "/usr/share/omarchy/shell/$module" "$SMOKE_TMP/imports/qs/$module"
   done
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.menu/Menu.qml"
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
-  "$QMLLINT" -I /usr/lib/qt6/qml -I /usr/share/omarchy/shell "$ROOT/system/omarchy/plugins/andres.tray/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.tray/FramePanel.qml" "$ROOT/system/omarchy/plugins/andres.tray/Tray.qml"
+  lint_qml() {
+    local status=0 warnings
+    "$QMLLINT" --import error -I /usr/lib/qt6/qml -I "$SMOKE_TMP/imports" "$@" \
+      >"$SMOKE_TMP/qmllint.log" 2>&1 || status=$?
+    if (( status != 0 )); then
+      cat "$SMOKE_TMP/qmllint.log" >&2
+      return "$status"
+    fi
+    # Dynamic QObject properties and Quickshell type metadata produce many
+    # nonfatal warnings. Keep the count; show full diagnostics on request.
+    warnings=$(grep -c '^Warning:' "$SMOKE_TMP/qmllint.log" || true)
+    printf 'qmllint %s: passed (%s warnings; SMOKE_VERBOSE=1 for details)\n' "${1#"$ROOT/"}" "$warnings"
+    if [[ ${SMOKE_VERBOSE:-0} == 1 ]]; then cat "$SMOKE_TMP/qmllint.log"; fi
+  }
+  lint_qml "$ROOT/system/quickshell/flicko-picker/shell.qml"
+  if [[ -d /usr/share/omarchy/shell/Ui ]]; then
+    for qml in FrameStyle.qml FrameJoin.qml FrameService.qml; do
+      lint_qml "$ROOT/system/omarchy/plugins/andres.desktop-frame/$qml"
+    done
+    lint_qml "$ROOT/system/omarchy/plugins/andres.menu/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.menu/Menu.qml"
+    lint_qml "$ROOT/system/omarchy/plugins/andres.notifications/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+    lint_qml "$ROOT/system/omarchy/plugins/andres.tray/FrameJoin.qml" "$ROOT/system/omarchy/plugins/andres.tray/FramePanel.qml" "$ROOT/system/omarchy/plugins/andres.tray/Tray.qml"
+  else
+    echo 'Omarchy plugin lint skipped: installed shell imports unavailable'
+  fi
 fi
 if command -v quickshell >/dev/null 2>&1 && command -v hyprctl >/dev/null 2>&1 && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+  if [[ -d /usr/share/omarchy/shell/Ui ]]; then
+    bash "$ROOT/tests/omarchy-qml.sh"
+  fi
   FLICKO_PICKER_DIR="$ROOT/system/quickshell/flicko-picker" "$ROOT/bin/flicko-slurp" --self-test >/dev/null
 fi
 

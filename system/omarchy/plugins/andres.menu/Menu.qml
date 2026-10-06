@@ -69,6 +69,10 @@ Item {
     initialRowsAnimation.stop()
     reveal = 0
     rowReveal = reduceMotion ? 1 : 0
+    // Output removal can close the parked layer surface. Changing `shown`
+    // alone cannot recreate it; restore visibility on the current screen.
+    panel.targetScreen = panel.focusedScreen()
+    panel.visible = true
     mounted = true
     opened = true
   }

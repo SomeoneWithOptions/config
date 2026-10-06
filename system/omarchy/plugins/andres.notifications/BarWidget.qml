@@ -4,9 +4,8 @@ import qs.Ui
 BarIconButton {
   id: root
 
-  // Mirrors andres.idle, inverted in meaning: idle shows the icon when the
-  // non-default state is on, and so does this one — normal is "notifications
-  // allowed" (no icon), silenced is the state worth surfacing.
+  // Keep the indicator in the service's plugin: scoped shell APIs only
+  // expose a plugin's own service, just like andres.idle's bar widget.
   readonly property var notificationService: bar?.shell?.serviceFor("andres.notifications")
 
   visible: notificationService ? notificationService.doNotDisturb : false

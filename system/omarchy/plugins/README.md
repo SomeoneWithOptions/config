@@ -14,6 +14,10 @@ menu entrance/exit animation, app-library fallback, audio-aware idle handling,
 and Loom recording cards remain in the clones. Duplicate detection also compares
 Loom recording metadata so separate recordings are never collapsed together.
 
+The DND bar widget belongs to `andres.notifications`, alongside its service.
+Omarchy's scoped plugin API only exposes a plugin's own service; a separate
+`andres.dnd` widget cannot read the notification service and stays hidden.
+
 The custom notification card has no stock close-button opacity animation, so
 the upstream `Style.duration(100)` change does not apply to that component.
 

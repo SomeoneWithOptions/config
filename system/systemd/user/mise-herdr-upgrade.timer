@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily herdr update check via mise
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+Unit=mise-herdr-upgrade.service
+
+[Install]
+WantedBy=timers.target

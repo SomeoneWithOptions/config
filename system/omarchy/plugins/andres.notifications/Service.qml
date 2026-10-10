@@ -939,7 +939,7 @@ Item {
     return true
   }
 
-  ShellIpc {
+  IpcHandler {
     id: ipcHandler
     target: "notifications"
 

@@ -16,6 +16,14 @@ def replace_once(text, old, new, source):
     return text.replace(old, new)
 
 
+def replace_first_match(text, olds, new, source):
+    """replace_once against whichever variant the installed shell ships."""
+    for old in olds:
+        if text.count(old) == 1:
+            return text.replace(old, new)
+    raise RuntimeError(f"{source}: expected one of {olds!r}")
+
+
 def same_tree(left, right):
     if not right.is_dir():
         return False
@@ -623,18 +631,22 @@ def install():
     y: 0""",
         keyboard_path,
     )
-    keyboard = replace_once(
+    # Stable ships a plain duration; dev wraps it in Style.duration().
+    keyboard = replace_first_match(
         keyboard,
-        """    borderSpec: root.borderSpec
+        [
+            f"""    borderSpec: root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
     opacity: root.open || root.popoutSwitching ? 1.0 : 0
 
-    Behavior on opacity {
+    Behavior on opacity {{
       enabled: !root.popoutSwitching && !root.popoutSwitchClosing
-      NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
-    }
-""",
+      NumberAnimation {{ duration: {duration}; easing.type: Easing.OutCubic }}
+    }}
+"""
+            for duration in ("Style.duration(140)", "140")
+        ],
         """    borderSpec: root.barPos === "top" ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius

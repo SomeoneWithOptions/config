@@ -1,0 +1,10 @@
+[Unit]
+Description=Update herdr installed by mise
+Documentation=https://mise.jdx.dev/
+
+[Service]
+Type=oneshot
+# herdr ships hotfixes back to back; don't let mise's release cooldown hold them.
+Environment=MISE_MINIMUM_RELEASE_AGE=0
+ExecStart=/usr/bin/mise upgrade -y github:herdrdev/herdr
+ExecStartPost=/usr/bin/mise prune -y github:herdrdev/herdr

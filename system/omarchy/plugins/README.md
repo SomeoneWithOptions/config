@@ -4,8 +4,13 @@
 custom clones. It detects upstream changes; a mismatch alone does not prove
 that a plugin is broken or that the laptop has modified package files.
 
-Reviewed baseline: Omarchy `4.0.0.r6720.g8e02fc8-1` (`basecamp/omarchy`,
-commit `8e02fc8`, Quattro), 2026-10-05.
+Reviewed baseline: Omarchy stable `4.0.0.r1832.g23dab9e-1` (`basecamp/omarchy`,
+commit `23dab9e`, Quattro), 2026-10-10. The clones were first written against
+dev `4.0.0.r6720.g8e02fc8-1`; moving back to stable swapped `ShellIpc` for
+`IpcHandler`, the menu's `OverlayWindow` for a per-open `PanelWindow`, and
+dropped `Style.duration()`, none of which stable ships. Plugin-local behavior
+from dev (duplicate toasts, image-tag stripping, in-process summons, plain-text
+menu rows) stays: it needs nothing from the shell beyond guarded calls.
 
 This review ports disabled menu rows, in-process menu summons, persistent menu
 surfaces, notification hotkey dispatch, duplicate-toast handling, shell socket

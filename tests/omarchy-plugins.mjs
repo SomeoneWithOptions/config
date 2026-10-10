@@ -41,10 +41,10 @@ assert.equal(dismissals, 1);
 assert.equal(context.runShortcut("unknown"), false);
 
 // Resolve the integration points that model-only assertions cannot cover.
-assert.match(service, /ShellIpc\s*\{\s*id: ipcHandler/);
+assert.match(service, /IpcHandler\s*\{\s*id: ipcHandler/);
 assert.match(service, /removeDuplicatePopups\(service\.currentContent\(notification, snapshot\)\)/);
 const menuQml = source("andres.menu", "Menu.qml");
-assert.match(menuQml, /shown: root\.mounted && root\.rowsLoaded/);
+assert.match(menuQml, /visible: root\.mounted && root\.rowsLoaded/);
 assert.match(menuQml, /opacity: entranceProgress \* \(row\.disabled \? 0\.4 : 1\)/);
 assert.match(menuQml, /if \(!root\.rowSelectable\(index\)\) return/);
 

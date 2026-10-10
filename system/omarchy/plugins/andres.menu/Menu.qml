@@ -69,10 +69,6 @@ Item {
     initialRowsAnimation.stop()
     reveal = 0
     rowReveal = reduceMotion ? 1 : 0
-    // Output removal can close the parked layer surface. Changing `shown`
-    // alone cannot recreate it; restore visibility on the current screen.
-    panel.targetScreen = panel.focusedScreen()
-    panel.visible = true
     mounted = true
     opened = true
   }
@@ -1260,10 +1256,15 @@ Item {
       if (root.guardsPending) Qt.callLater(function() { root.evaluateGuards() })
     }
   }
-  OverlayWindow {
+  PanelWindow {
     id: panel
-    shown: root.mounted && root.rowsLoaded
+    visible: root.mounted && root.rowsLoaded
+    anchors { top: true; bottom: true; left: true; right: true }
+    color: "transparent"
     WlrLayershell.namespace: "omarchy-menu"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    exclusionMode: ExclusionMode.Ignore
 
     // The card opens centered exactly as always. The first search keystroke
     // or submenu move freezes the top line where it currently sits — from
@@ -1277,13 +1278,12 @@ Item {
     readonly property int centeredTop: drawerTop
     readonly property int effectiveCardTop: cardTop >= 0 ? cardTop : centeredTop
     function freezeCardTop() {
-      if (shown && cardTop < 0) {
+      if (visible && cardTop < 0) {
         cardTop = effectiveCardTop
         maxRowsHeight = root.visibleRowsHeight
       }
     }
-    // The surface stays mapped between opens, so closing is shown going false.
-    onShownChanged: if (!shown) { cardTop = -1; maxRowsHeight = -1 }
+    onVisibleChanged: if (!visible) { cardTop = -1; maxRowsHeight = -1 }
 
     Rectangle {
       anchors.fill: parent

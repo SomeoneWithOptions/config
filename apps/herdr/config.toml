@@ -74,7 +74,6 @@ accent = "blue"
 mouse_scroll_lines = 21
 
 # Give every pane a defined frame with breathing room between panes
-pane_borders = "always"
 pane_gaps = true
 pane_outer_borders = true
 

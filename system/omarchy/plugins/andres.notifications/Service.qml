@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import qs.Commons
+import qs.Commons as Commons
 
 import "components"
 import "NotificationLogic.js" as NotificationLogic
@@ -386,7 +387,7 @@ Item {
   }
 
   function invokeRecordingAction(index, action) {
-    if (action !== "play" && action !== "upload") return
+    if (action !== "play" && action !== "upload" && action !== "delete") return
     if (index < 0 || index >= popupModel.count) return
     var entry = popupModel.get(index)
     var recording = NotificationLogic.parseLoomRecording(entry ? entry.loomRecording : "")
@@ -413,6 +414,14 @@ Item {
       "  exec mpv -- \"$video\"\n" +
       "elif [[ \"$action\" == \"upload\" ]]; then\n" +
       "  exec \"$upload_bin\" \"$video\"\n" +
+      "elif [[ \"$action\" == \"delete\" ]]; then\n" +
+      "  if ! rm -f -- \"$video\"; then\n" +
+      "    if command -v omarchy-notification-send >/dev/null 2>&1; then\n" +
+      "      omarchy-notification-send -u critical \"Delete failed\" \"Could not delete $video\"\n" +
+      "    elif command -v notify-send >/dev/null 2>&1; then\n" +
+      "      notify-send -u critical \"Delete failed\" \"Could not delete $video\"\n" +
+      "    fi\n" +
+      "  fi\n" +
       "fi\n"
 
     Quickshell.execDetached([
@@ -1245,11 +1254,12 @@ Item {
                 summary: cardSlot.summary
                 image: cardSlot.image
                 recordingPath: cardSlot.recordingData ? cardSlot.recordingData.videoPath : ""
-                accent: cardSlot.recordingData ? cardSlot.recordingData.accent : Color.urgent
+                accent: cardSlot.recordingData ? cardSlot.recordingData.accent : Commons.Color.urgent
                 cornerRadius: service.cornerRadius
 
                 onPlayRequested: service.invokeRecordingAction(cardSlot.index, "play")
                 onUploadRequested: service.invokeRecordingAction(cardSlot.index, "upload")
+                onDeleteRequested: service.invokeRecordingAction(cardSlot.index, "delete")
                 onCloseRequested: service.dismissPopup(cardSlot.index)
               }
             }

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Pre-Quattro bar grouping: one rounded pill behind every widget that follows
@@ -12,10 +13,10 @@ BarWidget {
   readonly property int gap: Number(setting("gap", 8))          // between pills — 8 matches Style.spacing
   readonly property int pad: Number(setting("padding", 10))       // group to pill edge — breathable
   readonly property int thickness: Number(setting("height", 30))
-  readonly property color tint: root.bar ? root.bar.barForeground : Color.bar.text
+  readonly property color tint: root.bar ? root.bar.barForeground : Commons.Color.bar.text
   readonly property color fill: Util.alpha(tint, 0.14)
   readonly property color stroke: root.bar && root.bar.transparent
-    ? Util.alpha(tint, 0.24) : Color.popups.border
+    ? Util.alpha(tint, 0.24) : Commons.Color.popups.border
 
   // The bar wraps each widget in a ModuleSlot inside one Row/Column per
   // section; the group is every sibling slot after ours.

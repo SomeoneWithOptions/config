@@ -7,6 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "../NotificationLogic.js" as NotificationLogic
 
@@ -40,9 +41,9 @@ BorderSurface {
   readonly property bool hasPhoto: image.length > 0
   readonly property bool showHeaderIcon: !hasPhoto && (hasSmallIcon || hasGlyph)
 
-  readonly property color textColor: Color.notifications.text
+  readonly property color textColor: Commons.Color.notifications.text
   readonly property color secondaryColor: Qt.rgba(textColor.r, textColor.g, textColor.b, 0.62)
-  readonly property color cardBg: Qt.lighter(Color.notifications.background, 1.1)
+  readonly property color cardBg: Qt.lighter(Commons.Color.notifications.background, 1.1)
   readonly property int innerRadius: Math.max(10, cornerRadius - 4)
 
   function sanitizeBody(s) {

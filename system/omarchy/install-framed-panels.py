@@ -172,7 +172,7 @@ def patch_power_panel(text, source):
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: root.batteryGlyph()
-        color: root.batteryAlert ? Color.urgent : root.profileTint
+        color: root.batteryAlert ? Commons.Color.urgent : root.profileTint
         // Material Symbols paint smaller than the Nerd Font glyphs the other
         // widgets use, so the icon runs a few px larger to match them.
         font.family: "Material Symbols Rounded"
@@ -191,7 +191,7 @@ def patch_power_panel(text, source):
         visible: root.showPercentage && !button.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: Math.round(root.batteryFraction * 100) + "%"
-        color: root.batteryAlert ? Color.urgent : root.profileTint
+        color: root.batteryAlert ? Commons.Color.urgent : root.profileTint
         font.family: button.fontFamily
         font.pixelSize: Style.font.body
         renderType: Text.NativeRendering
@@ -417,7 +417,7 @@ def install():
     keyboard_path = shell_root / "Ui/KeyboardPanel.qml"
     keyboard = keyboard_path.read_text()
     keyboard = replace_once(
-        keyboard, "import qs.Commons", "import qs.Commons\nimport qs.Ui", keyboard_path
+        keyboard, "import qs.Commons\n", "import qs.Commons\nimport qs.Ui\n", keyboard_path
     )
     keyboard = replace_once(
         keyboard,
@@ -575,7 +575,7 @@ def install():
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
-    frameColor: Color.popups.background
+    frameColor: Commons.Color.popups.background
   }
 
   FrameJoin {
@@ -586,7 +586,7 @@ def install():
     y: 0
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
-    frameColor: Color.popups.background
+    frameColor: Commons.Color.popups.background
     transform: Scale { origin.x: topRightFrameJoin.width / 2; xScale: -1 }
   }
 
@@ -599,7 +599,7 @@ def install():
     y: 0
     width: root.frameInset + 2
     height: card.height
-    color: Color.popups.background
+    color: Commons.Color.popups.background
     opacity: card.opacity
   }
 
@@ -610,7 +610,7 @@ def install():
     y: card.height - 2
     opacity: card.opacity
     cornerRadius: Style.cornerRadius
-    frameColor: Color.popups.background
+    frameColor: Commons.Color.popups.background
   }
 
   BorderSurface {

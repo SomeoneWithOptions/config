@@ -4,13 +4,19 @@
 custom clones. It detects upstream changes; a mismatch alone does not prove
 that a plugin is broken or that the laptop has modified package files.
 
-Reviewed baseline: Omarchy stable `4.0.0.r1832.g23dab9e-1` (`basecamp/omarchy`,
-commit `23dab9e`, Quattro), 2026-10-10. The clones were first written against
-dev `4.0.0.r6720.g8e02fc8-1`; moving back to stable swapped `ShellIpc` for
-`IpcHandler`, the menu's `OverlayWindow` for a per-open `PanelWindow`, and
-dropped `Style.duration()`, none of which stable ships. Plugin-local behavior
-from dev (duplicate toasts, image-tag stripping, in-process summons, plain-text
-menu rows) stays: it needs nothing from the shell beyond guarded calls.
+Reviewed baseline: Omarchy stable `4.0.6-1` (`omarchy` package), 2026-10-20.
+Earlier clones were written against dev `4.0.0.r6720.g8e02fc8-1`, then pinned
+to `omarchy-dev 4.0.0.r1832.g23dab9e-1`. That pin broke under Qt 6.12, which
+adds a built-in `QtQuick` `Color` singleton that shadows `qs.Commons.Color`
+(every `Color.*` read returns `undefined`). Stock 4.0.6 imports
+`qs.Commons as Commons` and reads `Commons.Color.*`; the clones and the framed
+panel generator do the same. Never write a bare `Color.` in shell QML.
+
+The 4.0.6 port also brings in idle timeouts of `0` disabling that action,
+plain-text tray rows, and, for `andres.desktop-frame`, reads bar transparency
+from `shell.barConfig` because third-party plugins now get a scalar bar facade
+without `transparent`. Stock 4.0.6 dropped menu `disabled:` rows; the clone
+keeps them.
 
 This review ports disabled menu rows, in-process menu summons, persistent menu
 surfaces, notification hotkey dispatch, duplicate-toast handling, shell socket

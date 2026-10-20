@@ -18,8 +18,11 @@ Item {
         ? shell.bar.barSize : style.topBarHeight
     readonly property color frameColor: style.frameColor
     readonly property int cornerRadius: style.screenCornerRadius
-    readonly property bool topTransparent: shell && shell.bar
-        ? shell.bar.transparent : false
+    // Omarchy 4.0.6 hands third-party plugins a scalar bar-state facade with no
+    // `transparent`; the public bar config carries the same shell.json flag.
+    readonly property bool topTransparent: shell && shell.bar && shell.bar.transparent !== undefined
+        ? shell.bar.transparent === true
+        : (shell && shell.barConfig ? shell.barConfig.transparent === true : false)
 
     // Only the top strip is painted. Left/right/bottom use Hyprland's normal
     // gaps_out, so windows sit in the same gap they use between each other.

@@ -2,6 +2,8 @@ alias oq='omarchy-qemu'
 alias t='terraform'
 set -g fish_greeting ""
 
+fzf_key_bindings
+
 if command -q mise
     mise activate fish | source
 end

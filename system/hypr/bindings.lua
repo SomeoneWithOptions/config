@@ -23,6 +23,10 @@ for _, keys in ipairs({
   hl.unbind(keys)
 end
 
+-- No scratchpad: SUPER+` kept getting hit by accident and opened the agent console.
+hl.unbind("SUPER + grave")
+hl.unbind("SUPER + SHIFT + grave")
+
 for _, name in ipairs({ "F", "C", "S" }) do
   o.bind("SUPER + " .. name, "Switch to workspace " .. name, hl.dsp.focus({ workspace = "name:" .. name }))
   o.bind(

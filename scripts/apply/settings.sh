@@ -73,7 +73,8 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         # Omarchy shells export BROWSER=omarchy-launch-browser (default/bash/envs);
         # xdg-settings refuses `set` and skews `get` while BROWSER is in the env.
         if (( CHECK )); then
-            browser="$(env -u BROWSER xdg-settings get default-web-browser 2>/dev/null || true)"
+            # Omarchy routes http(s) through omarchy-browser.desktop; resolve the real browser behind it.
+            browser="$(omarchy-cmd-default-browser 2>/dev/null || env -u BROWSER xdg-settings get default-web-browser 2>/dev/null || true)"
             [[ "$browser" == "zen.desktop" ]] || report_drift "default web browser" "" "is ${browser:-unset}, repo wants zen.desktop"
         else
             env -u BROWSER xdg-settings set default-web-browser zen.desktop || true

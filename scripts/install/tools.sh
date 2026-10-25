@@ -137,6 +137,30 @@ install_commiter() {
   fi
 }
 
+install_n8n_cli() {
+  # Checks the install path, not PATH: `n8n` is also the n8n server's npm bin.
+  if [ -x "$HOME/.local/bin/n8n" ]; then
+    log "n8n-cli is already installed."
+    report_software_progress skip 'n8n-cli already installed'
+  else
+    log "Installing n8n-cli using its unattended installer."
+    report_software_progress start 'Installing n8n-cli…'
+    if curl -fsSL https://raw.githubusercontent.com/SomeoneWithOptions/n8n-cli/main/install.sh | sh; then
+      report_software_progress done 'n8n-cli installed'
+    else
+      warn "n8n-cli installer failed."
+      report_software_progress fail 'n8n-cli installation failed'
+    fi
+  fi
+
+  # `auth status --check` exits non-zero while no usable credential is stored,
+  # so only then is a login left for later.
+  if [ -x "$HOME/.local/bin/n8n" ] && ! "$HOME/.local/bin/n8n" auth status --check >/dev/null 2>&1; then
+    note n8n 'n8n CLI → sign in' \
+      'Run: n8n auth login --url https://your-n8n-instance'
+  fi
+}
+
 install_loom_omarchy_linux() {
   if has_command loom; then
     log "loom-omarchy-linux is already installed."
@@ -197,6 +221,7 @@ install_npm_cli() {
 
 install_personal_dev_tools() {
   install_commiter
+  install_n8n_cli
   install_npm_cli @google/clasp clasp
   install_npm_cli vercel vercel
   install_npm_cli clerk clerk

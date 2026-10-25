@@ -225,6 +225,7 @@ grep -q '"id": "loom.recording"' "$ROOT/system/omarchy/shell.json"
 grep -q '"id": "andres.linear"' "$ROOT/system/omarchy/shell.json"
 # Fresh-laptop tool installs must use each project's unattended curl path.
 grep -q 'go.sanetomore.com/commiter' "$ROOT/scripts/install/tools.sh"
+grep -q 'SomeoneWithOptions/n8n-cli/main/install.sh' "$ROOT/scripts/install/tools.sh"
 grep -q 'SomeoneWithOptions/loom-omarchy-linux/main/install.sh' "$ROOT/scripts/install/tools.sh"
 grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/scripts/install/tools.sh"
 grep -q 'bash -s -- --yes' "$ROOT/scripts/install/tools.sh"

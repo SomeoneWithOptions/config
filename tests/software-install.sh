@@ -22,6 +22,7 @@ soft_new_env() {
   : >"$SOFT/software-events"
   cat >"$SOFT/bin/uname" <<'SH'
 #!/bin/sh
+if [ "$1" = -m ]; then echo x86_64; exit 0; fi
 echo "${SOFT_UNAME:-Linux}"
 SH
   cat >"$SOFT/bin/pacman" <<'SH'
@@ -110,15 +111,28 @@ printf 'tailscale %s\n' "$*" >>"$MOCK_CALLS"
 [ "$1" = status ] && exit "${MOCK_TAILSCALE_STATUS:-1}"
 exit 0
 SH
+  # The Slack CLI release is a tarball piped into tar, so serve a stub one.
+  mkdir -p "$SOFT/slack-release/bin"
+  printf '#!/bin/sh\nexit 0\n' >"$SOFT/slack-release/bin/slack"
+  chmod +x "$SOFT/slack-release/bin/slack"
+  tar -czf "$SOFT/slack-release.tar.gz" -C "$SOFT/slack-release" bin
   cat >"$SOFT/bin/curl" <<'SH'
 #!/bin/sh
 printf 'curl %s\n' "$*" >>"$MOCK_CALLS"
-exit "${MOCK_CURL_STATUS:-0}"
+[ "${MOCK_CURL_STATUS:-0}" = 0 ] || exit "$MOCK_CURL_STATUS"
+case "$*" in *slack_cli_*) cat "$SOFT_STATE_DIR/slack-release.tar.gz" ;; esac
+exit 0
 SH
+  # A global npm install puts the package's command on PATH, as on macOS.
   cat >"$SOFT/bin/npm" <<'SH'
 #!/bin/sh
 printf 'npm %s\n' "$*" >>"$MOCK_CALLS"
-exit "${MOCK_NPM_STATUS:-0}"
+[ "${MOCK_NPM_STATUS:-0}" = 0 ] || exit "$MOCK_NPM_STATUS"
+if [ "$1 $2 $3" = 'install --global @playwright/cli' ]; then
+  printf '#!/bin/sh\nprintf "playwright-cli %%s\\n" "$*" >>"$MOCK_CALLS"\n' >"${MOCK_CALLS%/calls}/bin/playwright-cli"
+  chmod +x "${MOCK_CALLS%/calls}/bin/playwright-cli"
+fi
+exit 0
 SH
   chmod +x "$SOFT/bin/"*
 }
@@ -205,6 +219,17 @@ grep -q $'done\tturso-cli-bin installed' "$SOFT/software-events"
 grep -q '^sudo pacman -S --needed --noconfirm fish$' "$SOFT/calls"
 grep -q '^sudo pacman -S --needed --noconfirm herdr$' "$SOFT/calls"
 grep -q '^yay -S --needed --noconfirm turso-cli-bin$' "$SOFT/calls"
+# Slack CLI: the Linux release tarball, linked as slack-cli beside the desktop app.
+grep -q $'done\tSlack CLI installed' "$SOFT/software-events"
+grep -q '^curl -fsSL https://github.com/slackapi/slack-cli/releases/latest/download/slack_cli_latest_linux_amd64.tar.gz$' "$SOFT/calls"
+[[ -x "$SOFT/home/.slack/bin/slack" ]]
+[[ $(readlink "$SOFT/home/.local/bin/slack-cli") == "$SOFT/home/.slack/bin/slack" ]]
+# Playwright: Omarchy mise wrappers, then the agent skill linked like the repo's own.
+grep -q '^omarchy-mise-install npm:playwright playwright$' "$SOFT/calls"
+grep -q '^omarchy-mise-install npm:@playwright/cli playwright-cli$' "$SOFT/calls"
+grep -q $'done\tplaywright-cli skill installed' "$SOFT/software-events"
+[[ $(readlink "$SOFT/home/.claude/skills/playwright-cli") == ../../.agents/skills/playwright-cli ]]
+[[ $(readlink "$SOFT/home/.pi/agent/skills/playwright-cli") == ../../../.agents/skills/playwright-cli ]]
 rm -rf "$SOFT"
 unset MOCK_INSTALLED MOCK_NOT_IN_REPO
 
@@ -224,6 +249,11 @@ chmod +x "$SOFT/bin/loom"
 mkdir -p "$SOFT/home/.local/bin"
 touch "$SOFT/home/.local/bin/c"
 chmod +x "$SOFT/home/.local/bin/c"
+mkdir -p "$SOFT/home/.slack/bin"
+printf '#!/bin/sh\nexit 0\n' >"$SOFT/home/.slack/bin/slack"
+chmod +x "$SOFT/home/.slack/bin/slack"
+# A skill entry the user made by hand is never replaced.
+mkdir -p "$SOFT/home/.claude/skills/playwright-cli"
 # Signed out: `auth status --check` fails, so the login note must be written.
 cat >"$SOFT/home/.local/bin/n8n" <<'SH'
 #!/bin/sh
@@ -265,6 +295,10 @@ grep -q $'done\tclasp installed' "$SOFT/software-events"
 grep -q $'skip\tloom-omarchy-linux already installed' "$SOFT/software-events"
 grep -q $'skip\tlinear-omarchy-plugin already installed' "$SOFT/software-events"
 grep -q $'skip\tturso-cli-bin already installed' "$SOFT/software-events"
+grep -q $'skip\tSlack CLI already installed' "$SOFT/software-events"
+soft_assert_absent 'slack_cli_' "$SOFT/calls"
+[[ -L "$SOFT/home/.local/bin/slack-cli" ]]
+[[ -d "$SOFT/home/.claude/skills/playwright-cli" && ! -L "$SOFT/home/.claude/skills/playwright-cli" ]]
 grep -q 'Turso CLI → sign in' "$SOFT/report/actions/turso"
 grep -q 'Run: turso auth login' "$SOFT/report/actions/turso"
 grep -q $'start\tConfiguring Tailscale…' "$SOFT/software-events"
@@ -358,6 +392,9 @@ grep -q $'fail\tn8n-cli installation failed' "$SOFT/software-events"
 ! grep -q $'done\tn8n-cli installed' "$SOFT/software-events"
 grep -q 'n8n-cli installer failed.' "$SOFT/report/warnings"
 [[ ! -e "$SOFT/report/actions/n8n" ]]
+grep -q $'fail\tSlack CLI installation failed' "$SOFT/software-events"
+grep -q 'Slack CLI download failed.' "$SOFT/report/warnings"
+[[ ! -e "$SOFT/home/.local/bin/slack-cli" ]]
 grep -q $'done\tclasp installed' "$SOFT/software-events"
 soft_assert_no_done_after_fail
 rm -rf "$SOFT"
@@ -395,6 +432,23 @@ soft_assert_absent '^omarchy-mise-install claude' "$SOFT/calls"
 grep -q $'skip\tclasp already installed' "$SOFT/software-events"
 grep -q '^brew install tursodatabase/tap/turso$' "$SOFT/calls"
 grep -q $'done\tturso installed' "$SOFT/software-events"
+for package in awscli btop eza fd fzf ripgrep zoxide; do
+  grep -q "^brew install ${package}\$" "$SOFT/calls"
+done
+grep -q '^brew install hashicorp/tap/terraform$' "$SOFT/calls"
+grep -q $'done\tterraform installed' "$SOFT/software-events"
+grep -q '^mise use -g github:herdrdev/herdr@latest$' "$SOFT/calls"
+grep -q $'done\therdr installed' "$SOFT/software-events"
+grep -q '^brew install --cask google-chrome$' "$SOFT/calls"
+grep -q $'done\tGoogle Chrome installed' "$SOFT/software-events"
+grep -q '^brew install --cask docker-desktop$' "$SOFT/calls"
+grep -q $'done\tDocker Desktop installed' "$SOFT/software-events"
+grep -q '^brew install --cask slack-cli$' "$SOFT/calls"
+grep -q $'done\tSlack CLI installed' "$SOFT/software-events"
+soft_assert_absent 'slack_cli_' "$SOFT/calls"
+grep -q '^npm install --global playwright$' "$SOFT/calls"
+grep -q '^npm install --global @playwright/cli$' "$SOFT/calls"
+grep -q '^playwright-cli install --skills=agents --global$' "$SOFT/calls"
 ! grep -q $'fail' "$SOFT/software-events"
 rm -rf "$SOFT"
 unset MOCK_INSTALLED SOFT_UNAME

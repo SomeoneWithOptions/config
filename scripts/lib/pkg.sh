@@ -68,8 +68,11 @@ ensure_homebrew() {
   report_software_progress done 'Homebrew installed'
 }
 
+# Optional second argument: the tap-qualified formula to install, when it differs
+# from the installed formula name (hashicorp/tap/terraform installs terraform).
 brew_install_formula_if_missing() {
   local package="$1"
+  local formula="${2:-$1}"
 
   if brew list --formula "$package" >/dev/null 2>&1; then
     log "${package} is already installed."
@@ -79,7 +82,7 @@ brew_install_formula_if_missing() {
 
   progress_step "Installing ${package}…" "${package} installed" \
     "${package} installation failed" \
-    "Homebrew install ${package}" brew install "$package"
+    "Homebrew install ${package}" brew install "$formula"
 }
 
 brew_install_cask_if_missing() {
@@ -91,6 +94,9 @@ brew_install_cask_if_missing() {
   case "$cask" in
     zed) name='Zed' ;;
     1password) name='1Password' ;;
+    docker-desktop) name='Docker Desktop' ;;
+    google-chrome) name='Google Chrome' ;;
+    slack-cli) name='Slack CLI' ;;
   esac
 
   if brew list --cask "$cask" >/dev/null 2>&1; then

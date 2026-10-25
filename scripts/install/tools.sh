@@ -225,6 +225,90 @@ install_personal_dev_tools() {
   install_npm_cli @google/clasp clasp
   install_npm_cli vercel vercel
   install_npm_cli clerk clerk
+  install_slack_cli
+  install_playwright
+}
+
+# Slack CLI, for building Slack apps. On Linux the Slack desktop app already owns
+# /usr/bin/slack, which sits ahead of ~/.local/bin on PATH, so the CLI is linked
+# as `slack-cli` there. It lives in ~/.slack, where it also keeps its credentials.
+install_slack_cli() {
+  if [ "$(uname -s)" != "Linux" ]; then
+    brew_install_cask_if_missing slack-cli slack-cli
+    return 0
+  fi
+
+  local slack_bin="$HOME/.slack/bin/slack"
+  local arch
+
+  if [ -x "$slack_bin" ]; then
+    log "Slack CLI is already installed."
+    report_software_progress skip 'Slack CLI already installed'
+  else
+    case "$(uname -m)" in
+      x86_64) arch=amd64 ;;
+      aarch64 | arm64) arch=arm64 ;;
+      *)
+        warn "Unsupported architecture for Slack CLI: $(uname -m)."
+        report_software_progress fail 'Slack CLI installation failed'
+        return 0
+        ;;
+    esac
+
+    log "Installing Slack CLI from its GitHub release."
+    report_software_progress start 'Installing Slack CLI…'
+    # Same tarball the official installer fetches, without its shell rc edits.
+    if mkdir -p "$HOME/.slack" && curl -fsSL \
+        "https://github.com/slackapi/slack-cli/releases/latest/download/slack_cli_latest_linux_${arch}.tar.gz" \
+        | tar -xz -C "$HOME/.slack" bin/slack; then
+      report_software_progress done 'Slack CLI installed'
+    else
+      warn "Slack CLI download failed."
+      report_software_progress fail 'Slack CLI installation failed'
+      return 0
+    fi
+  fi
+
+  mkdir -p "$HOME/.local/bin"
+  run_or_warn "link Slack CLI as slack-cli" ln -sfn "$slack_bin" "$HOME/.local/bin/slack-cli"
+}
+
+# Playwright for projects, plus playwright-cli: the token-efficient browser CLI
+# coding agents drive, with its skill shared through ~/.agents/skills. On Omarchy
+# the browser is the system Chromium (fish exports PLAYWRIGHT_MCP_EXECUTABLE_PATH);
+# on macOS playwright-cli uses Google Chrome.
+install_playwright() {
+  local cli=playwright-cli
+
+  install_npm_cli playwright playwright
+  install_npm_cli @playwright/cli playwright-cli
+
+  # The Omarchy wrapper just written to ~/.local/bin may not be on PATH yet.
+  [ "$(uname -s)" = "Linux" ] && cli="$HOME/.local/bin/playwright-cli"
+  if ! has_command "$cli"; then
+    warn "playwright-cli not found; cannot install its agent skill."
+    report_software_progress fail 'playwright-cli skill not installed'
+    return 0
+  fi
+
+  # Rewritten every run, so the skill tracks the installed playwright-cli.
+  progress_step 'Installing playwright-cli skill…' 'playwright-cli skill installed' \
+    'playwright-cli skill installation failed' \
+    "playwright-cli skill install" "$cli" install --skills=agents --global || return 0
+
+  link_playwright_skill "$HOME/.claude/skills" ../../.agents/skills
+  link_playwright_skill "$HOME/.pi/agent/skills" ../../../.agents/skills
+}
+
+# Same relative links ConfigFiles makes for the repo's shared skills; an existing
+# entry, link or not, is left alone.
+link_playwright_skill() {
+  local link_dir="$1" rel_target="$2"
+
+  [ -e "$link_dir/playwright-cli" ] || [ -L "$link_dir/playwright-cli" ] && return 0
+  mkdir -p "$link_dir"
+  run_or_warn "link playwright-cli skill into ${link_dir}" \
+    ln -s "$rel_target/playwright-cli" "$link_dir/playwright-cli"
 }
 
 install_turso() {

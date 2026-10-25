@@ -38,13 +38,20 @@ install_macos_packages() {
 
   log "Ensuring CLI packages are installed with Homebrew."
   local package
-  for package in git fish bat vim mise 1password-cli rtk node@24 google-cloud-sdk; do
+  for package in git fish bat vim mise 1password-cli rtk node@24 google-cloud-sdk \
+    awscli btop eza fd fzf ripgrep zoxide; do
     brew_install_formula_if_missing "$package"
   done
+  # homebrew-core froze terraform at its last MPL release; HashiCorp's tap is current.
+  brew_install_formula_if_missing terraform hashicorp/tap/terraform
 
   configure_homebrew_node24
   progress_step 'Installing Go…' 'Go installed' 'Go installation failed' \
     "mise install Go" mise use -g go@latest
+  # Same source as Omarchy: the latest herdr release through mise.
+  progress_step 'Installing latest herdr…' 'herdr installed' 'herdr installation failed' \
+    "mise use -g github:herdrdev/herdr@latest" \
+    env MISE_MINIMUM_RELEASE_AGE=0 mise use -g github:herdrdev/herdr@latest
   install_rtk
   # Owns gh here too, so the formula loop above deliberately omits it.
   install_agent_clis
@@ -55,6 +62,21 @@ install_macos_packages() {
     brew_install_cask_if_missing "$cask" "$cask"
   done
   brew_install_cask_if_missing aerospace nikitabobko/tap/aerospace
+
+  # Chrome and Docker are often installed by hand from their own downloads; do
+  # not install a second copy. playwright-cli drives Chrome on macOS.
+  if [ -d "/Applications/Google Chrome.app" ]; then
+    log "Google Chrome already exists in /Applications."
+    report_software_progress skip 'Google Chrome already installed'
+  else
+    brew_install_cask_if_missing google-chrome google-chrome
+  fi
+  if [ -d "/Applications/Docker.app" ]; then
+    log "Docker Desktop already exists in /Applications."
+    report_software_progress skip 'Docker Desktop already installed'
+  else
+    brew_install_cask_if_missing docker-desktop docker-desktop
+  fi
 
   # 1Password is often installed outside Homebrew; do not install a second copy.
   if [ -d "/Applications/1Password.app" ]; then

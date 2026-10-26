@@ -93,10 +93,10 @@ copy_required "$SCRIPT_DIR/theme/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/se
 copy_required "$SCRIPT_DIR/theme/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
 copy_required "$SCRIPT_DIR/shell/git/ignore" "$HOME/.config/git/ignore"
 
-# Ghostty Configuration
+# Ghostty Configuration (default terminal on Linux; see xdg-terminals.list below)
 copy_required "$SCRIPT_DIR/apps/ghostty/config" "$HOME/.config/ghostty/config"
 
-# Foot Configuration (default terminal on Linux; see xdg-terminals.list below)
+# Foot Configuration
 copy_required "$SCRIPT_DIR/apps/foot/foot.ini" "$HOME/.config/foot/foot.ini"
 
 # Herdr Configuration (Omarchy ships the package; this overlay is the live laptop config)

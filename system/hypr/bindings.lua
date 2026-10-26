@@ -7,8 +7,8 @@ hl.unbind("SUPER + ALT + SPACE")
 -- SUPER+SHIFT+W stays on Quattro's default (Omawrite); typora is uninstalled here.
 o.bind(
   "SUPER + SHIFT + H",
-  "Herdr (Foot)",
-  { launch = "foot --app-id=org.omarchy.herdr herdr", focus = "^org.omarchy.herdr$" }
+  "Herdr (Ghostty)",
+  { launch = "ghostty --class=org.omarchy.herdr -e herdr", focus = "^org.omarchy.herdr$" }
 )
 
 -- Gamma controls remain separate from Quattro's normal brightness keys.

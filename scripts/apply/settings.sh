@@ -91,13 +91,13 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     fi
 
     if (( CHECK )); then
-        for timer in mise-go-upgrade.timer mise-herdr-upgrade.timer; do
+        for timer in mise-go-upgrade.timer; do
             if [[ "$(systemctl --user is-enabled "$timer" 2>/dev/null || true)" != "enabled" ]]; then
                 report_drift "$timer" "" "not enabled"
             fi
         done
     else
         systemctl --user daemon-reload || true
-        systemctl --user enable --now mise-go-upgrade.timer mise-herdr-upgrade.timer || true
+        systemctl --user enable --now mise-go-upgrade.timer || true
     fi
 fi

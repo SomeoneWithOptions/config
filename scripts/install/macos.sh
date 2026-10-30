@@ -48,10 +48,6 @@ install_macos_packages() {
   configure_homebrew_node24
   progress_step 'Installing Go…' 'Go installed' 'Go installation failed' \
     "mise install Go" mise use -g go@latest
-  # Same source as Omarchy: the latest herdr release through mise.
-  progress_step 'Installing latest herdr…' 'herdr installed' 'herdr installation failed' \
-    "mise use -g github:herdrdev/herdr@latest" \
-    env MISE_MINIMUM_RELEASE_AGE=0 mise use -g github:herdrdev/herdr@latest
   install_rtk
   # Owns gh here too, so the formula loop above deliberately omits it.
   install_agent_clis

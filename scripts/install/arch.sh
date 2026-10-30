@@ -138,11 +138,6 @@ install_arch_packages() {
   # and vulkan-{intel,radeon,asahi} for the detected GPU; curl/gnupg/openssh arrive
   # as dependencies. Listing them here was a no-op.
   #
-  # herdr is in omarchy-base.packages. Keep it listed so a machine that lost
-  # the package (or a not-yet-migrated install) still gets it; skip if present.
-  # The omarchy repo lags upstream (and `omarchy update` runs -Syyuu, which
-  # downgrades), so the herdr actually run is mise's, installed below.
-  #
   # libfprint here is `libfprint`, never `libfprint-git`: the AUR build
   # provides+conflicts libfprint, so `pacman -S --noconfirm` answers the conflict
   # prompt N and aborts the whole step -- and it is a downgrade besides.
@@ -150,7 +145,6 @@ install_arch_packages() {
     fish \
     bat \
     ghostty \
-    herdr \
     vim \
     terraform \
     aws-cli-v2 \
@@ -178,11 +172,6 @@ install_arch_packages() {
     "omarchy install dev-env node" omarchy install dev-env node
   progress_step 'Installing Go…' 'Go installed' 'Go installation failed' \
     "omarchy install dev-env go" omarchy install dev-env go
-  # mise's shims sit ahead of /usr/bin, so this shadows the pacman herdr and
-  # mise-herdr-upgrade.timer keeps it on the latest release.
-  progress_step 'Installing latest herdr…' 'herdr installed' 'herdr installation failed' \
-    "mise use -g github:herdrdev/herdr@latest" \
-    env MISE_MINIMUM_RELEASE_AGE=0 mise use -g github:herdrdev/herdr@latest
   # omazed 2.0.1's setup still reads pre-Quattro paths; ConfigFiles installs
   # the compatible theme hook instead.
   if pacman_package_installed zed && pacman_package_installed omazed; then

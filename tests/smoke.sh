@@ -192,9 +192,6 @@ grep -q "^== $check_home/.claude/settings.json: missing" "$check_out"
 for agent_instructions in .claude/CLAUDE.md .codex/AGENTS.md .config/opencode/AGENTS.md; do
   grep -qxF "== $check_home/$agent_instructions: missing line: - Never commit code unless asked to." "$check_out"
 done
-grep -q "^== $check_home/.config/herdr/config.toml: missing" "$check_out"
-grep -q "^== $check_home/.claude/skills/herdr: missing" "$check_out"
-grep -q "^== $check_home/.pi/agent/skills/herdr: missing" "$check_out"
 grep -q 'managed target(s) differ from the repo' "$check_out"
 rm -rf "$check_home" "$check_out"
 # Notifications are stubbed: the hook's job is to shout, and unstubbed it shouts at
@@ -231,14 +228,12 @@ grep -q 'SomeoneWithOptions/linear-omarchy-plugin/main/install.sh' "$ROOT/script
 grep -q 'bash -s -- --yes' "$ROOT/scripts/install/tools.sh"
 # a-front is user-updatable; config replay may seed it, never overwrite it.
 grep -q 'a-front" && -d "\$HOME/.pi/agent/skills/a-front" \]\] && continue' "$ROOT/scripts/apply/dotfiles.sh"
-# Shared orchestrator/herdr skills are tracked and symlinked into pi + Claude Code.
-[[ -f "$ROOT/agents/skills/orchestrator/SKILL.md" && -f "$ROOT/agents/skills/herdr/SKILL.md" ]]
+# Shared agent skills (if any) are symlinked into pi + Claude Code.
 grep -q 'for skill in "\$SCRIPT_DIR"/agents/skills/\*' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'link_agent_skill "\$skill_name" "\$HOME/.pi/agent/skills"' "$ROOT/scripts/apply/dotfiles.sh"
 grep -q 'link_agent_skill "\$skill_name" "\$HOME/.claude/skills"' "$ROOT/scripts/apply/dotfiles.sh"
 # Claude skill links must not wait on ~/.claude already existing.
 ! grep -q '\[\[ -d "\$HOME/.claude" \]\]' "$ROOT/scripts/apply/dotfiles.sh"
-[[ -f "$ROOT/apps/herdr/config.toml" ]]
 [[ -f "$ROOT/agents/codex/config.toml" ]]
 grep -q 'copy_required_if_missing "\$SCRIPT_DIR/agents/codex/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
 python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/agents/codex/config.toml"
@@ -246,10 +241,7 @@ python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/ag
 python -m json.tool "$ROOT/agents/claude/settings.json" >/dev/null
 grep -q 'copy_required_if_missing "\$SCRIPT_DIR/agents/claude/settings.json"' "$ROOT/scripts/apply/dotfiles.sh"
 ! grep -q 'copy_required "\$SCRIPT_DIR/agents/claude/settings.json"' "$ROOT/scripts/apply/dotfiles.sh"
-grep -q 'copy_required "\$SCRIPT_DIR/apps/herdr/config.toml"' "$ROOT/scripts/apply/dotfiles.sh"
-python -c 'import tomllib, sys; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/apps/herdr/config.toml"
 grep -q 'arch_install_if_missing "\$package"' "$ROOT/scripts/install/arch.sh"
-grep -q '^    herdr \\$' "$ROOT/scripts/install/arch.sh"
 
 # Zen: the top-edge hover fix needs both halves, chrome CSS is inert without the pref.
 grep -q 'legacyUserProfileCustomizations.stylesheets", true' "$ROOT/apps/zen/user.js"

@@ -2,7 +2,7 @@
 
 # `omarchy update` runs `omarchy-migrate`, and migrations edit ~/.config in place
 # (`sed -i` on terminal configs, `jq` on shell.json, whole-file rewrites during
-# major upgrades). Other tools (loom, linear-omarchy-plugin, herdr) install into
+# major upgrades). Other tools (loom, linear-omarchy-plugin) install into
 # the same files. Those edits are usually wanted, so this hook writes nothing.
 #
 # It runs after migrations, diffs the live files against the repo, and leaves

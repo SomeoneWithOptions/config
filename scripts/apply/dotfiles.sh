@@ -14,8 +14,7 @@ copy_required_if_missing "$SCRIPT_DIR/agents/pi/agent/settings.json" "$HOME/.pi/
 copy_required_if_missing "$SCRIPT_DIR/agents/codex/config.toml" "$HOME/.codex/config.toml"
 
 # Same for Claude Code: the /config screen, plugin updates, and theme picks rewrite
-# settings.json, so seed it and leave live edits alone. The SessionStart hook points
-# at the herdr-owned ~/.claude/hooks/herdr-agent-state.sh, not a repo file.
+# settings.json, so seed it and leave live edits alone.
 copy_required_if_missing "$SCRIPT_DIR/agents/claude/settings.json" "$HOME/.claude/settings.json"
 
 # Global rule for Claude Code, Codex, and OpenCode (pi gets it from its tracked
@@ -35,10 +34,11 @@ for skill in "$SCRIPT_DIR"/agents/pi/agent/skills/*; do
     copy_dir_required "$skill" "$HOME/.pi/agent/skills/$skill_name"
 done
 
-# Shared agent skills (pi + Claude Code). orchestrator needs the herdr skill.
-# Always create both skill dirs so Claude Code finds herdr on first launch even
-# if ~/.claude does not exist yet.
+# Shared agent skills (pi + Claude Code). Always create both skill dirs so Claude
+# Code finds them on first launch even if ~/.claude does not exist yet.
 for skill in "$SCRIPT_DIR"/agents/skills/*; do
+    # git drops empty dirs, so with no shared skills the glob stays unexpanded.
+    [[ -d "$skill" ]] || continue
     skill_name="$(basename "$skill")"
     copy_dir_required "$skill" "$HOME/.agents/skills/$skill_name"
     link_agent_skill "$skill_name" "$HOME/.pi/agent/skills" "../../../.agents/skills"
@@ -98,9 +98,6 @@ copy_required "$SCRIPT_DIR/apps/ghostty/config" "$HOME/.config/ghostty/config"
 
 # Foot Configuration
 copy_required "$SCRIPT_DIR/apps/foot/foot.ini" "$HOME/.config/foot/foot.ini"
-
-# Herdr Configuration (Omarchy ships the package; this overlay is the live laptop config)
-copy_required "$SCRIPT_DIR/apps/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 # Zed Configuration
 # Zed maintains remote connection/project history; keep it local on check and apply.

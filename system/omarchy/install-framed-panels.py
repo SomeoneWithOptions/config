@@ -16,14 +16,6 @@ def replace_once(text, old, new, source):
     return text.replace(old, new)
 
 
-def replace_first_match(text, olds, new, source):
-    """replace_once against whichever variant the installed shell ships."""
-    for old in olds:
-        if text.count(old) == 1:
-            return text.replace(old, new)
-    raise RuntimeError(f"{source}: expected one of {olds!r}")
-
-
 def same_tree(left, right):
     if not right.is_dir():
         return False
@@ -36,7 +28,7 @@ def patch_power_model(text, source):
     """Add the pre-Quattro Material Symbols battery ladder next to the Nerd Font one."""
     text = replace_once(
         text,
-        "function modeLabel(device, onBattery, states) {",
+        "function modeLabel(device, onBattery, states, tr) {",
         """// Bar glyph: Material Symbols ligature names (pre-Quattro battery_android set).
 // Kept separate from batteryIcon() because the panel hero still paints in the
 // bar's Nerd Font.
@@ -56,7 +48,7 @@ function batteryGlyph(device, onBattery, states) {
   return "battery_android_0"
 }
 
-function modeLabel(device, onBattery, states) {""",
+function modeLabel(device, onBattery, states, tr) {""",
         source,
     )
     return replace_once(
@@ -138,9 +130,8 @@ def patch_power_panel(text, source):
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.showPercentage && !vertical
-      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
-      : root.batteryIcon()
+    text: root.batteryIcon()
+    labelText: root.showPercentage && !vertical ? Commons.I18n.formatNumber(Math.round(root.batteryFraction * 100)) + "%" : ""
     slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
     tooltipText: ""
     onPressed: function(b) {
@@ -190,7 +181,7 @@ def patch_power_panel(text, source):
       Text {
         visible: root.showPercentage && !button.vertical
         anchors.verticalCenter: parent.verticalCenter
-        text: Math.round(root.batteryFraction * 100) + "%"
+        text: Commons.I18n.formatNumber(Math.round(root.batteryFraction * 100)) + "%"
         color: root.batteryAlert ? Commons.Color.urgent : root.profileTint
         font.family: button.fontFamily
         font.pixelSize: Style.font.body
@@ -473,11 +464,17 @@ def install():
     keyboard = replace_once(
         keyboard,
         """  onOpenChanged: {
+    heightLive = false
     if (open) {
+      heightSettle.restart()
+      if (content) contentRequested = true
       focusPrimed = false
       beginFocusPrime()""",
         """  onOpenChanged: {
+    heightLive = false
     if (open) {
+      heightSettle.restart()
+      if (content) contentRequested = true
       focusPrimed = false
       beginFocusPrime()
       beginReveal()""",
@@ -515,18 +512,18 @@ def install():
     )
     keyboard = replace_once(
         keyboard,
-        """      opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
-
-      Behavior on opacity {""",
+        """      // Fades in with the morph, done by the time the card has mostly landed.
+      opacity: Math.min(1, root.morph * 1.6)
+""",
         """      // Panel itself grows from the bar; content follows by a few pixels and
       // fades in, preventing the first clipped text row from popping onscreen.
+      // A same-section switch still fades content in with the card morph.
       opacity: (root.reduceMotion ? 1 : Math.min(1, root.reveal * 1.7))
-        * (root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0)
+        * Math.min(1, root.morph * 1.6)
       transform: Translate {
         y: root.reduceMotion ? 0 : -(1 - root.reveal) * Style.space(8)
       }
-
-      Behavior on opacity {""",
+""",
         keyboard_path,
     )
     keyboard = replace_once(
@@ -538,11 +535,11 @@ def install():
     keyboard = replace_once(
         keyboard,
         """  readonly property real availableCardHeight: screenH > 0
-    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barH + gap + margin : margin * 2))
+    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barThickness + gap + margin : margin * 2))
     : 0""",
         """  readonly property real availableCardHeight: screenH > 0
     ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom")
-      ? barH + gap + (barPos === "top" ? frameInset + Style.cornerRadius : margin)
+      ? barThickness + gap + (barPos === "top" ? frameInset + Style.cornerRadius : margin)
       : margin * 2))
     : 0""",
         keyboard_path,
@@ -564,7 +561,7 @@ def install():
     x: 0
     y: root.cardOrigin.y
     width: root.screenW
-    height: Math.round((root.contentHeight + Style.cornerRadius) * root.reveal)
+    height: Math.round((root.drawnHeight + Style.cornerRadius) * root.reveal)
     clip: true
   }
 
@@ -622,31 +619,46 @@ def install():
         """  BorderSurface {
     parent: revealClip
     id: card
-    x: root.cardOrigin.x
-    y: root.cardOrigin.y""",
+    x: root.morphed(root.morphFrom.x, root.cardOrigin.x)
+    y: root.morphed(root.morphFrom.y, root.cardOrigin.y)""",
         """  BorderSurface {
     parent: revealClip
     id: card
-    x: root.cardOrigin.x
+    x: root.morphed(root.morphFrom.x, root.cardOrigin.x)
     y: 0""",
         keyboard_path,
     )
-    # Stable ships a plain duration; dev wraps it in Style.duration().
-    keyboard = replace_first_match(
+    # 4.5 fades and scales the card in; the frame reveal clip replaces both.
+    keyboard = replace_once(
         keyboard,
-        [
-            f"""    borderSpec: root.borderSpec
+        """    borderSpec: root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
-    opacity: root.open || root.popoutSwitching ? 1.0 : 0
 
-    Behavior on opacity {{
-      enabled: !root.popoutSwitching && !root.popoutSwitchClosing
-      NumberAnimation {{ duration: {duration}; easing.type: Easing.OutCubic }}
-    }}
-"""
-            for duration in ("Style.duration(140)", "140")
-        ],
+    // The card fades in as it grows out of the bar from just under full size,
+    // toward the icon it hangs from, and goes in two thirds of the time. On a
+    // switch within a section of the bar it doesn't: the card morphs over from
+    // the last one.
+    property real shown: root.open || root.popoutSwitching ? 1 : 0
+    Behavior on shown {
+      id: showing
+      // The card giving way on a switch still fades out, briefly over the one
+      // taking its place, so there's no empty frame while that one maps.
+      enabled: !root.takingOver && !(root.popoutSwitching && root.morph < 1)
+      NumberAnimation {
+        duration: Style.duration(showing.targetValue > 0 ? 180 : 120)
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Style.easeOut
+      }
+    }
+    opacity: shown
+    transform: Scale {
+      origin.x: root.growOrigin.x
+      origin.y: root.growOrigin.y
+      xScale: 0.97 + 0.03 * card.shown
+      yScale: 0.97 + 0.03 * card.shown
+    }
+""",
         """    borderSpec: root.barPos === "top" ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
@@ -673,13 +685,6 @@ def install():
             panel = replace_once(
                 panel_path.read_text(), "  KeyboardPanel {", "  FramePanel {", panel_path
             )
-            if panel_id == "clock":
-                panel = replace_once(
-                    panel,
-                    "    centerOnBar: true\n",
-                    "    centerOnBar: false\n",
-                    panel_path,
-                )
             if panel_id == "monitor":
                 panel = patch_monitor_panel(panel, panel_path)
             if panel_id == "power":

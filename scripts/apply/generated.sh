@@ -43,6 +43,26 @@ expected_notifications_tree() {
 }
 
 if [[ "$OS_NAME" == "Linux" ]]; then
+    # Keep upstream translations/metadata, replacing only the browser command.
+    zen_desktop_source="${CONFIG_ZEN_DESKTOP_SOURCE:-/usr/share/applications/zen.desktop}"
+    if [[ -f "$zen_desktop_source" ]]; then
+        zen_desktop_expected=$(mktemp)
+        python3 - "$zen_desktop_source" "$zen_desktop_expected" "$HOME/.local/bin/zen" <<'PY'
+from pathlib import Path
+import re, sys
+source, dest, binary = sys.argv[1:]
+quoted = '"' + re.sub(r'([\\"`$])', r'\\\1', binary) + '"'
+text = re.sub(r'^Exec=.*$', lambda _: 'Exec=' + quoted + ' %u', Path(source).read_text(), count=1, flags=re.M)
+Path(dest).write_text(text)
+PY
+        copy_required "$zen_desktop_expected" "$HOME/.local/share/applications/zen.desktop"
+        rm -f "$zen_desktop_expected"
+    fi
+    if (( CHECK )); then
+        zen_lib="$HOME/.local/lib/ffmpeg-firefox/libavcodec.so.62"
+        [[ -f "$zen_lib" ]] || report_drift "$zen_lib" "" "missing Zen media compatibility libraries; run software installer"
+    fi
+
     framed_panels_changed=""
     notifications_changed=""
     notifications_src="$SCRIPT_DIR/system/omarchy/plugins/andres.notifications"

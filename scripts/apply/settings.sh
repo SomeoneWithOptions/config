@@ -82,7 +82,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     fi
 
     current_theme="$(omarchy theme current 2>/dev/null || true)"
-    if [[ "$current_theme" != "Solitude" ]]; then
+    if [[ "$current_theme" != "Solitude" || ${SOLITUDE_OVERLAY_CHANGED:-0} == 1 ]]; then
         if (( CHECK )); then
             report_drift "omarchy theme" "" "is ${current_theme:-unknown}, repo wants Solitude"
         else

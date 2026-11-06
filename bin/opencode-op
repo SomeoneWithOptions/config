@@ -1,0 +1,14 @@
+#!/bin/sh
+# Reuse injected keys; standalone sessions resolve references through 1Password.
+# Override only when the real CLI is not on PATH (never point this at this wrapper).
+opencode_bin=${OPENCODE_BIN:-opencode}
+[ "${1:-}" = "--version" ] && exec "$opencode_bin" "$@"
+
+GEMINI_API_KEY=${GEMINI_API_KEY:-${GOOGLE_GENERATIVE_AI_API_KEY:-}}
+GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY:-$GEMINI_API_KEY}
+export GEMINI_API_KEY GOOGLE_GENERATIVE_AI_API_KEY
+if [ -n "${OPENROUTER_API_KEY:-}" ] && [ -n "$GEMINI_API_KEY" ]; then
+  exec "$opencode_bin" "$@"
+fi
+
+exec op run --env-file="${OPENCODE_KEYS_FILE:-$HOME/.config/opencode/keys.env}" -- "$opencode_bin" "$@"

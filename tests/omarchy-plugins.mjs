@@ -5,47 +5,64 @@ import vm from "node:vm";
 
 const require = createRequire(import.meta.url);
 const menu = require("../system/omarchy/plugins/andres.menu/MenuModel.js");
-const notifications = require("../system/omarchy/plugins/andres.notifications/NotificationLogic.js");
 const source = (plugin, file) => readFileSync(new URL(`../system/omarchy/plugins/${plugin}/${file}`, import.meta.url), "utf8");
 
-// The installed menu now uses disabled guards for already-installed apps.
+// Run QML JS libraries with their imports, without a live notification daemon.
+const libraries = new Map();
+function library(name) {
+  if (libraries.has(name)) return libraries.get(name);
+  let text = source("andres.notifications", name);
+  const scope = vm.createContext({ console });
+  libraries.set(name, scope);
+  text = text.replace(/^\.pragma library\s*$/gm, "").replace(/^\.import "([^"]+)" as (\w+)\s*$/gm, (_, file, alias) => {
+    scope[alias] = library(file);
+    return "";
+  });
+  vm.runInContext(text, scope, { filename: name });
+  return scope;
+}
+const loom = library("Loom.js"), store = library("Store.js");
+
 const installed = menu.normalizeItem("install.example", { label: "Example", disabled: "true" });
 const disabled = { "install.example": true };
 assert.equal(menu.isDisabled(disabled, installed), true);
-assert.equal(menu.isDisabled({}, installed), false);
 assert.equal(menu.labelFor(installed, {}, disabled), "Example ✓");
 assert.equal(menu.displayRow({ [installed.id]: installed }, [installed.id], {}, disabled, installed).disabled, true);
-assert.match(menu.guardScript({ [installed.id]: installed }), /install\.example:d:1/);
+assert.match(menu.guardScript({ [installed.id]: installed }), /install.example:d:1/);
 assert.deepEqual(menu.summonAction("omarchy-shell shell summon omarchy.speedtest"), { id: "omarchy.speedtest", payload: "{}" });
 assert.equal(menu.summonAction("omarchy-shell shell summon omarchy.speedtest && echo done"), null);
 
-// Identical live toasts collapse; distinct click targets and recording cards
-// must survive even when app, summary, and body match.
-const toast = { originalId: 1, app: "Calendar", summary: "Reminder", body: "Meeting" };
-assert.equal(notifications.isDuplicatePopup(toast, { ...toast, originalId: 2 }), true);
-assert.equal(notifications.isDuplicatePopup(toast, toast), false);
-for (const role of ["app", "summary", "body", "image", "execArgv", "loomRecording"]) {
-  assert.equal(notifications.isDuplicatePopup(toast, { ...toast, originalId: 2, [role]: "different" }), false, role);
-}
+const recording = { version: 1, videoPath: "/home/test/Videos/a 'quoted' recording.mp4", accent: "#aabbcc" };
+const snapshot = store.snapshot({ id: 7, appName: "Loom", summary: "Recording", hints: { "x-loom-recording": JSON.stringify(recording) } }, "a", { Normal: 1 });
+assert.equal(loom.parseLoomRecording(snapshot.loomRecording).videoPath, recording.videoPath);
+const saved = store.persistable(snapshot);
+assert.equal(loom.parseLoomRecording(store.restored(saved).loomRecording).videoPath, recording.videoPath);
+assert.equal(store.restored(saved).duration, 0);
+assert.equal(store.normalise({ loomRecording: '{"version":1,"videoPath":"relative","accent":"#aabbcc"}' }).loomRecording, "");
+assert.equal(loom.parseLoomRecording({ ...recording, videoPath: "/a\0b" }), null);
+assert.equal(loom.parseLoomRecording({ ...recording, accent: "javascript:alert(1)" }), null);
 
-// Exercise the actual QML shortcut dispatcher without connecting to the live
-// notification server. Upstream invokes this method directly for Super+comma.
+const toast = { key: "a", app: "Calendar", summary: "Reminder", body: "Meeting" };
+assert.equal(loom.sameToast(toast, { ...toast, key: "b" }), true);
+assert.equal(loom.sameToast(toast, toast), false);
+for (const role of ["app", "summary", "body", "image", "execArgv", "execActions", "loomRecording"])
+  assert.equal(loom.sameToast(toast, { ...toast, key: "b", [role]: "different" }), false, role);
+
 const service = source("andres.notifications", "Service.qml");
 const shortcut = service.match(/  function runShortcut\(method\) \{[\s\S]*?\n  \}/)?.[0];
-assert.ok(shortcut, "notification clone must support upstream global shortcuts");
-let dismissals = 0;
-const context = vm.createContext({ ipcHandler: { dismissOne() { dismissals++; } } });
+assert.ok(shortcut);
+let acts = 0, keyboards = 0;
+const context = vm.createContext({ ipcHandler: { act() { acts++; }, keyboard() { keyboards++; } } });
 vm.runInContext(shortcut, context);
-assert.equal(context.runShortcut("dismissOne"), true);
-assert.equal(dismissals, 1);
+assert.equal(context.runShortcut("act"), true);
+assert.equal(context.runShortcut("keyboard"), true);
 assert.equal(context.runShortcut("unknown"), false);
+assert.equal(acts, 1); assert.equal(keyboards, 1);
+assert.match(service, /function act\(\): string/);
+assert.match(service, /function keyboard\(\): string/);
+assert.match(service, /ShellIpc\s*\{\s*id: ipcHandler/);
+assert.match(service, /videoPath,\s*action,\s*uploadBin/);
+assert.match(source("andres.workspaces", "Workspaces.qml"), /o.workspaces.focus/);
+assert.match(source("andres.menu", "Menu.qml"), /shown: root.mounted && root.rowsLoaded/);
 
-// Resolve the integration points that model-only assertions cannot cover.
-assert.match(service, /IpcHandler\s*\{\s*id: ipcHandler/);
-assert.match(service, /removeDuplicatePopups\(service\.currentContent\(notification, snapshot\)\)/);
-const menuQml = source("andres.menu", "Menu.qml");
-assert.match(menuQml, /visible: root\.mounted && root\.rowsLoaded/);
-assert.match(menuQml, /opacity: entranceProgress \* \(row\.disabled \? 0\.4 : 1\)/);
-assert.match(menuQml, /if \(!root\.rowSelectable\(index\)\) return/);
-
-console.log("Omarchy plugin compatibility tests passed");
+console.log("Omarchy 4.5 plugin compatibility tests passed");

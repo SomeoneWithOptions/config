@@ -18,7 +18,8 @@ ShellRoot {
     running: true
     onTriggered: {
       var files = ["andres.menu/Menu.qml", "andres.notifications/Service.qml",
-                   "andres.idle/Service.qml", "andres.tray/Tray.qml"]
+                   "andres.idle/Service.qml", "andres.tray/Tray.qml",
+                   "andres.workspaces/Workspaces.qml"]
       for (var i = 0; i < files.length; i++) {
         var component = Qt.createComponent(
           "file://" + Quickshell.env("SMOKE_CONFIG_ROOT") + "/system/omarchy/plugins/" + files[i],

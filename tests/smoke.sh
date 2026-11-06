@@ -26,6 +26,7 @@ sh -n "$ROOT/bootstrap.sh"
 python3 "$ROOT/tests/config-json.py"
 bash "$ROOT/tests/bootstrap.sh"
 bash "$ROOT/tests/software-install.sh"
+bash "$ROOT/tests/laptop.sh"
 python -m json.tool "$ROOT/system/omarchy/shell.json" >/dev/null
 python - "$ROOT/system/omarchy/install-framed-panels.py" <<'PY'
 import sys
@@ -79,8 +80,8 @@ test "$(grep -c '^  FramePanel {' "$tray_plugin/Tray.qml")" -eq 2
 grep -q 'property int gap: -1' "$tray_plugin/FramePanel.qml"
 grep -q 'id: openRevealTimer' "$tray_plugin/FramePanel.qml"
 grep -q 'easing.type: root.open ? Easing.OutCubic : Easing.OutExpo' "$tray_plugin/FramePanel.qml"
-grep -q 'onWantsOpenChanged: syncReveal()' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
-grep -q 'Behavior on height' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+grep -q 'id: clipper' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
+grep -q 'onRecordingAction:' "$ROOT/system/omarchy/plugins/andres.notifications/Service.qml"
 python -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$ROOT/system/omarchy/shell.toml"
 for lua in "$ROOT"/system/hypr/*.lua; do luac -p "$lua"; done
 test -f "$ROOT/theme/fonts/material-symbols-rounded/MaterialSymbolsRounded.ttf"

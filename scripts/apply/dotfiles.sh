@@ -17,6 +17,16 @@ copy_required_if_missing "$SCRIPT_DIR/agents/codex/config.toml" "$HOME/.codex/co
 # settings.json, so seed it and leave live edits alone.
 copy_required_if_missing "$SCRIPT_DIR/agents/claude/settings.json" "$HOME/.claude/settings.json"
 
+copy_required_if_missing "$SCRIPT_DIR/agents/claude-api/settings.json" "$HOME/.claude-api/settings.json"
+for config in opencode.json cli.json tui.json; do
+    copy_required_if_missing "$SCRIPT_DIR/agents/opencode/$config" "$HOME/.config/opencode/$config"
+done
+copy_required "$SCRIPT_DIR/agents/opencode/keys.env" "$HOME/.config/opencode/keys.env"
+copy_required "$SCRIPT_DIR/agents/opencode/instructions/caveman-default.md" "$HOME/.config/opencode/instructions/caveman-default.md"
+for helper in claude-api opencode-op; do
+    copy_executable_required "$SCRIPT_DIR/bin/$helper" "$HOME/.local/bin/$helper"
+done
+
 # Global rule for Claude Code, Codex, and OpenCode (pi gets it from its tracked
 # AGENTS.md). Append-only: these files also hold local, unmanaged instructions.
 NO_COMMIT_RULE="- Never commit code unless asked to."
@@ -86,6 +96,7 @@ copy_required "$SCRIPT_DIR/shell/fish/conf.d/turso.fish" "$HOME/.config/fish/con
 copy_required "$SCRIPT_DIR/shell/fish/functions/fish_prompt.fish" "$HOME/.config/fish/functions/fish_prompt.fish"
 copy_required "$SCRIPT_DIR/shell/fish/functions/dian.fish" "$HOME/.config/fish/functions/dian.fish"
 copy_required "$SCRIPT_DIR/shell/fish/functions/with-openrouter.fish" "$HOME/.config/fish/functions/with-openrouter.fish"
+copy_required "$SCRIPT_DIR/shell/fish/functions/opencode.fish" "$HOME/.config/fish/functions/opencode.fish"
 
 # Fontconfig / GTK Configuration
 copy_required "$SCRIPT_DIR/theme/fontconfig/fonts.conf" "$HOME/.config/fontconfig/fonts.conf"
@@ -130,7 +141,7 @@ if [[ "$OS_NAME" == "Linux" ]]; then
         helper_name="$(basename "$helper")"
         # ghui/hunk are macOS-only here (Omarchy generates them on Linux); flicko-slurp
         # goes to a scoped dir below.
-        [[ "$helper_name" == ghui || "$helper_name" == hunk || "$helper_name" == flicko-slurp ]] && continue
+        [[ "$helper_name" == ghui || "$helper_name" == hunk || "$helper_name" == flicko-slurp || "$helper_name" == claude-api || "$helper_name" == opencode-op ]] && continue
         copy_executable_required "$helper" "$HOME/.local/bin/$helper_name"
     done
 
@@ -154,6 +165,12 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     copy_required "$SCRIPT_DIR/system/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
     copy_json_required "$SCRIPT_DIR/system/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
     copy_required "$SCRIPT_DIR/system/omarchy/shell.toml" "$HOME/.config/omarchy/shell.toml"
+
+    SOLITUDE_OVERLAY_CHANGED=0
+    cmp -s "$SCRIPT_DIR/system/omarchy/themes/solitude/colors.toml" "$HOME/.config/omarchy/themes/solitude/colors.toml" || SOLITUDE_OVERLAY_CHANGED=1
+    copy_required "$SCRIPT_DIR/system/omarchy/themes/solitude/colors.toml" "$HOME/.config/omarchy/themes/solitude/colors.toml"
+    copy_required "$SCRIPT_DIR/apps/voxtype/config.toml" "$HOME/.config/voxtype/config.toml"
+    copy_required "$SCRIPT_DIR/system/wireplumber/wireplumber.conf.d/bluetooth-a2dp-autoconnect.conf" "$HOME/.config/wireplumber/wireplumber.conf.d/bluetooth-a2dp-autoconnect.conf"
 
     # XDG defaults
     copy_required "$SCRIPT_DIR/system/xdg/xdg-terminals.list" "$HOME/.config/xdg-terminals.list"

@@ -1,0 +1,3 @@
+# Lenovo-style battery thresholds: apply only to batteries exposing each control.
+ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="BAT[0-9]*", TEST=="charge_control_start_threshold", ATTR{charge_control_start_threshold}="85"
+ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="BAT[0-9]*", TEST=="charge_control_end_threshold", ATTR{charge_control_end_threshold}="90"

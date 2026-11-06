@@ -387,7 +387,7 @@ Item {
     refreshStayAwakeState()
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "idle"
 
     function status(): string {

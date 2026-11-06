@@ -1,0 +1,7 @@
+#!/bin/sh
+# Firefox-family media compatibility, isolated from the system FFmpeg package.
+compat="$HOME/.local/lib/ffmpeg-firefox"
+if [ -f "$compat/libavcodec.so.62" ]; then
+  export LD_LIBRARY_PATH="$compat${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+exec "${ZEN_BROWSER_BIN:-/usr/bin/zen-browser}" "$@"

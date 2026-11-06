@@ -54,6 +54,16 @@ copy_required_if_missing() {
     fi
 
     if [[ -e "$dest_path" ]]; then
+        # Optional seed audit reports differences without printing local secrets
+        # or turning app-maintained preferences into replay-managed files.
+        if (( CHECK && ${CHECK_SEEDS:-0} )); then
+            local source_value dest_value
+            source_value=$(json_canonical "$source_path" || cat "$source_path")
+            dest_value=$(json_canonical "$dest_path" || cat "$dest_path")
+            if [[ "$source_value" != "$dest_value" ]]; then
+                report_drift "$dest_path" "" "seed differs (local values preserved; review seed selectively)"
+            fi
+        fi
         return
     fi
     if (( CHECK )); then

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Separate API billing from the subscription CLI; resolve the installed CLI on PATH.
+CLAUDE_CONFIG_DIR="$HOME/.claude-api" exec claude "$@"

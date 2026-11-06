@@ -10,10 +10,12 @@ set -euo pipefail
 #          `omarchy update` migrations and other tools' edits are seen, not undone.
 
 CHECK=0
+CHECK_SEEDS=0
 case "${1:-}" in
     --check) CHECK=1 ;;
+    --check-seeds) CHECK=1; CHECK_SEEDS=1 ;;
     "") ;;
-    *) printf 'Usage: %s [--check]\n' "$0" >&2; exit 2 ;;
+    *) printf 'Usage: %s [--check|--check-seeds]\n' "$0" >&2; exit 2 ;;
 esac
 DRIFT=0
 
@@ -29,6 +31,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$SCRIPT_DIR/scripts/apply/generated.sh"
 # shellcheck source=scripts/apply/settings.sh
 . "$SCRIPT_DIR/scripts/apply/settings.sh"
+# Hardware and preferences outside ~/.config are part of drift coverage too.
+. "$SCRIPT_DIR/scripts/apply/laptop.sh"
 # shellcheck source=scripts/apply/migrations.sh
 . "$SCRIPT_DIR/scripts/apply/migrations.sh"
 

@@ -120,6 +120,28 @@ install_arch_1password() {
   fi
 }
 
+install_arch_voxtype() {
+  local config="$HOME/.config/voxtype/config.toml"
+  # Seed before downloading: otherwise upstream downloads its default model.
+  if [ ! -e "$config" ]; then
+    mkdir -p "${config%/*}"
+    cp "$SCRIPT_DIR/apps/voxtype/config.toml" "$config" || return 1
+  fi
+  if ! has_command voxtype; then
+    warn 'Voxtype is unavailable; model and service setup skipped.'
+    return 0
+  fi
+  progress_step 'Preparing dictation model…' 'Dictation model ready' 'Dictation model setup failed' \
+    'download configured Voxtype model' voxtype setup --download --no-post-install || return 0
+  # ARM packages can have Vulkan installed but no Voxtype Vulkan backend.
+  if has_command omarchy-hw-vulkan && omarchy-hw-vulkan && [ -x /usr/lib/voxtype/voxtype-vulkan ]; then
+    run_or_warn 'enable Voxtype GPU backend' voxtype setup gpu --enable
+  fi
+  run_or_warn 'configure Voxtype user service' voxtype setup systemd
+  run_or_warn 'enable Voxtype' systemctl --user enable --now voxtype.service
+  run_or_warn 'select Voxtype dictation' omarchy dictation use voxtype
+}
+
 install_arch_packages() {
   # No `omarchy update` here: it stops to ask whether to remove packages and
   # waits for an answer, so it cannot run unattended. Run it by hand *before*
@@ -167,6 +189,10 @@ install_arch_packages() {
     arch_install_if_missing "$package"
   done
 
+  arch_install_if_missing wtype
+  arch_install_if_missing voxtype-bin
+  install_arch_voxtype
+
   # Use Omarchy's mise config instead of owning ~/.config/mise/config.toml.
   progress_step 'Installing Node.js…' 'Node.js installed' 'Node.js installation failed' \
     "omarchy install dev-env node" omarchy install dev-env node
@@ -199,6 +225,10 @@ install_arch_packages() {
       'Zen browser installation failed' \
       "omarchy install browser zen" omarchy install browser zen
   fi
+
+  progress_step 'Preparing Zen media libraries…' 'Zen media libraries ready' \
+    'Zen media setup failed' 'Zen media compatibility setup' \
+    bash "$SCRIPT_DIR/scripts/install/zen-media.sh" || true
 
   # The bar ships an `andres.tailscale` widget, so the binary has to exist on a
   # fresh laptop. This also enables tailscaled and Taildrop.

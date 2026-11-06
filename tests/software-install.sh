@@ -66,7 +66,7 @@ if [ "$1 $2" = 'pkg add' ]; then
 fi
 exit 0
 SH
-  for tool in mise omarchy-webapp-install systemctl pi clasp vercel rtk brew yay; do
+  for tool in mise omarchy-webapp-install systemctl pi clasp vercel rtk brew yay voxtype; do
     printf '#!/bin/sh\nprintf "%s %%s\\n" "%s" "$*" >>"$MOCK_CALLS"\nexit 0\n' "$tool" "$tool" >"$SOFT/bin/$tool"
   done
   # Mirrors the real helper: writes a mise-backed wrapper into ~/.local/bin, so
@@ -134,12 +134,13 @@ if [ "$1 $2 $3" = 'install --global @playwright/cli' ]; then
 fi
 exit 0
 SH
+  printf '#!/bin/sh\nexit 1\n' >"$SOFT/bin/omarchy-hw-vulkan"
   chmod +x "$SOFT/bin/"*
 }
 
 soft_run() {
   status=0
-  env HOME="$SOFT/home" PATH="$SOFT/bin:/usr/bin:/bin" MOCK_CALLS="$SOFT/calls" \
+  env CONFIG_ZEN_MEDIA=0 HOME="$SOFT/home" PATH="$SOFT/bin:/usr/bin:/bin" MOCK_CALLS="$SOFT/calls" \
     SOFT_STATE_DIR="$SOFT" BOOTSTRAP_REPORT_DIR="$SOFT/report" BOOTSTRAP_STAGE=software \
     BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$SOFT/software-events" \
     bash "$ROOT/1 SoftwareInstall.sh" >"$SOFT/output" 2>&1 || status=$?
@@ -341,7 +342,7 @@ grep -q $'start\tInstalling Tailscale…' "$SOFT/software-events"
 grep -q $'fail\tTailscale installation failed' "$SOFT/software-events"
 soft_assert_absent 'Configuring Tailscale' "$SOFT/software-events"
 soft_assert_absent $'done\tTailscale' "$SOFT/software-events"
-soft_assert_absent '^systemctl ' "$SOFT/calls"
+soft_assert_absent '^systemctl .*omarchy-tailscale-receive' "$SOFT/calls"
 soft_assert_absent '^sudo tailscale ' "$SOFT/calls"
 soft_assert_absent '^tailscale ' "$SOFT/calls"
 soft_assert_absent 'omarchy-webapp-install' "$SOFT/calls"
@@ -365,7 +366,7 @@ ln -s /usr/bin/dirname "$SOFT/core/dirname"
 ln -s /usr/bin/chmod "$SOFT/core/chmod"
 rm "$SOFT/bin/yay"
 status=0
-env HOME="$SOFT/home" PATH="$SOFT/bin:$SOFT/core" MOCK_CALLS="$SOFT/calls" \
+env CONFIG_ZEN_MEDIA=0 HOME="$SOFT/home" PATH="$SOFT/bin:$SOFT/core" MOCK_CALLS="$SOFT/calls" \
   SOFT_STATE_DIR="$SOFT" BOOTSTRAP_REPORT_DIR="$SOFT/report" BOOTSTRAP_STAGE=software \
   BOOTSTRAP_SOFTWARE_PROGRESS_FILE="$SOFT/software-events" \
   bash "$ROOT/1 SoftwareInstall.sh" >"$SOFT/output" 2>&1 || status=$?

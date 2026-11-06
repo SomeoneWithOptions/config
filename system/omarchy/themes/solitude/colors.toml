@@ -1,0 +1,37 @@
+mode = "dark"
+
+# Solitude base (unchanged)
+accent = "#798186"
+selection = "#343d41"
+muted = "#4b4e55"
+
+background = "#101315"
+dark_background = "#0c0e10"
+darker_background = "#080a0b"
+lighter_background = "#101315"
+
+foreground = "#cacccc"
+dark_foreground = "#4b4e55"
+light_foreground = "#cbc2be"
+bright_foreground = "#a5aeb4"
+
+hyprland_active_border = "rgba(798186ee) rgba(caccccee)"
+hyprland_inactive_border = "rgb(1e1e1e)"
+active_border_color = "#a8adb0"
+active_tab_background = "#798186"
+
+# Catppuccin Mocha ANSI accents
+red = "#f38ba8"
+yellow = "#f9e2af"
+orange = "#fab387"
+green = "#a6e3a1"
+cyan = "#94e2d5"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+
+bright_red = "#f38ba8"
+bright_yellow = "#f9e2af"
+bright_green = "#a6e3a1"
+bright_cyan = "#94e2d5"
+bright_blue = "#89b4fa"
+bright_magenta = "#f5c2e7"

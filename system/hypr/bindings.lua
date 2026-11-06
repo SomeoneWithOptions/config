@@ -105,9 +105,10 @@ hl.unbind("SUPER + SHIFT + L")
 o.bind("SUPER + SHIFT + L", "New Linear issue", "omarchy-shell andres.linear toggle")
 -- <<< linear-omarchy-plugin <<<
 
--- Dictation keys from before Alt + Space and Right Alt became the defaults.
--- Remove these lines to give the keys back to applications.
+-- Dictation: only SUPER + CTRL + X toggles. Default Alt + Space and Right Alt
+-- push-to-talk removed (stray taps caused "No speech detected" popups).
+hl.unbind("ALT + SPACE")
+hl.unbind("ALT + Alt_R")
 if o.dictation_installed and o.dictation_installed() then
   o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
-  o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
 end

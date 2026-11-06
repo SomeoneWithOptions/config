@@ -69,14 +69,17 @@
         },
         {
           "id": "andres.clock",
-          "format": "ddd HH:mm",
+          "format": "dddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy"
         },
         {
           "id": "omarchy.spacer",
           "size": 11
         }
-      ]
+      ],
+      "centerBegin": [],
+      "centerEnd": [],
+      "tray": []
     }
   },
   "plugins": [

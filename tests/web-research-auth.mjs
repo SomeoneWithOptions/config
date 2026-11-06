@@ -22,30 +22,30 @@ function fixture(env = {}) {
   return { ...h, calls, timers, setResponse(value) { response = value; }, setError(value) { error = value; }, advance(ms) { now += ms; } };
 }
 
-test('lazy loading; concurrent requests share one bounded CLI call; cache rotates', async () => {
+test('lazy loading; concurrent requests share one bounded CLI call per provider; cache rotates', async () => {
   const f = fixture();
   assert.equal(f.calls.length, 0);
   assert.equal(f.context.fetchProviderDisplay({}), 'auto (exa preferred)');
   assert.equal(f.calls.length, 0);
   const values = await Promise.all(names.map(name => f.context.secret(name)));
   assert.deepEqual(values, names.map(name => `test-${name}`));
-  assert.equal(f.calls.length, 1);
-  assert.deepEqual(Array.from(f.calls[0].args), ['item', 'get', '5vdjlcxrhqfegffhp2hxye6cle', '--vault', 'eiimzbiscziwayqhndjwh36tpy', '--format=json', '--reveal', '--account', 'FXKJFB4RCFFPHAHT4SRYTQDKSY']);
+  assert.equal(f.calls.length, 3);
+  assert.deepEqual(Array.from(f.calls[0].args), ['item', 'get', '3grxg4xlrspjlljgeyecilqffe', '--vault', 'eiimzbiscziwayqhndjwh36tpy', '--format=json', '--reveal', '--account', 'FXKJFB4RCFFPHAHT4SRYTQDKSY']);
   assert.equal(f.calls[0].options.timeout, 30_000);
   assert.equal(f.calls[0].options.killSignal, 'SIGKILL');
   await f.context.secret(names[0]);
-  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls.length, 3);
   const rotated = item(); rotated.fields[0].value = 'rotated'; f.setResponse(rotated);
   f.advance(300_001);
   assert.equal(await f.context.secret(names[0]), 'rotated');
-  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls.length, 4);
   f.timers.at(-1).fn();
   await f.context.secret(names[0]);
-  assert.equal(f.calls.length, 3);
+  assert.equal(f.calls.length, 5);
 });
 
 test('service account overrides desktop/Connect; configurable non-secret IDs', async () => {
-  const f = fixture({ OP_SERVICE_ACCOUNT_TOKEN: 'fake-token', OP_ACCOUNT: 'wrong', OP_CONNECT_HOST: 'wrong', OP_CONNECT_TOKEN: 'wrong', WEB_RESEARCH_OP_ITEM: 'item', WEB_RESEARCH_OP_VAULT: 'vault' });
+  const f = fixture({ OP_SERVICE_ACCOUNT_TOKEN: 'fake-token', OP_ACCOUNT: 'wrong', OP_CONNECT_HOST: 'wrong', OP_CONNECT_TOKEN: 'wrong', WEB_RESEARCH_OP_EXA_ITEM: 'item', WEB_RESEARCH_OP_VAULT: 'vault' });
   await f.context.secret(names[0]);
   const { args, options } = f.calls[0];
   assert.equal(args.includes('--account'), false);
@@ -71,7 +71,7 @@ test('CLI failures stay sanitized, retry after unlock, never use raw env keys', 
 test('rejects malformed, duplicate, plaintext, and whitespace values without leaking output', async () => {
   for (const bad of ['secret-invalid-json', {}, { fields: [null] }, { fields: [item().fields[0], item().fields[0]] }, { fields: [{ label: names[0], type: 'STRING', value: 'secret' }] }, { fields: [{ label: names[0], type: 'CONCEALED', value: 'secret with whitespace' }] }]) {
     const f = fixture(); f.setResponse(bad);
-    await assert.rejects(f.context.secret(names[0]), e => e.message.startsWith('Invalid 1Password web research item:') && !e.message.includes('secret'));
+    await assert.rejects(f.context.secret(names[0]), e => e.message.startsWith('Invalid 1Password exa item:') && !e.message.includes('secret'));
   }
 });
 
@@ -92,7 +92,7 @@ test('provider requests receive resolved headers for all four fields', async () 
   assert.equal(requests[1].init.headers.Authorization, 'Bearer test-FIRECRAWL_API_KEY');
   assert.equal(requests[2].init.headers['X-Subscription-Token'], 'test-BRAVE_SEARCH_API_KEY');
   assert.equal(requests[3].init.headers['X-Subscription-Token'], 'test-BRAVE_AI_API_KEY');
-  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls.length, 3);
 });
 
 test('auto search awaits availability and routes missing Exa to Firecrawl', async () => {

@@ -44,14 +44,24 @@ interface SearchRun {
 // Non-secret IDs stay stable across computers and item/vault renames.
 const OP_ACCOUNT = process.env.WEB_RESEARCH_OP_ACCOUNT || "FXKJFB4RCFFPHAHT4SRYTQDKSY";
 const OP_VAULT = process.env.WEB_RESEARCH_OP_VAULT || "eiimzbiscziwayqhndjwh36tpy";
-const OP_ITEM = process.env.WEB_RESEARCH_OP_ITEM || "5vdjlcxrhqfegffhp2hxye6cle";
+const OP_ITEMS = {
+	exa: process.env.WEB_RESEARCH_OP_EXA_ITEM || "3grxg4xlrspjlljgeyecilqffe",
+	firecrawl: process.env.WEB_RESEARCH_OP_FIRECRAWL_ITEM || "lfvwj4z64fbotmg2t4aqtd2ci4",
+	brave: process.env.WEB_RESEARCH_OP_BRAVE_ITEM || "izi2jbt6ekanplkoodofb7xulu",
+};
 const SECRET_NAMES = ["EXA_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_SEARCH_API_KEY", "BRAVE_AI_API_KEY"] as const;
 type SecretName = typeof SECRET_NAMES[number];
 type Secrets = Partial<Record<SecretName, string>>;
+const SECRET_PROVIDERS: Record<SecretName, SearchProvider> = {
+	EXA_API_KEY: "exa",
+	FIRECRAWL_API_KEY: "firecrawl",
+	BRAVE_SEARCH_API_KEY: "brave",
+	BRAVE_AI_API_KEY: "brave",
+};
 const SECRET_TTL_MS = 5 * 60_000;
-let secretCache: { values: Secrets; expiresAt: number } | undefined;
-let secretLoad: Promise<Secrets> | undefined;
-let secretExpiry: ReturnType<typeof setTimeout> | undefined;
+const secretCache = new Map<SearchProvider, { values: Secrets; expiresAt: number }>();
+const secretLoads = new Map<SearchProvider, Promise<Secrets>>();
+const secretExpiries = new Map<SearchProvider, ReturnType<typeof setTimeout>>();
 let exaQueue = Promise.resolve();
 const braveQueues = new Map<string, Promise<void>>();
 
@@ -71,12 +81,15 @@ function clean<T extends Record<string, unknown>>(object: T): Partial<T> {
 	)) as Partial<T>;
 }
 
-async function loadSecrets(): Promise<Secrets> {
-	if (secretCache && Date.now() < secretCache.expiresAt) return secretCache.values;
-	if (secretLoad) return secretLoad;
-	secretCache = undefined;
-	if (secretExpiry) clearTimeout(secretExpiry);
-	const args = ["item", "get", OP_ITEM, "--vault", OP_VAULT, "--format=json", "--reveal"];
+async function loadSecrets(provider: SearchProvider): Promise<Secrets> {
+	const cached = secretCache.get(provider);
+	if (cached && Date.now() < cached.expiresAt) return cached.values;
+	const loading = secretLoads.get(provider);
+	if (loading) return loading;
+	secretCache.delete(provider);
+	const expiry = secretExpiries.get(provider);
+	if (expiry) clearTimeout(expiry);
+	const args = ["item", "get", OP_ITEMS[provider], "--vault", OP_VAULT, "--format=json", "--reveal"];
 	// Service-account authentication must not select a desktop user account.
 	const env = { ...process.env };
 	// This extension uses direct CLI authentication, never an ambient Connect server.
@@ -88,7 +101,7 @@ async function loadSecrets(): Promise<Secrets> {
 	} else {
 		args.push("--account", OP_ACCOUNT);
 	}
-	secretLoad = new Promise<Secrets>((resolve, reject) => {
+	const secretLoad = new Promise<Secrets>((resolve, reject) => {
 		const child = execFile("op", args, {
 			env, encoding: "utf8", timeout: 30_000, killSignal: "SIGKILL", maxBuffer: 1024 * 1024,
 		}, (error, stdout) => {
@@ -96,7 +109,7 @@ async function loadSecrets(): Promise<Secrets> {
 			if (error) {
 				const reason = (error as NodeJS.ErrnoException).code === "ENOENT"
 					? "Install 1Password CLI (op) and ensure it is on PATH."
-					: "Unlock/sign in to 1Password, or supply a read-only OP_SERVICE_ACCOUNT_TOKEN with vault access. Check WEB_RESEARCH_OP_ACCOUNT/VAULT/ITEM settings.";
+					: "Unlock/sign in to 1Password, or supply a read-only OP_SERVICE_ACCOUNT_TOKEN with vault access. Check WEB_RESEARCH_OP_ACCOUNT/VAULT and provider item settings.";
 				reject(new Error(`Web research could not read 1Password credentials. ${reason}`));
 				return;
 			}
@@ -104,7 +117,7 @@ async function loadSecrets(): Promise<Secrets> {
 				const item = JSON.parse(stdout);
 				if (!Array.isArray(item.fields)) throw new Error();
 				const values: Secrets = {};
-				for (const name of SECRET_NAMES) {
+				for (const name of SECRET_NAMES.filter((name) => SECRET_PROVIDERS[name] === provider)) {
 					const fields = item.fields.filter((field: any) => field.label === name);
 					if (fields.length > 1) throw new Error();
 					const field = fields[0];
@@ -116,28 +129,30 @@ async function loadSecrets(): Promise<Secrets> {
 				}
 				resolve(values);
 			} catch {
-				reject(new Error("Invalid 1Password web research item: use unique, concealed API-key fields with the documented names."));
+				reject(new Error(`Invalid 1Password ${provider} item: use unique, concealed API-key fields with the documented names.`));
 			}
 		});
 		// Never allow a headless process to wait for a terminal password prompt.
 		child.stdin?.end();
 	});
+	secretLoads.set(provider, secretLoad);
 	try {
 		const values = await secretLoad;
-		secretCache = { values, expiresAt: Date.now() + SECRET_TTL_MS };
-		secretExpiry = setTimeout(() => { secretCache = undefined; }, SECRET_TTL_MS);
-		secretExpiry.unref();
+		secretCache.set(provider, { values, expiresAt: Date.now() + SECRET_TTL_MS });
+		const expiry = setTimeout(() => { secretCache.delete(provider); secretExpiries.delete(provider); }, SECRET_TTL_MS);
+		expiry.unref();
+		secretExpiries.set(provider, expiry);
 		return values;
 	} finally {
-		secretLoad = undefined;
+		secretLoads.delete(provider);
 	}
 }
 
 async function secret(name: SecretName, required = true): Promise<string | undefined> {
-	const value = (await loadSecrets())[name];
+	const value = (await loadSecrets(SECRET_PROVIDERS[name]))[name];
 	if (value) return value;
 	if (!required) return undefined;
-	throw new Error(`Missing ${name} in the 1Password web research item; add a concealed field with this name.`);
+	throw new Error(`Missing ${name} in the 1Password ${SECRET_PROVIDERS[name]} item; add a concealed field with this name.`);
 }
 
 function normalizeUrl(input: string) {

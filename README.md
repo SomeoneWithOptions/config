@@ -54,8 +54,8 @@ Both check modes leave configuration unchanged. `--check-seeds` reports seed
 differences without printing local secrets or overwriting app preferences.
 Live laptop files are not updated merely by changing this repository.
 
-Pi web-research keys live in separate 1Password `development` items: `Exa API`
-(`EXA_API_KEY`), `Firecrawl API` (`FIRECRAWL_API_KEY`), and `Brave API`
+Pi web-research keys live in separate 1Password `development` items: `Exa <> API Key`
+(`EXA_API_KEY`), `Firecrawl <> API Key` (`FIRECRAWL_API_KEY`), and `Brave <> Search API Key`
 (`BRAVE_SEARCH_API_KEY`, optional `BRAVE_AI_API_KEY`). Each service loads/caches its
 own item for five minutes. Item IDs survive renames. Override account/vault with
 `WEB_RESEARCH_OP_ACCOUNT` / `WEB_RESEARCH_OP_VAULT`; override individual item IDs

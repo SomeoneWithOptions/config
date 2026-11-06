@@ -1,3 +1,3 @@
 {
-  "apiKeyHelper": "if [ -n \"${T3CODE_ANTHROPIC_API_KEY:-}\" ]; then printf '%s' \"$T3CODE_ANTHROPIC_API_KEY\"; else op read 'op://development/Anthropic/api_key'; fi"
+  "apiKeyHelper": "if [ -n \"${T3CODE_ANTHROPIC_API_KEY:-}\" ]; then printf '%s' \"$T3CODE_ANTHROPIC_API_KEY\"; else op read 'op://development/tcfjuerciwa7p2kshguvcoxmby/api_key'; fi"
 }

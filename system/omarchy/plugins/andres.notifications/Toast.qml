@@ -76,7 +76,11 @@ Item {
 
   readonly property bool critical: row.urgency === 2
   readonly property color dimColor: Qt.darker(Commons.Color.notifications.text, 1.4)
-  readonly property color bodyColor: Qt.darker(Commons.Color.notifications.text, 1.15)
+  // Old "macOS" card look: title in text colour, everything else muted.
+  readonly property color textColor: Commons.Color.notifications.text
+  readonly property color secondaryColor: Qt.rgba(textColor.r, textColor.g, textColor.b, 0.62)
+  readonly property color bodyColor: secondaryColor
+  readonly property string fontFamily: "DM Sans"
   readonly property color accentColor: critical ? Commons.Color.urgent
                                                : (row.urgency === 0 ? dimColor : Commons.Color.notifications.countdown)
   readonly property bool hasBody: String(row.body || "").length > 0
@@ -85,7 +89,17 @@ Item {
   // letter, and a summary that opens with its own glyph already has its mark.
   readonly property bool anonymous: row.app === "omarchy-action" || row.app === "notify-send"
   readonly property bool glyphLed: Delivery.summaryStartsWithGlyph(row.summary)
-  readonly property real contentPaddingY: hasBody ? Style.space(10) : Style.space(7)
+  readonly property real contentPaddingY: Style.space(12)
+  // Small header (icon + APP NAME), hidden for System toasts led by a glyph.
+  readonly property bool showHeader: !(row.app === "omarchy-action" && glyphLed)
+  readonly property real photoSize: thumb.photo ? Style.space(56) : 0
+
+  function displayApp() {
+    var a = String(row.app || "")
+    if (a === "notify-send") return "Script"
+    if (a === "omarchy-action") return "System"
+    return a.length > 0 ? a : "Notification"
+  }
   // A card behind the front of a collapsed deck is a shape: the cards are
   // translucent, so its text would read through the one in front. The text
   // fades as the deck moves (opening, closing, a card arriving over it or
@@ -188,19 +202,20 @@ Item {
   // action area: that area's height derives from the card's, so subtracting it
   // back out is a binding loop. hasBody, not bodyBox.visible: Item.visible
   // includes ancestors, and an inactive output must not shrink the measurement.
+  readonly property real headerBlock: showHeader ? header.height + column.spacing : 0
   readonly property real textBlock:
-      headline.height + (hasBody ? column.spacing + bodyBox.height : 0)
+      headerBlock + headline.height + (hasBody ? column.spacing + bodyBox.height : 0)
 
   // The same block at its two-line height: the icon is centred on this so a
   // body opening on hover does not walk it down the card.
   readonly property real restingBlock:
-      headline.height + (hasBody ? column.spacing + bodyBox.restHeight : 0)
+      headerBlock + headline.height + (hasBody ? column.spacing + bodyBox.restHeight : 0)
 
   // A block shorter than the mark is centred against it, measured at rest.
-  readonly property real textOffset: Math.max(0, (thumb.height - restingBlock) / 2)
+  readonly property real textOffset: Math.max(0, (photoSize - restingBlock) / 2)
 
   readonly property real fixedHeight: plate.borderTop + plate.borderBottom
-      + contentPaddingY * 2 + Math.max(thumb.height, textOffset + textBlock)
+      + contentPaddingY * 2 + Math.max(photoSize, textOffset + textBlock)
 
   // The height this card's *state* implies, a step function the deck lays out
   // from. Feeding a mid-animation height back into the layout stalls the stack.
@@ -249,141 +264,137 @@ Item {
     width: parent.width
     height: card.drawnHeight
 
+    // Picks the card's picture: the sender's image, then the icon theme, then
+    // a desktop entry's icon (Icons.candidates has the names). A file that
+    // will not load gives way to the next. Logic only; drawn below.
+    Item {
+      id: thumb
+      visible: false
+
+      function entryIcon(icon) {
+        var value = String(icon || "")
+        return value.charAt(0) === "/" ? Util.fileUrl(value) : value ? Quickshell.iconPath(value, true) : ""
+      }
+
+      // Quickshell.iconPath answers "" for a missing icon when asked to check,
+      // where a bare image://icon/ URL would draw a checkerboard.
+      readonly property string sent: /^image:\/\/qsimage\/[0-9]+\/[0-9]+$/.test(String(card.row.image || ""))
+                                     ? String(card.row.image) : Security.localImageUrl(card.row.image)
+
+      function firstOf(names, look) {
+        for (var i = 0; i < names.length; i++) {
+          var found = look(names[i])
+          if (found) return found
+        }
+        return ""
+      }
+      readonly property var sources: {
+        var appsRevision = DesktopEntries.applications.values.length
+        var want = Icons.candidates(card.row)
+        var found = [sent,
+          firstOf(want.themed, function(name) { return Quickshell.iconPath(name, true) }),
+          firstOf(want.entries, function(name) {
+            var entry = DesktopEntries.heuristicLookup(name)
+            return entry ? thumb.entryIcon(entry.icon) : ""
+          })]
+        return found.filter(function(url, i) { return url && found.indexOf(url) === i })
+      }
+      readonly property string sourcesKey: sources.join("\n")
+      property int failed: 0
+      onSourcesKeyChanged: failed = 0
+      readonly property string best: sources[failed] || ""
+      // A sender's picture (screenshot, avatar) goes on the right; an app
+      // icon goes small in the header.
+      readonly property bool photo: best !== "" && best === sent
+      readonly property bool mono: !photo && Icons.isSymbolic(best)
+
+      function giveUp(status) {
+        if (status === Image.Error && failed < sources.length) failed += 1
+      }
+    }
+
     Row {
       id: layout
       // Top-anchored: centred content would slide up as the card grows.
       anchors { left: parent.left; right: parent.right; top: parent.top
-                leftMargin: plate.contentLeftInset + Style.space(12)
-                rightMargin: plate.contentRightInset + Style.space(12)
+                leftMargin: plate.contentLeftInset + Style.space(16)
+                rightMargin: plate.contentRightInset + Style.space(14)
                 topMargin: plate.contentTopInset + card.contentPaddingY }
-      spacing: thumb.compact ? Style.space(8) : Style.space(12)
-
-      // The sender's image, else the icon resolved for its source, else the
-      // glyph an Omarchy sender asked for, else the first letter of the source.
-      Item {
-        id: thumb
-        readonly property bool pictured: picture.status === Image.Ready && best !== ""
-        readonly property bool glyphed: !pictured && String(card.row.glyph || "").length > 0
-        readonly property bool lettered: !pictured && !glyphed && !card.anonymous && !card.glyphLed
-        // A one-line toast keeps its glyph at text size beside the line.
-        readonly property bool compact: glyphed && !card.hasBody
-        readonly property real slot: Style.space(40)
-        width: pictured || lettered ? slot : glyphed ? (compact ? glyphText.implicitWidth : slot) : 0
-        height: width > 0 ? (compact ? glyphText.implicitHeight : slot) : 0
-        visible: width > 0
-        y: Math.max(0, (card.restingBlock - height) / 2)
-        opacity: card.contentOpacity
-
-        function entryIcon(icon) {
-          var value = String(icon || "")
-          return value.charAt(0) === "/" ? Util.fileUrl(value) : value ? Quickshell.iconPath(value, true) : ""
-        }
-
-        // Only what the sender handed over and what is installed for its source:
-        // Quickshell.iconPath answers "" for a missing icon when asked to check,
-        // where a bare image://icon/ URL would draw a checkerboard.
-        readonly property string sent: /^image:\/\/qsimage\/[0-9]+\/[0-9]+$/.test(String(card.row.image || ""))
-                                       ? String(card.row.image) : Security.localImageUrl(card.row.image)
-
-        // Best first: the sender's picture, then the icon theme, then a
-        // desktop entry's icon (Icons.candidates has the names). A file that will not load gives way to the next.
-        function firstOf(names, look) {
-          for (var i = 0; i < names.length; i++) {
-            var found = look(names[i])
-            if (found) return found
-          }
-          return ""
-        }
-        readonly property var sources: {
-          var appsRevision = DesktopEntries.applications.values.length
-          var want = Icons.candidates(card.row)
-          var found = [sent,
-            firstOf(want.themed, function(name) { return Quickshell.iconPath(name, true) }),
-            firstOf(want.entries, function(name) {
-              var entry = DesktopEntries.heuristicLookup(name)
-              return entry ? thumb.entryIcon(entry.icon) : ""
-            })]
-          return found.filter(function(url, i) { return url && found.indexOf(url) === i })
-        }
-        readonly property string sourcesKey: sources.join("\n")
-        property int failed: 0
-        onSourcesKeyChanged: failed = 0
-        readonly property string best: sources[failed] || ""
-        readonly property bool photo: best !== "" && best === sent
-        readonly property bool mono: !photo && Icons.isSymbolic(best)
-
-        Rectangle {
-          anchors.fill: parent
-          visible: thumb.lettered
-          radius: Style.cornerRadius
-          color: Style.normalFillFor(Commons.Color.notifications.text, card.accentColor, Commons.Color.urgent)
-
-          Text {
-            textFormat: Text.PlainText
-            anchors.centerIn: parent
-            text: String(card.row.source || card.row.app || "?").substring(0, 1).toUpperCase()
-            color: card.dimColor
-            font.family: Style.font.family
-            font.pixelSize: Style.font.body
-            font.weight: Font.DemiBold
-          }
-        }
-
-        Text {
-          id: glyphText
-          textFormat: Text.PlainText
-          anchors.centerIn: parent
-          visible: thumb.glyphed
-          text: String(card.row.glyph || "")
-          color: Commons.Color.notifications.text
-          font.family: Delivery.omarchyGlyph(card.row.glyph) ? "omarchy" : Style.font.family
-          font.pixelSize: (thumb.compact ? Style.font.icon : Style.font.displayLarge)
-        }
-
-        Image {
-          id: picture
-          anchors.fill: parent
-          visible: thumb.pictured
-          source: card.reloading ? "" : thumb.best
-          onStatusChanged: if (status === Image.Error && thumb.failed < thumb.sources.length) thumb.failed += 1
-          // A photo fills its square; an app icon keeps its own shape.
-          fillMode: thumb.photo ? Image.PreserveAspectCrop : Image.PreserveAspectFit
-          // Constant, so the slot resizing never reloads the image.
-          sourceSize.width: thumb.slot * Screen.devicePixelRatio
-          sourceSize.height: thumb.slot * Screen.devicePixelRatio
-          asynchronous: true
-          // A sender may write each picture to the same path (cover art, say).
-          cache: !(thumb.photo && thumb.best.indexOf("file:") === 0)
-          // A one-colour icon is brightened to a silhouette and tinted with the
-          // theme's text colour, keeping its anti-aliased edge. A photo is
-          // rounded like the card, only when the theme rounds at all.
-          readonly property bool rounded: thumb.photo && Style.cornerRadius > 0
-          opacity: thumb.mono ? 0.85 : 1
-          layer.enabled: visible && (thumb.mono || rounded)
-          layer.effect: MultiEffect {
-            maskEnabled: picture.rounded
-            maskSource: mask
-            brightness: thumb.mono ? 1.0 : 0.0
-            colorization: thumb.mono ? 1.0 : 0.0
-            colorizationColor: Commons.Color.notifications.text
-          }
-        }
-
-        Rectangle {
-          id: mask
-          anchors.fill: parent
-          visible: false
-          layer.enabled: true
-          radius: Style.cornerRadius
-          color: "black"
-        }
-      }
+      spacing: Style.space(12)
 
       Column {
         id: column
         y: card.textOffset
-        width: layout.width - (thumb.visible ? thumb.width + layout.spacing : 0)
+        width: layout.width - (thumb.photo ? card.photoSize + layout.spacing : 0)
         spacing: Style.space(3)
+
+        // Header: small icon + APP NAME.
+        Item {
+          id: header
+          visible: card.showHeader
+          width: parent.width
+          height: Math.max(headerIcon.height, appName.implicitHeight) + Style.space(2)
+          opacity: card.contentOpacity
+
+          Item {
+            id: headerIcon
+            readonly property bool pictured: headerImg.status === Image.Ready
+            readonly property bool glyphed: !pictured && String(card.row.glyph || "").length > 0
+            anchors.left: parent.left
+            anchors.top: parent.top
+            width: pictured || glyphed ? Style.space(18) : 0
+            height: Style.space(18)
+
+            Image {
+              id: headerImg
+              anchors.fill: parent
+              source: card.reloading || thumb.photo ? "" : thumb.best
+              onStatusChanged: thumb.giveUp(status)
+              fillMode: Image.PreserveAspectFit
+              sourceSize.width: Style.space(18) * Screen.devicePixelRatio
+              sourceSize.height: Style.space(18) * Screen.devicePixelRatio
+              asynchronous: true
+              smooth: true
+              mipmap: true
+              // A one-colour icon is tinted with the theme's text colour.
+              opacity: thumb.mono ? 0.85 : 1
+              layer.enabled: visible && thumb.mono
+              layer.effect: MultiEffect {
+                brightness: 1.0
+                colorization: 1.0
+                colorizationColor: card.textColor
+              }
+            }
+
+            Text {
+              anchors.centerIn: parent
+              visible: headerIcon.glyphed
+              text: String(card.row.glyph || "")
+              textFormat: Text.PlainText
+              color: card.secondaryColor
+              font.family: Delivery.omarchyGlyph(card.row.glyph) ? "omarchy" : card.fontFamily
+              font.pixelSize: Style.font.body
+              renderType: Text.NativeRendering
+            }
+          }
+
+          Text {
+            id: appName
+            anchors.left: headerIcon.right
+            anchors.leftMargin: headerIcon.width > 0 ? Style.space(6) : 0
+            anchors.right: parent.right
+            anchors.verticalCenter: headerIcon.verticalCenter
+            text: card.displayApp().toUpperCase()
+            textFormat: Text.PlainText
+            color: card.secondaryColor
+            font.family: card.fontFamily
+            font.pixelSize: Style.font.caption
+            font.weight: Font.Medium
+            font.letterSpacing: 0.8
+            elide: Text.ElideRight
+            renderType: Text.NativeRendering
+          }
+        }
 
         // Title, marks, and when it arrived.
         Item {
@@ -401,13 +412,15 @@ Item {
                    - (titleMarks.visible ? titleMarks.width + Style.space(7) : 0)
                    - Style.space(8))
             text: card.redacted ? I18n.t("notifications.redactedSummary") : String(card.row.summary || "")
-            color: Commons.Color.notifications.text
-            font.family: "Liberation Sans"
-            font.pixelSize: Style.font.title
-            font.bold: true
+            color: card.textColor
+            font.family: card.fontFamily
+            font.pixelSize: Style.font.subtitle
+            font.weight: Font.DemiBold
+            lineHeight: 1.2
             wrapMode: Text.Wrap
-            maximumLineCount: card.bodyOpen ? 8 : 3
+            maximumLineCount: card.bodyOpen ? 8 : 2
             elide: Text.ElideRight
+            renderType: Text.NativeRendering
           }
 
           Row {
@@ -427,7 +440,7 @@ Item {
                 textFormat: Text.PlainText
                 required property var modelData
                 text: modelData
-                color: Commons.Color.notifications.text
+                color: card.textColor
                 opacity: 0.9
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body
@@ -453,11 +466,12 @@ Item {
                 id: stamp
                 anchors.centerIn: parent
                 text: card.ago()
-                color: card.dimColor
+                color: card.secondaryColor
                 opacity: card.hovered ? 0 : 1
                 visible: opacity > 0.01
-                font.family: Style.font.family
-                font.pixelSize: Style.font.bodySmall
+                font.family: card.fontFamily
+                font.pixelSize: Style.font.caption
+                renderType: Text.NativeRendering
                 Behavior on opacity { NumberAnimation { duration: card.fade; easing.type: Easing.InOutQuad } }
               }
 
@@ -477,9 +491,11 @@ Item {
                   id: closeMark
                   anchors.centerIn: parent
                   textFormat: Text.PlainText
-                  text: "✕"
-                  color: shut.hot ? Commons.Color.notifications.text : card.dimColor
-                  font.pixelSize: Math.round(Style.font.caption * 1.44)
+                  text: "×"
+                  color: shut.hot ? card.textColor : card.secondaryColor
+                  font.family: card.fontFamily
+                  font.pixelSize: Style.font.subtitle
+                  renderType: Text.NativeRendering
                 }
 
                 MouseArea {
@@ -495,8 +511,8 @@ Item {
 
         FontMetrics {
           id: metrics
-          font.family: "Liberation Sans"
-          font.pixelSize: Style.font.title
+          font.family: card.fontFamily
+          font.pixelSize: Style.font.body
         }
 
         // StyledText, not RichText: it covers the tags Markup lets through,
@@ -504,8 +520,8 @@ Item {
         Text {
           id: bodyBox
           width: parent.width
-          // The closed height, read only by the icon so it does not move.
-          readonly property real restHeight: Math.ceil(Math.max(1, metrics.height) * Math.min(2, lineCount))
+          // The closed height, read only by the photo so it does not move.
+          readonly property real restHeight: Math.ceil(Math.max(1, metrics.height) * lineHeight * Math.min(2, lineCount))
           visible: card.hasBody
           opacity: card.contentOpacity
 
@@ -513,13 +529,62 @@ Item {
           text: card.redacted ? I18n.t("notifications.redactedBody") : String(card.row.bodyRich || "")
           color: card.bodyColor
           linkColor: Commons.Color.notifications.countdown
-          font.family: "Liberation Sans"
-          font.pixelSize: Style.font.title
+          font.family: card.fontFamily
+          font.pixelSize: Style.font.body
+          lineHeight: 1.35
           wrapMode: Text.Wrap
           maximumLineCount: card.bodyLines
           elide: Text.ElideRight
+          renderType: Text.NativeRendering
           // Second gate: Markup already drops anchors it will not vouch for.
           onLinkActivated: function(url) { card.linkOpened(); Security.openExternalUrl(url) }
+        }
+      }
+
+      // Photo preview (screenshots, avatars): rounded, right side.
+      Item {
+        id: photoSlot
+        visible: thumb.photo
+        width: card.photoSize
+        height: card.photoSize
+        y: Math.max(0, (card.restingBlock - height) / 2)
+        opacity: card.contentOpacity
+
+        Rectangle {
+          anchors.fill: parent
+          radius: Style.space(10)
+          color: Qt.rgba(1, 1, 1, 0.05)
+        }
+
+        Image {
+          id: picture
+          anchors.fill: parent
+          anchors.margins: 1
+          source: card.reloading || !thumb.photo ? "" : thumb.best
+          onStatusChanged: thumb.giveUp(status)
+          fillMode: Image.PreserveAspectCrop
+          // Constant, so the slot resizing never reloads the image.
+          sourceSize.width: Style.space(56) * Screen.devicePixelRatio
+          sourceSize.height: Style.space(56) * Screen.devicePixelRatio
+          asynchronous: true
+          smooth: true
+          mipmap: true
+          // A sender may write each picture to the same path (cover art, say).
+          cache: thumb.best.indexOf("file:") !== 0
+          layer.enabled: visible
+          layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: mask
+          }
+        }
+
+        Rectangle {
+          id: mask
+          anchors.fill: picture
+          visible: false
+          layer.enabled: true
+          radius: Style.space(9)
+          color: "black"
         }
       }
     }

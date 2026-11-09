@@ -12,7 +12,7 @@ BarWidget {
   id: root
   moduleName: "omarchy.workspaces"
 
-  readonly property bool transparentBar: root.bar && root.bar.shell && root.bar.shell.barConfig.transparent
+  readonly property bool transparentBar: !!root.bar && root.bar.transparent === true
   readonly property color adaptiveForeground: root.bar ? root.bar.barForeground : "#f2f0e8"
   readonly property color pill: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.14) : "#242528"
   readonly property color pillHover: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.22) : "#303135"
@@ -112,8 +112,10 @@ BarWidget {
     if (root.bar) root.bar.run("hyprctl dispatch " + Util.shellQuote(expression))
   }
 
-  function focusWorkspace(id) {
-    if (root.blockOf(id) === root.block) {
+  function focusWorkspace(id, name) {
+    if (id < 0) {
+      root.dispatch("hl.dsp.focus({ workspace = \"name:" + name + "\" })")
+    } else if (root.blockOf(id) === root.block) {
       root.dispatch("o.workspaces.focus(" + root.slotOf(id) + ", \"" + root.monitorName + "\")")
     } else {
       root.dispatch("hl.dsp.focus({ workspace = \"" + id + "\" })")
@@ -314,7 +316,12 @@ BarWidget {
   readonly property real inactiveIconOpacity: 0.92
 
   readonly property var workspaceValues: Hyprland.workspaces.values
-    .filter(function(workspace) { return workspace.id > 0 && (root.blockOf(workspace.id) === root.block || (workspace.monitor && workspace.monitor.name === root.monitorName)) })
+    .filter(function(workspace) {
+      // Named workspaces (Super + F/C/S) have negative ids; keep them on the
+      // monitor showing them. Special (scratchpad) ones stay hidden.
+      if (workspace.id < 0) return !String(workspace.name).startsWith("special:") && workspace.monitor && workspace.monitor.name === root.monitorName
+      return root.blockOf(workspace.id) === root.block || (workspace.monitor && workspace.monitor.name === root.monitorName)
+    })
     .sort(root.workspaceOrder)
 
   function workspaceOrder(left, right) {
@@ -371,7 +378,7 @@ BarWidget {
         onPressed: function(button) {
           if (button === Qt.LeftButton) {
             if (workspace.isSelected) root.cycleLayout()
-            else root.focusWorkspace(modelData.id)
+            else root.focusWorkspace(modelData.id, modelData.name)
           }
         }
         onWheelMoved: function(delta) {
@@ -412,7 +419,7 @@ BarWidget {
             width: root.dp(implicitWidth)
             height: root.iconBox
             verticalAlignment: Text.AlignVCenter
-            text: String(root.slotOf(workspace.modelData.id)) + (workspace.isSelected ? " " + root.modeGlyph(root.activeMode) : "")
+            text: workspace.modelData.id < 0 ? String(workspace.modelData.name) : String(root.slotOf(workspace.modelData.id))
             color: workspace.isSelected && !root.transparentBar ? "#151517" : root.foreground
             font.family: "DM Sans"
             font.pixelSize: Style.font.bodySmall

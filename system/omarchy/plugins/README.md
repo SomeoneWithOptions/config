@@ -7,8 +7,8 @@ it does not by itself mean a clone is broken.
 The 4.5 port retains framed panels and menu animations, all-visible tray icons,
 workspace pills with app icons, audio-aware idle handling and the Matrix
 screensaver. It adds the current menu's translations, IME input, multi-select
-flow and concurrent guards; the tray's widget section; monitor-local workspace
-navigation and layout state; and shell-socket IPC registration via `ShellIpc`.
+flow and concurrent guards; the tray's widget section; workspace layout state
+(navigation stays global 1-10, see `system/hypr/workspaces.lua`); and shell-socket IPC registration via `ShellIpc`.
 
 Notifications now use the 4.5 keyed scene, persistence, grouping, markup and
 keyboard/action engine. The black drawer and curved joins remain. `Loom.js`,

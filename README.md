@@ -8,7 +8,9 @@ curl -fsSL https://go.sanetomore.com/config | sh
 
 Linux desktop baseline: **Omarchy 4.5.0-3**. Custom shell clones retain the
 framed desktop, workspace pills and Loom cards while following 4.5's notification,
-menu, IPC and per-monitor workspace behavior. See
+menu and IPC behavior. Workspaces stay global 1-10 across monitors: 4.5's
+per-monitor blocks renumbered workspaces on lid close/undock, so
+`system/hypr/workspaces.lua` disables them and `andres.workspaces` pins block 0. See
 [plugin maintenance](system/omarchy/plugins/README.md) before refreshing upstream hashes.
 
 Laptop setup also restores:

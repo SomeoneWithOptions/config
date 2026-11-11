@@ -19,10 +19,9 @@ BarWidget {
   readonly property color foreground: root.transparentBar ? root.adaptiveForeground : "#f2f0e8"
   readonly property color selected: root.transparentBar ? Util.alpha(root.adaptiveForeground, 0.30) : "#dedfe3"
 
-  // Every monitor has workspaces 1-10 of its own, which Hyprland numbers in a
-  // block of ten per monitor: 1-10, 11-20, and so on (see
-  // default/hypr/monitor-workspaces.lua). Each bar shows its own monitor's block,
-  // numbered 1-10, and the one that monitor shows, whichever monitor has focus.
+  // Workspaces are global 1-10 shared by every monitor (hypr/workspaces.lua
+  // turns off 4.5's per-monitor blocks), so every bar uses block 0. The block
+  // math stays so stock per-monitor behavior is one line away.
   readonly property int slots: 10
 
   readonly property var monitor: {
@@ -31,28 +30,6 @@ BarWidget {
     return screen ? Hyprland.monitorFor(screen) : Hyprland.focusedMonitor
   }
   readonly property string monitorName: root.monitor ? root.monitor.name : ""
-
-  // Connector -> block, from the file Hyprland keeps them in.
-  property var blocks: ({})
-
-  function readBlocks(text) {
-    var next = {}
-    var lines = String(text || "").split("\n")
-    for (var i = 0; i < lines.length; i++) {
-      var fields = lines[i].split("\t")
-      if (fields.length >= 3 && fields[1] !== "") next[fields[1]] = parseInt(fields[0], 10)
-    }
-    root.blocks = next
-  }
-
-  FileView {
-    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/monitor-workspaces"
-    watchChanges: true
-    printErrors: false
-    onFileChanged: reload()
-    onLoaded: root.readBlocks(text())
-    onLoadFailed: root.readBlocks("")
-  }
 
   function blockOf(id) {
     return Math.floor((id - 1) / root.slots)
@@ -66,14 +43,7 @@ BarWidget {
     return root.monitor && root.monitor.activeWorkspace ? root.monitor.activeWorkspace.id : -1
   }
 
-  // Until Hyprland has written the file, the workspace a monitor shows is in
-  // its own block.
-  readonly property int block: {
-    var block = root.blocks[root.monitorName]
-    if (block !== undefined) return block
-    var active = root.activeWorkspaceId()
-    return active > 0 ? root.blockOf(active) : 0
-  }
+  readonly property int block: 0
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values

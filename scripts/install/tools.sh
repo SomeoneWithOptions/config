@@ -219,11 +219,31 @@ install_npm_cli() {
   fi
 }
 
+# Vercel moved CLI development to a private repo at 58.5.1. It still publishes
+# through npm Trusted Publishing, but npm cannot attach SLSA provenance for a
+# private repo, so aube's no-downgrade trust policy rejects every release and
+# its @vercel/* dependencies. aube 2.10 exempts only `vercel` itself. mise keeps
+# these options when the wrapper later runs `mise use -g npm:vercel`, and
+# --append skips entries already present, so reruns change nothing.
+configure_vercel_trust_policy() {
+  [ "$(uname -s)" = "Linux" ] || return 0
+  local exclude
+  if mise config set --global 'tools."npm:vercel".version' latest; then
+    for exclude in 'vercel@>=58.5.1' '@vercel/*'; do
+      mise config set --global --append 'tools."npm:vercel".trust_policy_excludes' "$exclude" ||
+        { warn "Could not add Vercel trust policy exclude ${exclude}."; return 0; }
+    done
+  else
+    warn "Could not configure the Vercel trust policy in mise."
+  fi
+}
+
 install_personal_dev_tools() {
   install_commiter
   install_n8n_cli
   install_npm_cli @google/clasp clasp
   install_npm_cli vercel vercel
+  configure_vercel_trust_policy
   install_npm_cli clerk clerk
   install_slack_cli
   install_playwright

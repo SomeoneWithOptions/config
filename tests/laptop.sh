@@ -7,7 +7,7 @@ trap 'rm -rf "$scratch"' EXIT
 export HOME="$scratch/home" CONFIG_POWER_SUPPLY_ROOT="$scratch/power" CONFIG_BATTERY_RULE="$scratch/etc/charge.rules"
 export MOCK_CALLS="$scratch/calls"
 export XDG_STATE_HOME="$HOME/.local/state" XDG_DATA_HOME="$HOME/.local/share" XDG_CONFIG_HOME="$HOME/.config"
-mkdir -p "$HOME/.local/share/voxtype/models" "$HOME/.config/omarchy/defaults" "$scratch/bin" "$CONFIG_POWER_SUPPLY_ROOT"
+mkdir -p "$HOME/.config/omarchy/defaults" "$scratch/bin" "$CONFIG_POWER_SUPPLY_ROOT"
 : >"$MOCK_CALLS"
 cat >"$scratch/bin/sudo" <<'SH'
 #!/bin/bash
@@ -25,13 +25,28 @@ if [[ "$1 $2" == 'dictation use' ]]; then
   printf '%s\n' "$3" >"$HOME/.config/omarchy/defaults/dictation"
 fi
 SH
-for cmd in systemctl powerprofilesctl voxtype; do
+# Stateful Superwhisper CLI: `show` is silent, every change is logged.
+export SUPERWHISPER_STATE="$scratch/superwhisper.json"
+printf '%s\n' '{"general":{"config":{}},"audio":{"config":{}},"shortcuts":{"shortcuts":{"toggle":"Alt+Space"}},"models":{"processing":null,"processingModes":[{"value":"offline","missing":[]}]}}' >"$SUPERWHISPER_STATE"
+cat >"$scratch/bin/superwhisper" <<'SH'
+#!/bin/bash
+state=$SUPERWHISPER_STATE
+[[ $2 == show ]] && exec jq --arg s "$1" '.[$s]' "$state"
+printf 'superwhisper %s\n' "$*" >>"$MOCK_CALLS"
+case "$1 $2" in
+  'general set'|'audio set') filter='.[$s].config |= setpath($k | split("."); ($v | fromjson))' ;;
+  'shortcuts set') filter='.shortcuts.shortcuts[$k] = (if $v == "none" then "" else $v end)' ;;
+  'models select') filter='.models.processing = $k' ;;
+  *) exit 99 ;;
+esac
+jq --arg s "$1" --arg k "$3" --arg v "${4:-}" "$filter" "$state" >"$state.new" && mv "$state.new" "$state"
+SH
+for cmd in systemctl powerprofilesctl; do
     printf '#!/bin/sh\nexit 0\n' >"$scratch/bin/$cmd"
 done
 chmod +x "$scratch/bin/"*
 export PATH="$scratch/bin:/usr/bin:/bin"
 printf 'voxtype\n' >"$HOME/.config/omarchy/defaults/dictation"
-printf 'model\n' >"$HOME/.local/share/voxtype/models/ggml-medium.bin"
 
 run_laptop() {
     bash -c 'set -euo pipefail; SCRIPT_DIR=$1 CHECK=$2 DRIFT=0 OS_NAME=Linux; source "$1/scripts/lib/report.sh"; source "$1/scripts/lib/copy.sh"; source "$1/scripts/apply/laptop.sh"; echo "drift=$DRIFT"' laptop "$ROOT" "$1"
@@ -41,10 +56,20 @@ run_laptop() {
 run_laptop 1 >"$scratch/check"
 ! test -e "$HOME/.local/state"
 ! test -s "$MOCK_CALLS"
+grep -q 'expected superwhisper' "$scratch/check"
+grep -q 'superwhisper shortcuts toggle: expected RightControl' "$scratch/check"
 run_laptop 0 >"$scratch/apply"
 ! grep -q '^sudo ' "$MOCK_CALLS"
 grep -q 'powerprofiles set autodetect' "$MOCK_CALLS"
+grep -qx 'omarchy dictation use superwhisper' "$MOCK_CALLS"
+grep -qx 'superwhisper models select offline' "$MOCK_CALLS"
+grep -qx 'superwhisper general set linux.historyEnabled true' "$MOCK_CALLS"
+grep -qx 'superwhisper shortcuts set toggle RightControl' "$MOCK_CALLS"
+test "$(jq -r .general.config.tone "$SUPERWHISPER_STATE")" = semi-formal
 run_laptop 1 | grep -qx 'drift=0'
+: >"$MOCK_CALLS"
+run_laptop 0 >/dev/null
+! grep -q '^superwhisper ' "$MOCK_CALLS"
 
 mkdir -p "$CONFIG_POWER_SUPPLY_ROOT/BAT0"
 printf '85\n' >"$CONFIG_POWER_SUPPLY_ROOT/BAT0/charge_control_start_threshold"

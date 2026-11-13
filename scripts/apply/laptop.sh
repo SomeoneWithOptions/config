@@ -69,29 +69,62 @@ if [[ "$OS_NAME" == Linux ]]; then
         fi
     fi
 
-    backend_file="$HOME/.config/omarchy/defaults/dictation"
+    backend_file="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/defaults/dictation"
     backend=""
     [[ ! -r "$backend_file" ]] || backend=$(<"$backend_file")
-    if [[ "$backend" != voxtype ]]; then
+    if ! command -v superwhisper >/dev/null 2>&1; then
         if (( CHECK )); then
-            report_drift "$backend_file" "" "expected voxtype"
-        elif command -v voxtype >/dev/null 2>&1; then
-            omarchy dictation use voxtype || report_warning 'Could not select Voxtype'
+            report_drift superwhisper "" "missing; run software installer"
+        else
+            report_action superwhisper 'Superwhisper → install dictation' "Run: bash \"$SCRIPT_DIR/1 SoftwareInstall.sh\""
         fi
-    fi
-    if (( CHECK )); then
-        for state in enabled active; do
-            if ! systemctl --user "is-$state" --quiet voxtype.service; then
-                report_drift voxtype.service "" "not $state"
-            fi
-        done
-        model="${XDG_DATA_HOME:-$HOME/.local/share}/voxtype/models/ggml-medium.bin"
-        [[ -s "$model" ]] || report_drift "$model" "" "missing Whisper medium model; run software installer"
-        command -v voxtype >/dev/null 2>&1 || report_drift voxtype "" "missing; run software installer"
-    elif command -v voxtype >/dev/null 2>&1; then
-        systemctl --user daemon-reload
-        systemctl --user enable --now voxtype.service || report_warning 'Could not enable Voxtype'
+    elif (( CHECK )) && ! systemctl --user is-active --quiet superwhisper.service; then
+        # Every superwhisper query starts the service, so a read-only check stops here.
+        report_drift superwhisper.service "" "not active"
     else
-        report_action voxtype 'Voxtype → install engine and model' "Run: bash \"$SCRIPT_DIR/1 SoftwareInstall.sh\""
+        if (( ! CHECK )); then
+            systemctl --user enable --now superwhisper.service || report_warning 'Could not enable Superwhisper'
+        elif ! systemctl --user is-enabled --quiet superwhisper.service; then
+            report_drift superwhisper.service "" "not enabled"
+        fi
+        if [[ "$backend" != superwhisper ]]; then
+            if (( CHECK )); then
+                report_drift "$backend_file" "" "expected superwhisper"
+            else
+                omarchy dictation use superwhisper || report_warning 'Could not select Superwhisper'
+            fi
+        fi
+        superwhisper_state=$(superwhisper models show 2>/dev/null || true)
+        if [[ $(jq -r '.processing // ""' <<<"$superwhisper_state" 2>/dev/null) != offline ]]; then
+            if (( CHECK )); then
+                report_drift superwhisper "" "processing mode is not offline"
+            elif jq -e '.processingModes[]? | select(.value == "offline" and (.missing | length) == 0)' \
+                <<<"$superwhisper_state" >/dev/null 2>&1; then
+                superwhisper models select offline >/dev/null || report_warning 'Could not select Superwhisper offline mode'
+            else
+                report_action superwhisper-models 'Superwhisper → download offline models' "Run: bash \"$SCRIPT_DIR/1 SoftwareInstall.sh\""
+            fi
+        fi
+        declare -A superwhisper_shown=()
+        while read -r section key value; do
+            [[ -n "$section" && "$section" != \#* ]] || continue
+            [[ -v "superwhisper_shown[$section]" ]] ||
+                superwhisper_shown[$section]=$(superwhisper "$section" show 2>/dev/null || true)
+            if [[ "$section" == shortcuts ]]; then
+                wanted=$value
+                [[ "$wanted" != none ]] || wanted=""
+                filter='(.shortcuts[$key] // "") == $wanted'
+                jq_args=(--arg wanted "$wanted")
+            else
+                filter='getpath(["config"] + ($key | split("."))) == $wanted'
+                jq_args=(--argjson wanted "$value")
+            fi
+            jq -e --arg key "$key" "${jq_args[@]}" "$filter" <<<"${superwhisper_shown[$section]}" >/dev/null 2>&1 && continue
+            if (( CHECK )); then
+                report_drift "superwhisper $section $key" "" "expected $value"
+            elif ! superwhisper "$section" set "$key" "$value" >/dev/null; then
+                report_warning "Could not set Superwhisper $section $key"
+            fi
+        done <"$SCRIPT_DIR/apps/superwhisper/settings"
     fi
 fi

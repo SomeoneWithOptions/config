@@ -120,26 +120,26 @@ install_arch_1password() {
   fi
 }
 
-install_arch_voxtype() {
-  local config="$HOME/.config/voxtype/config.toml"
-  # Seed before downloading: otherwise upstream downloads its default model.
-  if [ ! -e "$config" ]; then
-    mkdir -p "${config%/*}"
-    cp "$SCRIPT_DIR/apps/voxtype/config.toml" "$config" || return 1
-  fi
-  if ! has_command voxtype; then
-    warn 'Voxtype is unavailable; model and service setup skipped.'
+# Superwhisper is Omarchy's packaged dictation app. The vendor's setup-user links
+# its launcher, enables superwhisper.service and installs the Omarchy panel; the
+# preferences in apps/superwhisper/settings are applied by `4 ConfigFiles.sh`.
+install_arch_superwhisper() {
+  local model
+  if ! has_command superwhisper; then
+    warn 'Superwhisper is unavailable; service and model setup skipped.'
     return 0
   fi
-  progress_step 'Preparing dictation model…' 'Dictation model ready' 'Dictation model setup failed' \
-    'download configured Voxtype model' voxtype setup --download --no-post-install || return 0
-  # ARM packages can have Vulkan installed but no Voxtype Vulkan backend.
-  if has_command omarchy-hw-vulkan && omarchy-hw-vulkan && [ -x /usr/lib/voxtype/voxtype-vulkan ]; then
-    run_or_warn 'enable Voxtype GPU backend' voxtype setup gpu --enable
+  if ! systemctl --user is-enabled --quiet superwhisper.service 2>/dev/null; then
+    run_or_warn 'configure Superwhisper user service' bash /usr/share/superwhisper/setup-user || return 0
   fi
-  run_or_warn 'configure Voxtype user service' voxtype setup systemd
-  run_or_warn 'enable Voxtype' systemctl --user enable --now voxtype.service
-  run_or_warn 'select Voxtype dictation' omarchy dictation use voxtype
+  # Offline mode (Cohere Transcribe + S1 Mini) needs about 2.2 GB of models.
+  for model in $(superwhisper models show 2>/dev/null |
+    jq -r '.processingModes[]? | select(.value == "offline") | .missing[]?'); do
+    progress_step "Downloading Superwhisper ${model} model…" "Superwhisper ${model} model ready" \
+      "Superwhisper ${model} model download failed" \
+      "download Superwhisper ${model} model" superwhisper models download "$model" || true
+  done
+  run_or_warn 'select Superwhisper dictation' omarchy dictation use superwhisper
 }
 
 install_arch_packages() {
@@ -190,8 +190,8 @@ install_arch_packages() {
   done
 
   arch_install_if_missing wtype
-  arch_install_if_missing voxtype-bin
-  install_arch_voxtype
+  arch_install_if_missing superwhisper-bin
+  install_arch_superwhisper
 
   # Use Omarchy's mise config instead of owning ~/.config/mise/config.toml.
   progress_step 'Installing Node.js…' 'Node.js installed' 'Node.js installation failed' \

@@ -1,0 +1,17 @@
+# Superwhisper preferences, applied through its CLI by scripts/apply/laptop.sh.
+# Format: SECTION KEY VALUE. general/audio values are JSON (`superwhisper
+# SECTION set KEY JSON`); shortcut values are chords, `none` disables one.
+# Microphone choice is per machine and deliberately not managed here.
+general   language                     "en"
+general   tone                         "semi-formal"
+general   autoPasteEnabled             true
+general   launchAtLogin                true
+general   linux.historyEnabled         true
+general   linux.saveRecordingAudio     false
+general   recordingPreservationPeriod  604800
+audio     defaultPlaybackBehavior      "pause"
+audio     showRecordingIndicator       true
+audio     recordingIndicatorStyle      "edgeGlow"
+shortcuts toggle                       RightControl
+shortcuts hold                         none
+shortcuts cancel                       Escape

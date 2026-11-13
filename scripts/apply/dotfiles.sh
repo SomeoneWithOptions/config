@@ -169,7 +169,6 @@ if [[ "$OS_NAME" == "Linux" ]]; then
     SOLITUDE_OVERLAY_CHANGED=0
     cmp -s "$SCRIPT_DIR/system/omarchy/themes/solitude/colors.toml" "$HOME/.config/omarchy/themes/solitude/colors.toml" || SOLITUDE_OVERLAY_CHANGED=1
     copy_required "$SCRIPT_DIR/system/omarchy/themes/solitude/colors.toml" "$HOME/.config/omarchy/themes/solitude/colors.toml"
-    copy_required "$SCRIPT_DIR/apps/voxtype/config.toml" "$HOME/.config/voxtype/config.toml"
     copy_required "$SCRIPT_DIR/system/wireplumber/wireplumber.conf.d/bluetooth-a2dp-autoconnect.conf" "$HOME/.config/wireplumber/wireplumber.conf.d/bluetooth-a2dp-autoconnect.conf"
 
     # XDG defaults

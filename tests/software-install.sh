@@ -66,7 +66,7 @@ if [ "$1 $2" = 'pkg add' ]; then
 fi
 exit 0
 SH
-  for tool in mise omarchy-webapp-install systemctl pi clasp vercel rtk brew yay voxtype; do
+  for tool in mise omarchy-webapp-install systemctl pi clasp vercel rtk brew yay superwhisper; do
     printf '#!/bin/sh\nprintf "%s %%s\\n" "%s" "$*" >>"$MOCK_CALLS"\nexit 0\n' "$tool" "$tool" >"$SOFT/bin/$tool"
   done
   # Mirrors the real helper: writes a mise-backed wrapper into ~/.local/bin, so

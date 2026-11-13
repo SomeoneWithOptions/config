@@ -17,10 +17,13 @@ Laptop setup also restores:
 
 - Battery charge thresholds: start 85%, stop 90%, only on supported batteries.
   Installs a persistent udev rule; verify thresholds after reboot.
-- Voxtype: Whisper medium, auto language, no translation, typed output and quiet
-  notifications. Software setup downloads the configured model, enables its user
-  service and selects Voxtype; Vulkan acceleration is enabled only when both
-  hardware and packaged backend support it. Shortcut: **Super+Ctrl+X** only.
+- Superwhisper dictation (Omarchy's `superwhisper-bin`): offline mode (Cohere
+  Transcribe + S1 Mini, about 2.2 GB of models), English, semi-formal tone,
+  auto-paste. Software setup installs it, enables its user service, downloads the
+  offline models and selects it as the Omarchy dictation backend.
+  `4 ConfigFiles.sh` applies `apps/superwhisper/settings` through the
+  `superwhisper` CLI; the microphone stays per machine. Shortcuts: **Super+Ctrl+X**
+  (Omarchy) and **Right Ctrl** (Superwhisper toggle).
 - Solitude overlay with Catppuccin Mocha terminal colors; Bluetooth headset mic
   auto-connect; balanced power on AC and power-saver on battery.
 - OpenCode preferences, shared Pi skill paths, caveman instructions and an
